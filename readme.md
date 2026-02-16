@@ -1,5 +1,8 @@
 # Dokusha CLI
 
+[![npm version](https://img.shields.io/npm/v/dokusha.svg)](https://www.npmjs.com/package/dokusha)
+[![license](https://img.shields.io/npm/l/dokusha.svg)](https://github.com/Alexandro521/dokusha/LICENSE)
+
 Dokusha es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
 
 ![yomu preview](https://i.imgur.com/UQEyaIp.png)
@@ -66,7 +69,7 @@ Para una experiencia óptima con imágenes en alta resolución, utiliza una term
 ```bash
 src/
 ├── frontend
-│   ├── configutation.ts # UI del menu de configuracion
+│   ├── configuration.ts # UI del menu de configuracion
 │   ├── menu.ts # UI de las secciones principales
 │   ├── prompts.ts # definicion de los prompts para la UI
 │   └── reader.ts # UI para el lector de capitulos
@@ -83,7 +86,7 @@ src/
 ### Clonar repositorio
 
 ```bash
-   git clone https://github.com/Alexandro521/yomu.git --depth=1
+   git clone https://github.com/Alexandro521/doshuka.git --depth=1
 ```
 
 ### Instalar dependencias
