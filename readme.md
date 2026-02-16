@@ -1,33 +1,33 @@
-# Dokusha CLI
+# tanko CLI
 
-[![npm version](https://img.shields.io/npm/v/dokusha.svg)](https://www.npmjs.com/package/dokusha)
-[![license](https://img.shields.io/npm/l/dokusha.svg)](https://github.com/Alexandro521/dokusha/LICENSE)
+[![npm version](https://img.shields.io/npm/v/tanko.svg)](https://www.npmjs.com/package/tanko)
+[![license](https://img.shields.io/npm/l/tanko.svg)](https://github.com/Alexandro521/tanko/LICENSE)
 
-Dokusha es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
+tanko es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
 
 ![yomu preview](https://i.imgur.com/UQEyaIp.png)
 ![yomu preview](https://i.imgur.com/lsytDnf.png)
 ![yomu preview](https://i.imgur.com/NnzVGXz.gif)
 ![yomu preview](https://imgur.com/ZkChhZ1.gif)
 
-## 1. Instalar dokusha
+## 1. Instalar tanko
 
 ### npm
 
 ```bash
-npm install -g dokusha
+npm install -g tanko
 ```
 
 ### pnpm
 
 ```bash
-pnpm add -g dokusha
+pnpm add -g tanko
 ```
 
 ### bun
 
 ```bash
-bun add -g dokusha
+bun add -g tanko
 ```
 
 ### 2. Instalar navegador Firefox
@@ -36,27 +36,27 @@ bun add -g dokusha
 npx playwright install firefox
 ```
 
-### 3. Ejecutar dokusha
+### 3. Ejecutar tanko
 
 ```bash
-dokusha
+tanko
 ```
 
 > [!IMPORTANT]
 > **Experiencia Visual:** Para disfrutar del manga con imágenes reales, se recomienda usar una terminal con soporte para protocolos de imagen.
 
-### 🚀 Terminales Recomendadas para Dokusha
+### 🚀 Terminales Recomendadas para tanko
 
 Para una experiencia óptima con imágenes en alta resolución, utiliza una terminal que soporte protocolos modernos:
 
-| Logo | Terminal                   | Sistema Operativo | Protocolo      | Enlace                                          |
-| :--: | :------------------------- | :---------------- | :------------- | :---------------------------------------------- |
-|  🐱  | **Kitty**            | Linux / macOS     | Kitty Graphics | [Descargar](https://sw.kovidgoyal.net/kitty/)      |
-|  👻  | **Ghostty**          | macOS / Linux     | Kitty Graphics | [Descargar](https://ghostty.org/)                  |
-|  🐚  | **WezTerm**          | Win / Mac / Linux | Kitty / Sixel  | [Descargar](https://wezfurlong.org/wezterm/)       |
-|  🍎  | **iTerm2**           | macOS             | iTerm2 Images  | [Descargar](https://iterm2.com/)                   |
-|  🐧  | **Foot**             | Linux (Wayland)   | Sixel          | [Descargar](https://codeberg.org/dnkl/foot)        |
-| 🖥️ | **Windows Terminal** | Windows           | Sixel (v1.22+) | [Descargar](https://github.com/microsoft/terminal) |
+|Terminal                   | Sistema Operativo | Protocolo      | Enlace                                          |
+|:------------------------- | :---------------- | :------------- | :---------------------------------------------- |
+| **Kitty**            | Linux / macOS     | Kitty Graphics | [Descargar](https://sw.kovidgoyal.net/kitty/)      |
+| **Ghostty**          | macOS / Linux     | Kitty Graphics | [Descargar](https://ghostty.org/)                  |
+| **WezTerm**          | Win / Mac / Linux | Kitty / Sixel  | [Descargar](https://wezfurlong.org/wezterm/)       |
+| **iTerm2**           | macOS             | iTerm2 Images  | [Descargar](https://iterm2.com/)                   |
+| **Foot**             | Linux (Wayland)   | Sixel          | [Descargar](https://codeberg.org/dnkl/foot)        |
+| **Windows Terminal** | Windows           | Sixel (v1.22+) | [Descargar](https://github.com/microsoft/terminal) |
 
 > * **Nota:** En terminales básicas (como CMD o la terminal de VS Code), las imágenes se renderizarán en **ASCII Art**.
 

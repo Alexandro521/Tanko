@@ -11,7 +11,7 @@ import { History } from "./functions/history.js";
 import { MangaServerClient } from "./server/leerCapitulo.js";
 import { init } from "./frontend/menu.js";
 
-const BASE_URL = path.resolve(os.homedir(), 'dokusha')
+const BASE_URL = path.resolve(os.homedir(), 'tanko')
 const DOWNLOADS_DEFAULT_URL = path.resolve(BASE_URL, 'downloads')
 const DATA_URL = path.resolve(BASE_URL, 'data')
 

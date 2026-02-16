@@ -1,6 +1,6 @@
 {
-  "name": "dokusha",
-  "version": "1.0.7",
+  "name": "tanko",
+  "version": "1.0.0",
   "type": "module",
   "description": "Una herramienta para leer y descargar mangas desde la terminal",
   "main": "dist/index.js",
@@ -19,14 +19,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Alexandro521/dokusha.git"
+    "url": "https://github.com/Alexandro521/Tanko.git"
   },
   "bugs": {
-    "url": "https://github.com/Alexandro521/dokusha/issues"
+    "url": "https://github.com/Alexandro521/Tanko/issues"
   },
-  "homepage": "https://github.com/Alexandro521/dokusha#readme",
+  "homepage": "https://github.com/Alexandro521/Tanko#readme",
   "bin": {
-    "dokusha": "./dist/index.js"
+    "tanko": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

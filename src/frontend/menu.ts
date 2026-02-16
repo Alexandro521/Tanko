@@ -31,7 +31,7 @@ import {
 const loading = ora();
 
 
-const box =  boxen('Dokusha reader CLI',
+const box =  boxen('tanko reader CLI',
         {
             padding: 1,
             title: 'Welcome!',

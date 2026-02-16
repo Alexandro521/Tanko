@@ -61,7 +61,7 @@ export async function downloadChapter(mangaTitle: string, chapterTitle: string, 
 
 export function makeDir(...name: string[]) {
     try {
-        const basedir = path.resolve(os.homedir(), 'dokusha')
+        const basedir = path.resolve(os.homedir(), 'tanko')
         const targetDir = path.join(basedir, 'download', ...(name.map((n) => sanitize(n).replaceAll(' ', '-'))))
         if (!fs.existsSync(targetDir)) {
             fs.mkdir(

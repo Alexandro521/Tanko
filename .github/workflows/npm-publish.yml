@@ -50,4 +50,4 @@ jobs:
         with:
           generate_release_notes: true
           tag_name: ${{ github.ref_name }}
-          body: "Nueva versión de dokusha disponible en NPM."
+          body: "Nueva versión de tanko disponible en NPM."
