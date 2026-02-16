@@ -9,7 +9,7 @@ export const chapterSelect = (title: string, count: number, choices: Choice[]): 
         message: title,
         hint: `capitulos: ${count}`,
         choices,
-        clearFirst: true,
+       // clearFirst: true,
         limit: 30
     }
 }
@@ -37,7 +37,7 @@ export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
         name: 'manga',
         message: 'Historial de lectura',
         choices,
-        clearFirst: true
+       // clearFirst: true
     }
 }
 
