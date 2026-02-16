@@ -44,3 +44,17 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: pnpm publish --no-git-checks --access public
+      
+      - name: Publish to GitHub Packages
+        run: |
+          pnpm config set //npm.pkg.github.com/:_authToken ${GB_TOKEN}
+          pnpm publish --no-git-checks --registry=https://npm.pkg.github.com
+        env:
+          GB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          tag_name: ${{ github.ref_name }}
+          body: "Nueva versión de dokusha disponible en NPM."

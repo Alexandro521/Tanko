@@ -19,11 +19,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Alexandro521/dokusha"
+    "url": "https://github.com/Alexandro521/dokusha.git"
   },
   "bugs": {
     "url": "https://github.com/Alexandro521/dokusha/issues"
   },
+  "homepage": "https://github.com/Alexandro521/dokusha#readme",
   "bin": {
     "dokusha": "./dist/index.js"
   },
