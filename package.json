@@ -1,10 +1,18 @@
 {
   "name": "dokusha",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "description": "Una herramienta para leer y descargar mangas desde la terminal",
   "main": "dist/index.js",
-  "keywords": ["manga", "cli", "anime", "terminal", "reader", "tools", "scraper"],
+  "keywords": [
+    "manga",
+    "cli",
+    "anime",
+    "terminal",
+    "reader",
+    "tools",
+    "scraper"
+  ],
   "author": {
     "name": "Alexandro Mendez",
     "email": "alexandro.marcelino321@gmail.com"
