@@ -1,5 +1,5 @@
 {
-  "name": "yomu",
+  "name": "dokusha",
   "version": "1.0.0",
   "type": "module",
   "description": "Una herramienta para leer y descargar mangas desde la terminal",
@@ -11,13 +11,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/Alexandro521/yomu"
+    "url": "https://github.com/Alexandro521/dokusha"
   },
   "bugs": {
-    "url": "https://github.com/Alexandro521/yomu/issues"
+    "url": "https://github.com/Alexandro521/dokusha/issues"
   },
   "bin": {
-    "yomu": "./dist/index.js"
+    "dokusha": "./dist/index.js"
   },
   "scripts": {
     "build": "tsc",

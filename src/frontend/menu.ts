@@ -31,7 +31,7 @@ import {
 const loading = ora();
 
 
-const box =  boxen('Yomu Reader CLI',
+const box =  boxen('Dokusha reader CLI',
         {
             padding: 1,
             title: 'Welcome!',

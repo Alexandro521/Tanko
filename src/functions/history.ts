@@ -4,7 +4,7 @@ import os from 'os'
 import fsp from 'node:fs/promises'
 import path from "node:path";
 
-const historyPath = path.resolve(os.homedir(),'yomu', 'data', 'read_history.json')
+const historyPath = path.resolve(os.homedir(),'dokusha', 'data', 'read_history.json')
 
 const memory = new  Map<string, ChapterInfo>()
 
