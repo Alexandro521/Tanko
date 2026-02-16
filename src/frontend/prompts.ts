@@ -4,7 +4,7 @@ import { SignalsCodes } from "../types.js";
 
 export const chapterSelect = (title: string, count: number, choices: Choice[]): PromptObject<'chapter'> => {
     return {
-        type: 'autocomplete',
+        type: 'select',
         name: 'chapter',
         message: title,
         hint: `capitulos: ${count}`,
@@ -33,7 +33,7 @@ export const mainPrompt: PromptObject<'opt'> = {
 export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
 
     return {
-        type: 'autocomplete',
+        type: 'select',
         name: 'manga',
         message: 'Historial de lectura',
         choices,
@@ -138,7 +138,7 @@ export const historyCahpterSelectedOptions = (title: string): PromptObject<'opt'
 //[Popular Section]
 
 export const PopularMangaSelectOptions:PromptObject<'opt'> = {
-    type: 'autocomplete',
+    type: 'select',
     name: 'opt',
     message: 'opciones',
     choices: [
