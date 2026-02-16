@@ -1,6 +1,6 @@
 {
   "name": "dokusha",
-  "version": "1.0.5",
+  "version": "1.0.0",
   "type": "module",
   "description": "Una herramienta para leer y descargar mangas desde la terminal",
   "main": "dist/index.js",
