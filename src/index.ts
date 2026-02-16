@@ -4,7 +4,7 @@ import fs from 'fs'
 import fsp from 'fs/promises'
 import chalk from 'chalk'
 import path from 'path'
-import { firefox } from "@playwright/test";
+import { firefox } from "playwright";
 import ora from "ora"
 import ansiEscapes from 'ansi-escapes'
 import { History } from "./functions/history.js";

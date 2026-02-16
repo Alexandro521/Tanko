@@ -1,4 +1,4 @@
-import type {  Browser, BrowserContext, Page } from "@playwright/test";
+import type {  Browser, BrowserContext, Page } from "playwright";
 import esc from 'ansi-escapes';
 import boxen from "boxen";
 import ora from "ora";
