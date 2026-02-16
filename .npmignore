@@ -1,0 +1,5 @@
+src/
+tsconfig.json
+.gitignore
+*.test.ts
+playwright.config.ts

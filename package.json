@@ -1,0 +1,47 @@
+{
+  "name": "yomu",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Una herramienta para leer y descargar mangas desde la terminal",
+  "main": "dist/index.js",
+  "keywords": ["manga", "cli", "anime", "terminal", "reader", "tools", "scraper"],
+  "author": {
+    "name": "Alexandro Mendez",
+    "email": "alexandro.marcelino321@gmail.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Alexandro521/yomu"
+  },
+  "bugs": {
+    "url": "https://github.com/Alexandro521/yomu/issues"
+  },
+  "bin": {
+    "yomu": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "bun run ./src/index.ts"
+  },
+  "license": "ISC",
+  "packageManager": "pnpm@10.28.2",
+  "devDependencies": {
+    "@playwright/test": "^1.58.1",
+    "@types/cheerio": "^1.0.0",
+    "@types/node": "^25.2.0",
+    "@types/pdfkit": "^0.17.5",
+    "@types/prompts": "^2.4.9"
+  },
+  "dependencies": {
+    "ansi-escapes": "^7.2.0",
+    "boxen": "8.0.1",
+    "chalk": "^5.6.2",
+    "cheerio": "1.2.0",
+    "ora": "9.1.0",
+    "pdfkit": "0.17.2",
+    "prompts": "2.4.2",
+    "sanitize-filename": "1.6.3",
+    "sharp": "0.34.5",
+    "terminal-image": "4.2.0"
+  }
+}
