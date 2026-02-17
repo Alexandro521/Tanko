@@ -26,11 +26,12 @@ import {
     searchResultPrompt,
     voidPrompt 
 } from './prompts.js';
+import { WELCOME_MESSAGE } from "../const.js";
 
 
 const loading = ora();
 
-
+/*
 const box =  boxen('tanko reader CLI',
         {
             padding: 1,
@@ -40,11 +41,10 @@ const box =  boxen('tanko reader CLI',
             borderStyle: 'round',
             borderColor: 'yellowBright',
             fullscreen: false
-})
+})*/
 
-export async function init(server: MangaServerInterface, browser: Browser, page: Page, context: BrowserContext) {
+export async function init(server: MangaServerInterface, browser: BrowserContext, page: Page) {
     try {
-
         const closeBrowser = async ()=>{
             loading.start('Saliendo...')
            // await context.storageState({path: 'src/data/browser_storage.json'})
@@ -54,7 +54,7 @@ export async function init(server: MangaServerInterface, browser: Browser, page:
         }
 
         while(true){
-            console.log(box)
+            console.log(WELCOME_MESSAGE)
             const main = await prompts(mainPrompt)
 
             if(!main?.opt) {
