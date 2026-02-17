@@ -37,7 +37,7 @@ export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
         name: 'manga',
         message: 'Historial de lectura',
         choices,
-       // clearFirst: true
+        clearFirst: true
     }
 }
 

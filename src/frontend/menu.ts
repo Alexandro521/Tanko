@@ -224,10 +224,11 @@ async function populars(server: MangaServerInterface) {
 
         while(true){
             const select =  await prompts({
-                type:'select',
+                type:'autocomplete',
                 message: 'Populares',
                 name: 'select',
-                choices
+                choices,
+                clearFirst: true
             })
 
             if(!select.select){
