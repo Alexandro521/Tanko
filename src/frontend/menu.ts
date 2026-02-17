@@ -2,7 +2,7 @@ import type {  Browser, BrowserContext, Page } from "playwright";
 import esc from 'ansi-escapes';
 import boxen from "boxen";
 import ora from "ora";
-import prompts,  { type Choice } from "prompts";
+import prompts,  { type Choice } from "@alex_521/prompts";
 import { downloadChapter } from "../functions/downloader.js";
 import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";

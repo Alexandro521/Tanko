@@ -1,7 +1,7 @@
 import readLine from "node:readline"
 import esc from "ansi-escapes"
 import { loadImage } from "../functions/images.js"
-import prompts from "prompts"
+import prompts from "@alex_521/prompts"
 import { terminalReaderChapterOptions } from "./prompts.js"
 import  type { ChapterPage, MangaServerInterface, ChapterInfo } from "../types.js"
 import { SignalsCodes } from "../types.js"

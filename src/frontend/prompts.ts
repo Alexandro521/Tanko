@@ -1,15 +1,15 @@
-import type { PromptObject, Choice } from "prompts";
+import type { PromptObject, Choice } from "@alex_521/prompts";
 import { SignalsCodes } from "../types.js";
 
 
 export const chapterSelect = (title: string, count: number, choices: Choice[]): PromptObject<'chapter'> => {
     return {
-        type: 'select',
+        type: 'autocomplete',
         name: 'chapter',
         message: title,
         hint: `capitulos: ${count}`,
         choices,
-       // clearFirst: true,
+        clearFirst: true,
         limit: 30
     }
 }
@@ -33,7 +33,7 @@ export const mainPrompt: PromptObject<'opt'> = {
 export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
 
     return {
-        type: 'select',
+        type: 'autocomplete',
         name: 'manga',
         message: 'Historial de lectura',
         choices,

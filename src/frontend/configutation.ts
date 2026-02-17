@@ -1,2 +1,1 @@
-import prompts from "prompts";
-
+import prompts from "@alex_521/prompts";
