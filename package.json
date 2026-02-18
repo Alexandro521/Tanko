@@ -1,6 +1,6 @@
 {
   "name": "tanko",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "type": "module",
   "description": "Una herramienta para leer y descargar mangas desde la terminal",
   "main": "dist/index.js",
