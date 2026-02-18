@@ -1,5 +1,8 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
 import { SignalsCodes } from "../types.js";
+import chalk from "chalk";
+import { PRIMARY_COLOR } from "../const.js";
+
 
 
 export const chapterSelect = (title: string, count: number, choices: Choice[]): PromptObject<'chapter'> => {
@@ -19,7 +22,7 @@ export const chapterSelect = (title: string, count: number, choices: Choice[]): 
 export const mainPrompt: PromptObject<'opt'> = {
     type: 'select',
     name: 'opt',
-    message: 'Menu principal',
+    message: chalk.bgHex(PRIMARY_COLOR)(' Menu principal '),
     choices: [
         { title: 'Buscar', value: SignalsCodes.search_section},
         {title:  'Populares', value: SignalsCodes.popular_section},
@@ -35,7 +38,7 @@ export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
     return {
         type: 'autocomplete',
         name: 'manga',
-        message: 'Historial de lectura',
+        message: chalk.bgHex(PRIMARY_COLOR)(' Historial '),
         choices,
         clearFirst: true
     }
@@ -46,15 +49,15 @@ export const historyPrompt = (choices: Choice[]): PromptObject<'manga'> => {
 export const search: PromptObject<'query'> = {
     type: 'text',
     name: 'query',
-    message: 'Search',
+    message: chalk.bgHex(PRIMARY_COLOR)(' Busqueda '),
 }
 
 export const searchResultPrompt = (mangaList: Choice[], count: number): PromptObject<'manga'>=> {
     return {
         type: 'autocomplete',
         name: 'manga',
-        hint: `Resultados: ${count}`,
-        message: 'seleciona tu resultado',
+        hint: `seleciona tu resultado: ${count}`,
+        message:'Resultados de busqueda',
         choices: mangaList,
     }
 }
@@ -79,7 +82,7 @@ const BasicChapterOptions: Choice[] = [
 export const terminalReaderChapterOptions: PromptObject<'opt'> = {
     type: 'select',
     name: 'opt',
-    message: 'Opciones',
+    message: chalk.bgHex(PRIMARY_COLOR)(' Opciones '),
     choices: [
         {
             title: 'Capitulo Anterior',
@@ -99,7 +102,7 @@ export const terminalReaderChapterOptions: PromptObject<'opt'> = {
 
 export const searchChapterSelectedOptions: PromptObject<'opt'> = {
     type: 'select',
-    message: 'que quieres hacer?',
+    message: 'Que quieres hacer?',
     name: 'opt',
     choices: BasicChapterOptions
 }
@@ -140,7 +143,7 @@ export const historyCahpterSelectedOptions = (title: string): PromptObject<'opt'
 export const PopularMangaSelectOptions:PromptObject<'opt'> = {
     type: 'select',
     name: 'opt',
-    message: 'opciones',
+    message: chalk.bgHex(PRIMARY_COLOR)(' Opciones '),
     choices: [
         ...BasicChapterOptions,
         {
