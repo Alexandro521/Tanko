@@ -6,6 +6,7 @@ import type { ChapterPage } from '../types.js';
 import sanitize from 'sanitize-filename';
 import ora from 'ora';
 import PDFDocument from 'pdfkit'
+import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
 const spin = ora();
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
@@ -61,8 +62,8 @@ export async function downloadChapter(mangaTitle: string, chapterTitle: string, 
 
 export function makeDir(...name: string[]) {
     try {
-        const basedir = path.resolve(os.homedir(), 'tanko')
-        const targetDir = path.join(basedir, 'download', ...(name.map((n) => sanitize(n).replaceAll(' ', '-'))))
+    
+        const targetDir = path.join(DOWNLOADS_DEFAULT_DIR, ...(name.map((n) => sanitize(n).replaceAll(' ', '-'))))
         if (!fs.existsSync(targetDir)) {
             fs.mkdir(
                 targetDir,

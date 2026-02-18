@@ -3,8 +3,9 @@ import fs from 'node:fs'
 import os from 'os'
 import fsp from 'node:fs/promises'
 import path from "node:path";
+import { DATA_DEFAULT_DIR } from "../const.js";
 
-const historyPath = path.resolve(os.homedir(),'tanko', 'data', 'read_history.json')
+const historyPath = path.resolve(DATA_DEFAULT_DIR, 'read_history.json')
 
 const memory = new  Map<string, ChapterInfo>()
 
