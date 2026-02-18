@@ -1,14 +1,13 @@
-# tanko CLI
+# Tanko
 
 [![npm version](https://img.shields.io/npm/v/tanko.svg)](https://www.npmjs.com/package/tanko)
 [![license](https://img.shields.io/npm/l/tanko.svg)](https://github.com/Alexandro521/tanko/LICENSE)
 
 tanko es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
 
-![yomu preview](https://i.imgur.com/UQEyaIp.png)
-![yomu preview](https://i.imgur.com/lsytDnf.png)
-![yomu preview](https://i.imgur.com/NnzVGXz.gif)
-![yomu preview](https://imgur.com/ZkChhZ1.gif)
+![yomu preview](./images/preview.png)
+![yomu preview](./images/reader.png)
+![yomu preview](./images/preview.gif)
 
 ## 1. Instalar tanko
 
@@ -41,6 +40,10 @@ npx playwright install firefox
 ```bash
 tanko
 ```
+> [!IMPORTANT]
+> **Directorio de descargas:** los capitulos descargados actualmente se guardan en `$HOME/tanko/downloads/`
+> 
+> En Windows,se utiliza la variable de entorno  `USERPROFILE` si está definida. De lo contrario,se utiliza la ruta al directorio de perfil del usuario actual.
 
 > [!IMPORTANT]
 > **Experiencia Visual:** Para disfrutar del manga con imágenes reales, se recomienda usar una terminal con soporte para protocolos de imagen.
