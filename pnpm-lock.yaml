@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@alex_521/prompts':
-        specifier: ^0.0.7
-        version: 0.0.7
+        specifier: ^0.1.1
+        version: 0.1.1
       ansi-escapes:
         specifier: ^7.2.0
         version: 7.3.0
@@ -23,6 +23,9 @@ importers:
       cheerio:
         specifier: 1.2.0
         version: 1.2.0
+      gradient-string:
+        specifier: ^3.0.0
+        version: 3.0.0
       ora:
         specifier: 9.3.0
         version: 9.3.0
@@ -54,8 +57,8 @@ importers:
 
 packages:
 
-  '@alex_521/prompts@0.0.7':
-    resolution: {integrity: sha512-+3ajIHYzB7LLHKUr8Vitp7kisG/LTytQDScY5yi54CVX5SVUJ9xA+2aFwhuXBCXiBicgF6GM360qyp15MVEpJQ==}
+  '@alex_521/prompts@0.1.1':
+    resolution: {integrity: sha512-SlDXrSHX3xphc8KlPCf22tsLjz+dI2Txsy8wrOgoWJ2vOkWci7Mt/t7VuS3KBMaOzqViugVhc/rtui5ayQmSrg==}
     engines: {node: '>= 14'}
 
   '@babel/runtime@7.28.6':
@@ -514,6 +517,9 @@ packages:
   '@types/pdfkit@0.17.5':
     resolution: {integrity: sha512-T3ZHnvF91HsEco5ClhBCOuBwobZfPcI2jaiSHybkkKYq4KhVIIurod94JVKvDIG0JXT6o3KiERC0X0//m8dyrg==}
 
+  '@types/tinycolor2@1.4.6':
+    resolution: {integrity: sha512-iEN8J0BoMnsWBqjVbWH/c0G0Hh7O21lpR2/+PrvAVgWdzL7eexIFm4JN/Wn10PTcmNdtS6U67r499mlWMXOxNw==}
+
   '@xmldom/xmldom@0.8.11':
     resolution: {integrity: sha512-cQzWCtO6C8TQiYl1ruKNn2U6Ao4o4WBBcbL61yJl84x+j5sOWWFU9X7DpND8XZG3daDppSsigMdfAIl2upQBRw==}
     engines: {node: '>=10.0.0'}
@@ -755,6 +761,10 @@ packages:
 
   global@4.4.0:
     resolution: {integrity: sha512-wv/LAoHdRE3BeTGz53FAamhGlPLhlssK45usmGFThIi4XqnBmjKQ16u+RNbP7WvigRZDxUsM0J3gcQ5yicaL0w==}
+
+  gradient-string@3.0.0:
+    resolution: {integrity: sha512-frdKI4Qi8Ihp4C6wZNB565de/THpIaw3DjP5ku87M+N9rNSGmPTjfkq61SdRXB7eCaL8O1hkKDvf6CDMtOzIAg==}
+    engines: {node: '>=14'}
 
   htmlparser2@10.1.0:
     resolution: {integrity: sha512-VTZkM9GWRAtEpveh7MSF6SjjrpNVNNVJfFup7xTY3UpFtm67foy9HDVXneLtFVt4pMz5kZtgNcvCniNFb1hlEQ==}
@@ -1107,6 +1117,9 @@ packages:
   tinycolor2@1.6.0:
     resolution: {integrity: sha512-XPaBkWQJdsf3pLKJV9p4qN/S+fm2Oj8AIPo1BTUhg5oxkvm9+SVEGFdhyOz7tTdUTfvxMiAs4sp6/eZO2Ew+pw==}
 
+  tinygradient@1.1.5:
+    resolution: {integrity: sha512-8nIfc2vgQ4TeLnk2lFj4tRLvvJwEfQuabdsmvDdQPT0xlk9TaNtpGd6nNRxXoK6vQhN6RSzj+Cnp5tTQmpxmbw==}
+
   token-types@4.2.1:
     resolution: {integrity: sha512-6udB24Q737UD/SDsKAHI9FCRP7Bqc9D/MQUV02ORQg5iskjtLJlZJNdN4kKtcdtwCeWIwIHDGaUsTsCCAa8sFQ==}
     engines: {node: '>=10'}
@@ -1196,7 +1209,7 @@ packages:
 
 snapshots:
 
-  '@alex_521/prompts@0.0.7':
+  '@alex_521/prompts@0.1.1':
     dependencies:
       kleur: 4.1.5
       sisteransi: 1.0.5
@@ -1762,6 +1775,8 @@ snapshots:
     dependencies:
       '@types/node': 25.2.0
 
+  '@types/tinycolor2@1.4.6': {}
+
   '@xmldom/xmldom@0.8.11': {}
 
   abort-controller@3.0.0:
@@ -2003,6 +2018,11 @@ snapshots:
     dependencies:
       min-document: 2.19.2
       process: 0.11.10
+
+  gradient-string@3.0.0:
+    dependencies:
+      chalk: 5.6.2
+      tinygradient: 1.1.5
 
   htmlparser2@10.1.0:
     dependencies:
@@ -2406,6 +2426,11 @@ snapshots:
   tiny-inflate@1.0.3: {}
 
   tinycolor2@1.6.0: {}
+
+  tinygradient@1.1.5:
+    dependencies:
+      '@types/tinycolor2': 1.4.6
+      tinycolor2: 1.6.0
 
   token-types@4.2.1:
     dependencies:

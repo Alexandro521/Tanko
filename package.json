@@ -30,7 +30,8 @@
   },
   "scripts": {
     "build": "tsc",
-    "dev": "bun run ./src/index.ts"
+    "dev": "bun run ./src/index.ts",
+    "start": "node ./dist/index.js"
   },
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
@@ -40,11 +41,12 @@
     "@types/pdfkit": "^0.17.5"
   },
   "dependencies": {
-    "@alex_521/prompts": "^0.0.7",
+    "@alex_521/prompts": "^0.1.1",
     "ansi-escapes": "^7.2.0",
     "boxen": "8.0.1",
     "chalk": "^5.6.2",
     "cheerio": "1.2.0",
+    "gradient-string": "^3.0.0",
     "ora": "9.3.0",
     "pdfkit": "0.17.2",
     "playwright": "^1.58.2",
