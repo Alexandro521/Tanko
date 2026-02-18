@@ -5,9 +5,9 @@
 
 tanko es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
 
-![yomu preview](./images/preview.png)
-![yomu preview](./images/reader.png)
-![yomu preview](./images/preview.gif)
+![yomu preview](https://i.imgur.com/wftXbEC.png)
+![yomu preview](https://i.imgur.com/Gu2sYF2.png)
+![yomu preview](https://i.imgur.com/OhBFQfL.gif)
 
 ## 1. Instalar tanko
 
