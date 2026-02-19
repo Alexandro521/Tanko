@@ -28,10 +28,11 @@ import {
 } from './prompts.js';
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import chalk from "chalk";
+import { configurationUI } from "./configutation.js";
 
 const loading = ora();
 
-const clearScreen = () => {
+export const clearScreen = () => {
     console.log(esc.clearViewport);
     console.log(WELCOME_MESSAGE);
 }
@@ -61,6 +62,8 @@ export async function init(server: MangaServerInterface, browser: BrowserContext
                 await history(server)
             else if (main.opt === SignalsCodes.popular_section)
                 await populars(server)
+            else if (main.opt === SignalsCodes.configuration_section) 
+                await configurationUI()
             else if (main.opt === SignalsCodes.lasted_section)
                 await lastedSection(server)
             else if (main.opt === SignalsCodes.exit) {
