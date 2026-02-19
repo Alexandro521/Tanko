@@ -10,8 +10,6 @@ export interface Chapter {
     src: string
 }
 
-
-
 export interface SearchResult {
     value: string
     label: string
@@ -51,6 +49,13 @@ export interface LastedManga {
     title: string,
     src: string,
     last_chapters: ChapterMinInfo[]
+}
+
+export interface ConfigurationInterface {
+    server: string,
+    language: string,
+    downloads_path : string,
+    deepSearch: boolean,
 }
 
 export  enum SignalsCodes {
