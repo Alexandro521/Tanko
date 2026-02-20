@@ -150,8 +150,6 @@ async function language() {
             choices: [
                 { title: "🇪🇸 Spanish", value: "es" },
                 { title: "🇺🇸 English", value: "en" },
-                { title: "🇫🇷 French", value: "fr" },
-                {title: "🇯🇵 Japanese", value: "jp"},
             ],
         })
 
