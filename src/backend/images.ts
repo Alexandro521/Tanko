@@ -1,6 +1,6 @@
 import sharp from "sharp";
 import terminalImage from "terminal-image";
-import type { ChapterPage } from "../types.js";
+import type { ChapterPage } from "../types/types.js";
 import ora from "ora";
 const loading = ora()
 

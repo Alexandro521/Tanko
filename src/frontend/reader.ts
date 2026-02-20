@@ -1,13 +1,13 @@
 import prompts from "@alex_521/prompts"
 import esc from "ansi-escapes"
 import chalk from "chalk"
-import { stdin } from "node:process"
+import { stdin, stdout } from "node:process"
 import readLine from "node:readline"
 import ora from "ora"
-import { History } from "../functions/history.js"
-import { ImageCache, loadImage } from "../functions/images.js"
-import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types.js"
-import { SignalsCodes } from "../types.js"
+import { History } from "../backend/history.js"
+import { ImageCache, loadImage } from "../backend/images.js"
+import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types/types.js"
+import { SignalsCodes } from "../types/types.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
 
 const loading = ora()
