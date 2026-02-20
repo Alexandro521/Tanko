@@ -1,7 +1,8 @@
+import sharp from "sharp";
 import terminalImage from "terminal-image";
 import type { ChapterPage } from "../types.js";
-import sharp from "sharp";
-
+import ora from "ora";
+const loading = ora()
 
 export class ImageCache {
     static MAX_SIZE = 64000000 //64 MB in KB
@@ -44,7 +45,8 @@ export class ImageCache {
 
 export async function loadImage(srcs: ChapterPage) {
     try {
-        // spin.start('cargando...')
+        
+        loading.start('cargando...')
         let res: Buffer = Buffer.from('');
 
         if (ImageCache.has(srcs.src)) {
@@ -76,11 +78,18 @@ export async function loadImage(srcs: ChapterPage) {
 
             }
         }
-        const image = await terminalImage.buffer(res)
-        process.stdout.write(image)
 
-        //  spin.stop()
+        const image = await terminalImage.buffer(res, {
+            preserveAspectRatio: true,
+            width: '100%',
+            height: '100%',
+            preferNativeRender: true
+        })
+
+        loading.stop()
+        process.stdout.write(image)
     } catch (e) {
+        loading.fail('error al cargar la imagen')
         console.log('error: ', e)
     }
 }
