@@ -1,12 +1,12 @@
 import readLine from "node:readline"
 import esc from "ansi-escapes"
-import { loadImage } from "../backend/images.js"
+import { loadImage } from "../function/images.js"
 import prompts from "@alex_521/prompts"
 import { terminalReaderChapterOptions } from "./prompts.js"
 import  type { ChapterPage, MangaServerInterface, ChapterInfo } from "../types/types.js"
 import { SignalsCodes } from "../types/types.js"
-import { ImageCache } from "../backend/images.js"
-import { History } from "../backend/history.js";
+import { ImageCache } from "../function/images.js"
+import { History } from "../function/history.js";
 import ora from "ora"
 import { stdin, stdout } from "node:process"
 

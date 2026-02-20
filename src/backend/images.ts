@@ -1,5 +1,5 @@
 import terminalImage from "terminal-image";
-import type { ChapterPage } from "../types/types.js";
+import type { ChapterPage } from "../types.js";
 import sharp from "sharp";
 
 
