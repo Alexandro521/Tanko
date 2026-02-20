@@ -17,18 +17,6 @@ tanko es una pequeña app de terminal para leer y descargar mangas de forma simp
 npm install -g tanko
 ```
 
-### pnpm
-
-```bash
-pnpm add -g tanko
-```
-
-### bun
-
-```bash
-bun add -g tanko
-```
-
 ### 2. Instalar navegador Firefox
 
 ```bash
