@@ -1,5 +1,5 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
-import { SignalsCodes } from "../types.js";
+import { SignalsCodes } from "../types/types.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR } from "../const.js";
 
@@ -24,10 +24,10 @@ export const mainPrompt: PromptObject<'opt'> = {
     name: 'opt',
     message: chalk.bgHex(PRIMARY_COLOR)(' Menu principal '),
     choices: [
-        { title: 'Buscar', value: SignalsCodes.search_section},
-        {title:  'Populares', value: SignalsCodes.popular_section},
-        {title:  'Mas Recientes', value: SignalsCodes.lasted_section},
-        { title: 'historial', value: SignalsCodes.history_section},
+        { title: 'Buscar', value: SignalsCodes.search_section },
+        { title: 'Populares', value: SignalsCodes.popular_section },
+        { title: 'Mas Recientes', value: SignalsCodes.lasted_section },
+        { title: 'historial', value: SignalsCodes.history_section },
         { title: 'configuracion', value: SignalsCodes.configuration_section },
         { title: 'salir', value: SignalsCodes.exit },
     ]

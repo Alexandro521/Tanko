@@ -28,6 +28,9 @@
   "bin": {
     "tanko": "./dist/index.js"
   },
+  "files": [
+    "./src/lang"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc && node ./dist/index.js",
@@ -52,6 +55,7 @@
     "playwright": "^1.58.2",
     "sanitize-filename": "1.6.3",
     "sharp": "0.34.5",
-    "terminal-image": "4.2.0"
+    "terminal-image": "4.2.0",
+    "zod": "^4.3.6"
   }
 }

@@ -7,7 +7,7 @@ import type {
     LastedManga,
     MangaServerInterface,
     PopularManga,
-    SearchResult,} from "../types.js"
+    SearchResult,} from "../types/types.js"
 
 export class MangaServerClient implements MangaServerInterface {
     private page: Page

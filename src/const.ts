@@ -5,9 +5,13 @@ import gradient from "gradient-string"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
+export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config.json')
 export const DATA_DEFAULT_DIR = path.resolve(BASE_DIR, 'data')
 export const TEMP_DIR = os.tmpdir()
+
+
 export const PRIMARY_COLOR = '#bf78fa'
+
 export const WELCOME_MESSAGE = gradient('#84b7fa', PRIMARY_COLOR).multiline(`
   ████████╗ █████╗ ███╗   ██╗██╗  ██╗ ██████╗ 
   ╚══██╔══╝██╔══██╗████╗  ██║██║ ██╔╝██╔═══██╗
@@ -16,8 +20,6 @@ export const WELCOME_MESSAGE = gradient('#84b7fa', PRIMARY_COLOR).multiline(`
      ██║   ██║  ██║██║ ╚████║██║  ██╗╚██████╔╝
      ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═══╝╚═╝  ╚═╝ ╚═════╝ 
 `)
-
-
 export const LAUNCH_OPTIONS:LaunchOptions = {
     headless: true,
     args: [

@@ -1,0 +1,37 @@
+{
+    "main_sections": {
+        "configuration": "Configuración",
+        "exit": "Salir",
+        "search": "Buscar",
+        "popular": "Populares",
+        "lasted": "Mas Recientes",
+        "history": "Historial"
+    },
+    "search_section": {
+        "result_hint": "Resultados",
+        "no_results": "No se encontraron resultados para tu búsqueda.",
+        "message": "Ingresa el nombre del manga que deseas buscar:",
+        "chapter_hint": "Capítulos",
+        "chapter_list": "Ver lista de capítulos"
+    },
+    "chapter_select_options": {
+        "read": "Leer capítulo",
+        "download": "Descargar capítulo",
+        "back": "Salir",
+        "question": "¿Qué deseas hacer con este capítulo?"
+    },
+    "reader_options": {
+        "terminal_hint":    "Se recomienda usar (Kitty, !Term) terminal para esta operacion",
+        "next": "Siguiente Capitulo",
+        "previous": "Capitulo Anterior",
+        "exit": "Salir de la lectura"
+    },
+    "history_section": {
+        "no_history": "No tienes historial de lectura.",
+        "message": "Tu historial de lectura:",
+        "select": {
+            "resume": "Continuar lectura",
+            "delete": "Eliminar del historial"
+        }
+    }
+}

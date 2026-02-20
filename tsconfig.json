@@ -12,8 +12,18 @@
         "removeComments": true,
         "sourceMap": true,
         "declaration": false,
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"],
+            "@types/*": ["src/types/*"],
+            "@backend/*": ["src/backend/*"],
+            "@frontend/*": ["src/frontend/*"],
+            "@lang/*": ["src/lang/*"],
+            "clients/*": ["src/clients/*"],
+        }
     },
+
     "include": [
         "src/**/*"
     ],
