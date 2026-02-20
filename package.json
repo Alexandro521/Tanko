@@ -28,6 +28,9 @@
   "bin": {
     "tanko": "./dist/index.js"
   },
+  "files": [
+    "./src/lang"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "bun run ./src/index.ts",
