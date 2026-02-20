@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path';
 import sharp from 'sharp';
 import os from 'os'
-import type { ChapterPage } from '../types.js';
+import type { ChapterPage } from '../types/types.js';
 import sanitize from 'sanitize-filename';
 import ora from 'ora';
 import PDFDocument from 'pdfkit'

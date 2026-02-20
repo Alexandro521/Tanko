@@ -1,4 +1,4 @@
-import type { ChapterInfo } from "../types.js";
+import type { ChapterInfo } from "../types/types.js";
 import fs from 'node:fs'
 import os from 'os'
 import fsp from 'node:fs/promises'

@@ -2,9 +2,9 @@ import prompts, { type Choice } from "@alex_521/prompts";
 import esc from "ansi-escapes";
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
-import { Configuration } from "../functions/configuration.js";
-import { mangaServerRegister } from "../server/port.js";
-import type { ConfigurationInterface } from "../types.js";
+import { Configuration } from "../backend/configuration.js";
+import { mangaServerRegister } from "../clients/port.js";
+import type { ConfigurationInterface } from "../types/types.js";
 
 export const clearScreen = () => {
     console.log(esc.clearViewport);
@@ -55,12 +55,15 @@ const configurationOptions: Choice[] =  [
         value: ConfigurationOptions.restoreDefault,
     }
 ]
+
 let configurationObject: Partial<ConfigurationInterface> = {}
 
 export async function configurationUI () {
     configurationObject = Configuration.config
     clearScreen()
+
     while(true) {
+
         const prompt = await prompts({
             type: "select",
             name: "option",
@@ -120,6 +123,7 @@ function isConfigChange(): boolean {
 async function server( ){
     clearScreen()
     while(true) {  
+
         const serverPrompt = await prompts({
                 type: "select",
                 name: "server",
@@ -144,10 +148,10 @@ async function language() {
             hint: `Current: ${configurationObject.language || Configuration.config.language}`,
             message: "Language",
             choices: [
-                { title: "Spanish", value: "es" },
-                { title: "English", value: "en" },
-                { title: "French", value: "fr" },
-                {title: "japanese", value: "jp"},
+                { title: "🇪🇸 Spanish", value: "es" },
+                { title: "🇺🇸 English", value: "en" },
+                { title: "🇫🇷 French", value: "fr" },
+                {title: "🇯🇵 Japanese", value: "jp"},
             ],
         })
 

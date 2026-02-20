@@ -3,8 +3,8 @@ import esc from 'ansi-escapes';
 import boxen from "boxen";
 import ora from "ora";
 import prompts, { type Choice } from "@alex_521/prompts";
-import { downloadChapter } from "../functions/downloader.js";
-import { History } from "../functions/history.js";
+import { downloadChapter } from "../backend/downloader.js";
+import { History } from "../backend/history.js";
 import { terminalReader } from "./reader.js";
 import type {
     ChapterInfo,
@@ -13,8 +13,8 @@ import type {
     MangaServerInterface,
     PopularManga,
     SearchResult,
-} from "../types.js";
-import { SignalsCodes } from '../types.js'
+} from "../types/types.js";
+import { SignalsCodes } from '../types/types.js'
 import {
     chapterSelect,
     historyCahpterSelectedOptions,

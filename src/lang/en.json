@@ -1,0 +1,37 @@
+{
+    "main_sections": {
+        "configuration": "Configuration",
+        "exit": "Exit",
+        "search": "Search",
+        "popular": "Popular",
+        "lasted": "Latest",
+        "history": "History"
+    },
+    "search_section": {
+        "result_hint": "Results",
+        "no_results": "No results found for your search.",
+        "message": "Enter the name of the manga you want to search:",
+        "chapter_hint": "Chapters",
+        "chapter_list": "View chapter list"
+    },
+    "chapter_select_options": {
+        "read": "Read chapter",
+        "download": "Download chapter",
+        "back": "Exit",
+        "question": "What do you want to do with this chapter?"
+    },
+    "reader_options": {
+        "terminal_hint": "It is recommended to use (Kitty, !Term) terminal for this operation",
+        "next": "Next Chapter",
+        "previous": "Previous Chapter",
+        "exit": "Exit reading"
+    },
+    "history_section": {
+        "no_history": "You have no reading history.",
+        "message": "Your reading history:",
+        "select": {
+            "resume": "Resume reading",
+            "delete": "Remove from history"
+        }
+    }
+}

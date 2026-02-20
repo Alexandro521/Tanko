@@ -3,8 +3,10 @@ import fsPromise from "fs/promises";
 import type { Page } from "playwright";
 import { z } from "zod";
 import { CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR } from "../const.js";
-import { mangaServerRegister } from "../server/port.js";
-import type { ConfigurationInterface, MangaServerInterface } from "../types.js";
+import { mangaServerRegister } from "../clients/port.js";
+import type { ConfigurationInterface, MangaServerInterface } from "../types/types.js";
+import type { LangInterface } from "@/types/lang.js";
+import { lang } from "./lang.js";
 
 const schema = z.object({
     server: z.string(),
@@ -21,7 +23,8 @@ export class Configuration {
         downloads_path: DOWNLOADS_DEFAULT_DIR,
         language: 'es'
     }
-    static server: MangaServerInterface
+    static client: MangaServerInterface
+    static lang: LangInterface
     static context: Page
 
     static async loadConfiguration() {
@@ -33,8 +36,9 @@ export class Configuration {
             const parsed = JSON.parse(configFile)
             const validated = schema.parse(parsed)
             this.config = validated
-            this.server = mangaServerRegister.has(this.config.server) ? new (mangaServerRegister.get(this.config.server) as any)(this.context) : null
-            if (!this.server) throw new Error("Server not found in register")
+            this.lang = lang[this.config.language as keyof typeof lang]
+            this.client = mangaServerRegister.has(this.config.server) ? new (mangaServerRegister.get(this.config.server) as any)(this.context) : null
+            if (!this.client) throw new Error("Server not found in register")
         }catch(error) {
             if(error instanceof z.ZodError) {
                 console.error(error.issues)
@@ -67,7 +71,8 @@ export class Configuration {
         try {
             const validated = schema.parse({...this.config, ...config})
             this.config = validated
-            this.server = mangaServerRegister.has(this.config.server) ? new (mangaServerRegister.get(this.config.server) as any)(this.context) : null
+            this.lang = lang[this.config.language as keyof typeof lang]
+            this.client = mangaServerRegister.has(this.config.server) ? new (mangaServerRegister.get(this.config.server) as any)(this.context) : null
             await this.storeConfiguration(this.config)
         }catch(error) {
             if(error instanceof z.ZodError) {
