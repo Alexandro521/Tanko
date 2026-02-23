@@ -18,7 +18,7 @@
             "@/*": ["src/*"],
             "@types/*": ["src/types/*"],
             "@backend/*": ["src/backend/*"],
-            "@frontend/*": ["src/frontend/*"],
+            "@frontend/*": ["src/cli/*"],
             "@lang/*": ["src/lang/*"],
             "clients/*": ["src/clients/*"],
         }
