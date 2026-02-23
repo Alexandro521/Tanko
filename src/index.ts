@@ -6,11 +6,11 @@ import path from 'path'
 import { firefox, request } from "playwright";
 import ora from "ora"
 import ansiEscapes from 'ansi-escapes'
-import { History } from "./backend/history.js";
+import { History } from "./functions/history.js";
 import { MangaServerClient } from "./clients/leerCapitulo.js";
-import { init } from "./frontend/menu.js";
+import { init } from "./cli/menu.js";
 import { BASE_DIR,DATA_DEFAULT_DIR,DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS, TEMP_DIR} from './const.js'
-import { Configuration } from './backend/configuration.js';
+import { Configuration } from './functions/configuration.js';
 
 let spin = ora()
 
@@ -69,7 +69,7 @@ try{
     await Configuration.loadConfiguration()
     Configuration.context = page
     spin.stop()
-    init(Configuration.client, context, page);
+    init(Server, context, page);
 
 }catch(e:any){
   if(e.message.includes("Executable doesn't exist")){

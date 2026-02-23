@@ -1,11 +1,12 @@
-import type { Browser, BrowserContext, Page } from "playwright";
+import type { BrowserContext, Page } from "playwright";
+
 import esc from 'ansi-escapes';
-import boxen from "boxen";
 import ora from "ora";
 import prompts, { type Choice } from "@alex_521/prompts";
-import { downloadChapter } from "../backend/downloader.js";
-import { History } from "../backend/history.js";
+import { downloadChapter } from "../functions/downloader.js";
+import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
+
 import type {
     ChapterInfo,
     ChapterMinInfo,
@@ -14,20 +15,21 @@ import type {
     PopularManga,
     SearchResult,
 } from "../types/types.js";
-import { SignalsCodes } from '../types/types.js'
+import { SignalsCodes } from '../types/enum.js'
 import {
-    chapterSelect,
-    historyCahpterSelectedOptions,
-    historyPrompt,
+    basicChapterOptions,
+    generateChapterList,
+    historyChapterOptions,
+    historySectionPrompt,
+    lastedSectionPrompt,
     mainPrompt,
-    PopularMangaSelectOptions,
-    search,
-    searchChapterSelectedOptions,
+    popularMangaSelectOptions,
+    popularSectionPrompt,
+    searchPrompt,
     searchResultPrompt,
     voidPrompt
 } from './prompts.js';
-import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
-import chalk from "chalk";
+import {  WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configutation.js";
 
 const loading = ora();
@@ -51,22 +53,22 @@ export async function init(server: MangaServerInterface, browser: BrowserContext
         while (true) {
             console.log()
             const main = await prompts(mainPrompt)
-            if (!main?.opt) {
+            if (!main?.target) {
                 await closeBrowser();
                 break
             }
 
-            if (main.opt === SignalsCodes.search_section)
+            if (main.target === SignalsCodes.search_section)
                 await searchBar(server)
-            else if (main.opt === SignalsCodes.history_section)
+            else if (main.target === SignalsCodes.history_section)
                 await history(server)
-            else if (main.opt === SignalsCodes.popular_section)
+            else if (main.target === SignalsCodes.popular_section)
                 await populars(server)
-            else if (main.opt === SignalsCodes.configuration_section) 
+            else if (main.target === SignalsCodes.configuration_section) 
                 await configurationUI()
-            else if (main.opt === SignalsCodes.lasted_section)
+            else if (main.target === SignalsCodes.lasted_section)
                 await lastedSection(server)
-            else if (main.opt === SignalsCodes.exit) {
+            else if (main.target === SignalsCodes.exit) {
                 closeBrowser()
                 break
             }
@@ -81,7 +83,7 @@ async function searchBar(server: MangaServerInterface) {
     clearScreen()
     try {
         while (true) {
-            const searchQuery = await prompts(search)
+            const searchQuery = await prompts(searchPrompt)
             if (!searchQuery?.query) {
                 break
             }
@@ -101,12 +103,14 @@ async function searchBar(server: MangaServerInterface) {
                 }
             })
             if (loading.isSpinning) loading.stop()
-            const selectResult = <{ manga: SearchResult }>await prompts(searchResultPrompt(choices, choices.length))
-            if (!selectResult?.manga){
-                 clearScreen()
-                 continue
-                }
-            await loadMangaChapter(server, selectResult.manga.link);
+            clearScreen()
+            const selectResult = await prompts(searchResultPrompt(choices))
+
+            if (!selectResult?.target){
+                clearScreen()
+                continue
+            }
+            await loadMangaChapter(server, selectResult.target.link);
             clearScreen()
         }
     } catch (e) {
@@ -120,6 +124,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
         loading.start(`Cargando capitulos...`);
 
         const result = await server.getChaptersList(mangaSrc);
+
         if (!result || result.chapters.length < 0) {
             loading.fail('Error al obtener Capitulos')
             return
@@ -135,7 +140,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
 
         while (true) {
             const select = await prompts(
-                chapterSelect(result.title, choices.length, choices)
+                generateChapterList(result.title, choices.length, choices)
             )
 
             if (!select.chapter) {
@@ -146,18 +151,20 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
             loading.start(`cargando ${result.title}...`)
             const chapterInfo = await server.getChapterPages(select.chapter.src)
             if (loading.isSpinning) loading.stop()
-            const options = await prompts(searchChapterSelectedOptions)
+            clearScreen()
+            const options = await prompts(basicChapterOptions)
 
-            if (!options.opt){
+            if (!options.target){
                 clearScreen()
                 continue
                 }
 
-            if (options.opt === SignalsCodes.read_chapter) {
+            if (options.target === SignalsCodes.read_chapter) {
                 await terminalReader(chapterInfo, server)
-            } else if (options.opt === SignalsCodes.download_chapter) {
+            } else if (options.target === SignalsCodes.download_chapter) {
                 await downloadChapter(chapterInfo.mangaTitle, chapterInfo.title, chapterInfo.pages)
             }
+
             clearScreen()
         }
     } catch (e) {
@@ -171,11 +178,7 @@ async function history(server: MangaServerInterface) {
     const history = History.fetch();
 
     if (history.length < 1) {
-        await prompts({
-            type: 'invisible',
-            name: 'back',
-            message: 'Tu historial esta vacio! ESC para volver al menu anterior'
-        })
+        await prompts(voidPrompt('No hay historial'))
         return;
     }
 
@@ -188,31 +191,30 @@ async function history(server: MangaServerInterface) {
     })
 
     while (true) {
-        const selected = await prompts(historyPrompt(choices))
+        const selected = await prompts(historySectionPrompt(choices))
 
-        if (!selected?.manga){
+        if (!selected?.target){
             clearScreen()
             break;
         }
 
-        const manga = <ChapterInfo>selected.manga;
+        const manga = <ChapterInfo>selected.target;
         // clearScreen()
-        const options = await prompts(historyCahpterSelectedOptions(manga.mangaTitle))
+        const options = await prompts(historyChapterOptions(manga.mangaTitle))
 
-        if (!options.opt){
+        if (!options.target){
             clearScreen()
             continue
         }
 
-        if (options.opt === SignalsCodes.read_chapter)
+        if (options.target === SignalsCodes.resume_read)
             await terminalReader(manga, server)
-        else if (options.opt === SignalsCodes.get_chapters_list)
+        else if (options.target === SignalsCodes.get_chapters_list)
             await loadMangaChapter(server, manga.main_src);
-        else if (options.opt === SignalsCodes.download_chapter)
+        else if (options.target === SignalsCodes.download_chapter)
             await downloadChapter(manga.mangaTitle, manga.title, manga.pages)
         clearScreen()
     }
-
 }
 
 async function populars(server: MangaServerInterface) {
@@ -223,7 +225,7 @@ async function populars(server: MangaServerInterface) {
         loading.stop()
 
         if (!populars || populars.length < 0) {
-            await prompts(voidPrompt)
+            await prompts(voidPrompt('No se encontraron mangas populares'))
             return;
         }
 
@@ -236,41 +238,36 @@ async function populars(server: MangaServerInterface) {
         })
 
         while (true) {
-            const select = await prompts({
-                type: 'autocomplete',
-                message: chalk.bgHex(PRIMARY_COLOR)(' Populares '),
-                name: 'select',
-                choices,
-                clearFirst: true
-            })
+            const select = await prompts(popularSectionPrompt(choices))
 
-            if (!select.select) {
+            if (!select.target) {
                 clearScreen()
                 break;
             }
-            const info = <PopularManga>select.select
-            const option = await prompts(PopularMangaSelectOptions)
+            clearScreen()
+            const info = <PopularManga>select.target
+            const option = await prompts(popularMangaSelectOptions(info.title))
 
-            if (!option?.opt) {
+            if (!option?.target) {
                 clearScreen()
                 continue
             }
-            if (option.opt === SignalsCodes.read_chapter) {
+            if (option.target === SignalsCodes.read_chapter) {
                 loading.start(`cargando ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
                 await terminalReader(res, server)
             }
-            else if (option.opt === SignalsCodes.download_chapter) {
+            else if (option.target === SignalsCodes.download_chapter) {
                 loading.start(`cargando ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
                 await downloadChapter(res.mangaTitle, res.title, res.pages)
             }
-            else if (option.opt === SignalsCodes.get_chapters_list) {
+            else if (option.target === SignalsCodes.get_chapters_list) {
                 await loadMangaChapter(server, info.src)
             }
-            else if (option.opt === SignalsCodes.exit) {
+            else if (option.target === SignalsCodes.exit) {
                 clearScreen()
                 continue
             }
@@ -290,7 +287,7 @@ async function lastedSection(server: MangaServerInterface) {
         const mangas = await server.getLastMangas()
         loading.stop()
         if (!mangas || mangas.length < 0) {
-            await prompts(voidPrompt)
+            await prompts(voidPrompt('No se encontraron mangas recientes'))
             return
         }
         const choices = mangas.map((e): Choice => {
@@ -301,31 +298,27 @@ async function lastedSection(server: MangaServerInterface) {
             }
         })
         while (true) {
-            const select = await prompts({
-                type: 'autocomplete',
-                message: chalk.bgHex(PRIMARY_COLOR)(' Ultimos lanzamientos '),
-                name: 'manga',
-                choices
-            })
-            if (!select.manga) {
+            const select = await prompts(lastedSectionPrompt(choices))
+            if (!select.target) {
                 clearScreen()
                 break
             }
-            const manga = <LastedManga>select.manga
+            const manga = <LastedManga>select.target
+
             const choices2 = manga.last_chapters.map((chapter): Choice => {
                 return { title: chapter.title, value: chapter }
             })
             while (true) {
-                const select2 = await prompts(chapterSelect(manga.title, choices2.length, choices2))
+                const select2 = await prompts(generateChapterList(manga.title, choices2.length, choices2))
 
                 if (!select2.chapter) {
                     clearScreen()
                     break
                 }
                 const chapter = <ChapterMinInfo>select2.chapter
-                const chapterOptions = await prompts(searchChapterSelectedOptions)
+                const chapterOptions = await prompts(basicChapterOptions)
 
-                if (!chapterOptions.opt) {
+                if (!chapterOptions.target) {
                     clearScreen()
                     continue
                 }
@@ -334,11 +327,11 @@ async function lastedSection(server: MangaServerInterface) {
 
                 const res = await server.getChapterPages(chapter.src);
                 loading.stop();
-                if (chapterOptions.opt === SignalsCodes.read_chapter)
+                if (chapterOptions.target === SignalsCodes.read_chapter)
                     await terminalReader(res, server)
-                else if (chapterOptions.opt === SignalsCodes.download_chapter)
+                else if (chapterOptions.target === SignalsCodes.download_chapter)
                     await downloadChapter(res.mangaTitle, res.title, res.pages)
-                else if (chapterOptions.opt === SignalsCodes.exit) {
+                else if (chapterOptions.target === SignalsCodes.exit) {
                     clearScreen()
                     continue
                 };

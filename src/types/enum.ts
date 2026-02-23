@@ -1,0 +1,30 @@
+export enum ConfigurationOptions {
+    Server = 13,
+    Search = 29,
+    language =31,
+    downloads = 35,
+    downloadPath = 65,
+    save = 33,
+    restoreDefault = 24,
+    exit = 0,
+}
+
+export enum SignalsCodes {
+    download_chapter = 46,
+    read_chapter = 36,
+    get_chapters_list = 26,
+    resume_read = 37,
+    exit = -1,
+    main = 233,
+    lasted_section = 343,
+    history_section = 453,
+    configuration_section = 563,
+    search_section = 673,
+    nex_chapter = 27,
+    previous_chapter = 29,
+    delete_from_history = 456,
+    delete_history = 499,
+    popular_section= 783,
+    nullElement = -35454,
+    suscribe_manga = 654,
+}

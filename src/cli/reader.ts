@@ -4,10 +4,10 @@ import chalk from "chalk"
 import { stdin, stdout } from "node:process"
 import readLine from "node:readline"
 import ora from "ora"
-import { History } from "../backend/history.js"
-import { ImageCache, loadImage } from "../backend/images.js"
+import { History } from "../functions/history.js"
+import { ImageCache, loadImage } from "../functions/images.js"
 import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types/types.js"
-import { SignalsCodes } from "../types/types.js"
+import { SignalsCodes } from "../types/enum.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
 
 const loading = ora()
@@ -71,7 +71,7 @@ function TerminalControl() {
 function chapterNavigator(previousChapter: string | null, nextChapter: string | null, server: MangaServerInterface) {
     return {
         nextChapter: async () => {
-            console.log(previousChapter, nextChapter)
+          //  console.log(previousChapter, nextChapter)
             if (!nextChapter) return null
             const data = await server.getChapterPages(nextChapter)
 
@@ -80,7 +80,7 @@ function chapterNavigator(previousChapter: string | null, nextChapter: string | 
             return data;
         },
         backChapter: async () => {
-            console.log(previousChapter, nextChapter)
+           // console.log(previousChapter, nextChapter)
             if (!previousChapter) return null
             const data = await server.getChapterPages(previousChapter)
             previousChapter = data.prevChapter
@@ -97,7 +97,6 @@ const renderHeader = (title: string, mangatitle: string, index: number, n: numbe
     const header = `${mangatitle}: ${chalk.gray(title)}\n`
     const currentPage = chalk.gray(`${index} de ${n}\n`)
     let startPoint = centerText(`${index}    ${n}`.length + 1, title.length + mangatitle.length + 1)
-    let rows = process.stdout.rows
 
     process.stdout.write(esc.clearViewport);
     process.stdout.write(header);
@@ -113,11 +112,11 @@ const debugLogs = (src: string) => {
 }
 
 export async function terminalReader(props: ChapterInfo, server: MangaServerInterface) {
-    // guardar el capitulo actual en el historial de lectura
-    History.save(props)
-
+    
     return new Promise<void>(async (resolve) => {
-
+        
+        // guardar el capitulo actual en el historial de lectura
+        History.save(props)
         const terminal = TerminalControl()
         const pagesNav = PagesNavigator(props.pages)
         const chapterNav = chapterNavigator(props.prevChapter, props.nextChapter, server)
@@ -149,7 +148,7 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
 
                 if (!data) throw new Error('No hay mas capitulos');
                 props = { ...props, ...data }
-                History.update(props)
+                History.save(props)
                 pagesNav.setPages(data.pages)
                 loading.stop()
                 if (stdin.isTTY) terminal.openRawMode(handleKeypress)
@@ -187,7 +186,7 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
 
                 const options = await prompts(terminalReaderChapterOptions)
 
-                if (!options.opt) {
+                if (!options.target) {
                     terminal.openRawMode(handleKeypress)
                     console.log(esc.clearViewport)
                     renderInfo()
@@ -195,13 +194,13 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
                     return
                 }
 
-                if (options.opt === SignalsCodes.nex_chapter)
+                if (options.target === SignalsCodes.nex_chapter)
                     await chapterLoader(SignalsCodes.nex_chapter)
 
-                else if (options.opt === SignalsCodes.previous_chapter)
+                else if (options.target === SignalsCodes.previous_chapter)
                     await chapterLoader(SignalsCodes.previous_chapter)
 
-                else if (options.opt === SignalsCodes.exit) {
+                else if (options.target === SignalsCodes.exit) {
                     terminal.exitRawMode(handleKeypress)
                     console.log(esc.clearViewport)
                     resolve()

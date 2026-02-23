@@ -7,7 +7,11 @@ import { DATA_DEFAULT_DIR } from "../const.js";
 
 const historyPath = path.resolve(DATA_DEFAULT_DIR, 'read_history.json')
 
-const memory = new  Map<string, ChapterInfo>()
+interface HistoryInterface extends ChapterInfo {
+    time: number
+}
+
+const memory = new  Map<string, HistoryInterface>()
 
 interface HistoryDataStruct {
 	last_update: number,
@@ -17,14 +21,14 @@ interface HistoryDataStruct {
 export class History{
 
     static fetch(): ChapterInfo[]{
-      let val = Array.from(memory.values())
-      return val;
+    let val = Array.from(memory.values()).sort((a,b)=> b.time-a.time)
+    return val;
     }
 
     static async load() {
         try{
             if(!fs.existsSync(historyPath)){
-                await fsp.writeFile(historyPath, JSON.stringify({last_update: Date.now(),History: []}, null, '\t') )
+                await fsp.writeFile(historyPath, JSON.stringify({last_update: Date.now(),History: []}, null) )
                 return true
             }
             const history = await fsp.readFile(historyPath)
@@ -32,7 +36,7 @@ export class History{
             if(!obj?.History) throw new Error('Corrupted file')
             obj.History.forEach(e=>{
                 if(e && e.mangaTitle.length > 0){
-                    memory.set(e.mangaTitle, e);
+                    memory.set(e.mangaTitle, {time: Date.now(),...e});
                 }
             })
             return true;
@@ -42,13 +46,9 @@ export class History{
         }
     }
 
-    static update(mangaInfo: ChapterInfo){
-        memory.set(mangaInfo.mangaTitle, mangaInfo)
-    }
-
     static save(mangaInfo: ChapterInfo){
-       memory.set(mangaInfo.mangaTitle, mangaInfo)
-       this.store()
+    memory.set(mangaInfo.mangaTitle, {time: Date.now() ,...mangaInfo})
+    this.store()
     }
 
     static async store() {
@@ -58,10 +58,10 @@ export class History{
 
             const fileStruct: HistoryDataStruct = {
                 last_update: Date.now(),
-                History: Array.from(memory.values())
+                History: Array.from(memory.values()).sort((a,b)=> b.time-a.time)
             }
             
-            await fsp.writeFile(historyPath, JSON.stringify(fileStruct, null, '\t'))
+            await fsp.writeFile(historyPath, JSON.stringify(fileStruct, null))
 
         } catch (e) {
             console.log(e)

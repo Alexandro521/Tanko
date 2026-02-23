@@ -5,7 +5,7 @@ import { z } from "zod";
 import { CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR } from "../const.js";
 import { mangaServerRegister } from "../clients/port.js";
 import type { ConfigurationInterface, MangaServerInterface } from "../types/types.js";
-import type { LangInterface } from "@/types/lang.js";
+import type { LangInterface } from "../types/lang.js";
 import { lang } from "./lang.js";
 
 const schema = z.object({
@@ -24,9 +24,16 @@ export class Configuration {
         language: 'es'
     }
     static client: MangaServerInterface
-    static lang: LangInterface
+    static lang: LangInterface 
     static context: Page
 
+    static async getLanguage() {
+        if(!this.lang) {
+            await this.loadConfiguration()
+            this.lang = lang[this.config.language as keyof typeof lang]
+        }
+        return this.lang
+    }
     static async loadConfiguration() {
         try{
             if(!fs.existsSync(CONFIG_FILE_PATH)) {
