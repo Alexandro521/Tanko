@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "esnext",
+        "target": "es2024",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "rootDir": "./src",
@@ -13,7 +13,6 @@
         "sourceMap": true,
         "declaration": false,
         "verbatimModuleSyntax": true,
-        "baseUrl": ".",
     },
 
     "include": [

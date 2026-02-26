@@ -2,3 +2,4 @@ tsconfig.json
 .gitignore
 *.test.ts
 playwright.config.ts
+src/
