@@ -33,7 +33,7 @@ export class Configuration extends EventEmitter {
     private config: ConfigurationInterface = {
         deepSearch: false,
         downloads_path: DOWNLOADS_DEFAULT_DIR,
-        language: 'es',
+        language: 'en',
         client: mangaServerRegister['leercapitulo']
     }
 

@@ -10,7 +10,6 @@ import type {
     LastedManga,
     MangaServerInterface,
     PopularManga,
-    SearchResult,
 } from "../types/types.js";
 import { SignalsCodes } from '../types/enum.js'
 import {
