@@ -19,7 +19,7 @@ export class MangaServerClient implements MangaServerInterface {
         try {
             const manga: LastedManga[] = []
             const html = await fetch('https://www.leercapitulo.co/');
-            if(!html.ok) throw new Error('Erro wiht network')
+            if(!html.ok) throw new Error('Erro with network')
             const $ = cheerio.load(await html.text());
             $('section.bodycontainer div.row div.col-md-8 div.row > div.col-md-6').each((index, node) => {
                 const root = $('div.mainpage-manga div.media-body', node)
