@@ -32,17 +32,21 @@
     "./src/lang"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc && node ./dist/index.js",
+    "copy-assets": "copyfiles -u 1 src/**/*.json dist/src",
+    "type-check": "tsc --noEmit",
+    "build": "npm run type-check && swc src -d dist && npm run copy-assets",
+    "dev": "npm run build && node ./dist/index.js",
     "dev:bun": "bun run ./src/index.ts",
-    "start": "node ./dist/index.js"
+    "start": "node ./dist/src/index.js"
   },
   "license": "ISC",
   "packageManager": "pnpm@10.28.2",
   "devDependencies": {
-    "@types/cheerio": "^1.0.0",
+    "@swc/cli": "^0.8.0",
+    "@swc/core": "^1.15.13",
     "@types/node": "^25.2.0",
-    "@types/pdfkit": "^0.17.5"
+    "@types/pdfkit": "^0.17.5",
+    "copyfiles": "^2.4.1"
   },
   "dependencies": {
     "@alex_521/prompts": "^0.1.1",

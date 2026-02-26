@@ -1,0 +1,15 @@
+{
+    "jsc": {
+        "parser":{
+            "syntax": "typescript",
+            "tsx": false,
+            "decorators": true,
+            "importAttributes": true
+        },
+        "target": "esnext",
+        "loose": false
+    },
+    "module": {
+        "type": "es6"
+    }
+}
