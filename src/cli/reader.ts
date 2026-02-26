@@ -184,7 +184,7 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
                 process.stdout.write(esc.clearViewport)
                 terminal.exitRawMode(handleKeypress)
 
-                const options = await prompts(terminalReaderChapterOptions)
+                const options = await prompts(terminalReaderChapterOptions())
 
                 if (!options.target) {
                     terminal.openRawMode(handleKeypress)
