@@ -1,6 +1,6 @@
-import { mangaServerRegister } from "@/clients/port.js";
-import type { LangInterface } from "@/types/lang.js";
-import type { ConfigurationInterface, MangaServerInterface } from "@/types/types.js";
+import { mangaServerRegister } from "../clients/port.js";
+import type { LangInterface } from "../types/lang.js";
+import type { ConfigurationInterface, MangaServerInterface } from "../types/types.js";
 import chalk from "chalk";
 import fs from "fs";
 import fsPromise from "fs/promises";

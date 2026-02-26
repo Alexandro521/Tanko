@@ -1,6 +1,6 @@
 import {MangaServerClient} from "./leerCapitulo.js"
 import { MangaDex } from "./mangadex.js"
-import {MangaServerInterface, type ConfigurationClient} from "../types/types.js"
+import type { MangaServerInterface,  ConfigurationClient} from "../types/types.js"
 import type { Page } from "playwright"
 
 interface Client extends ConfigurationClient {

@@ -28,7 +28,7 @@ import {
 } from './prompts.js';
 import {  WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configuration.js";
-import { Configuration } from '@/functions/configuration.js';
+import { Configuration } from '../functions/configuration.js';
 import { int } from 'zod';
 
 const loading = ora();
