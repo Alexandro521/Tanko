@@ -1,37 +1,84 @@
 {
+    "meta": {
+        "lang_version": "1.0.0",
+        "lang": "es"
+    },
     "main_sections": {
-        "configuration": "Configuración",
-        "exit": "Salir",
-        "search": "Buscar",
-        "popular": "Populares",
-        "lasted": "Mas Recientes",
-        "history": "Historial"
+        "main": {
+            "title": "Menu",
+            "alt": "Menu principal" 
+        },
+        "search" : {
+            "title":"Buscar",
+            "alt": "Resultados"
+        },
+        "recent": {
+            "title":"Mas recientes",
+            "alt": "Recientes"
+        },
+        "popular": {
+            "title": "Populares",
+            "alt": "populares"
+        },
+        "history": {
+            "title":"Historial",
+            "alt": "Historial"
+        },
+        "config": {
+            "title":"Configuracion",
+            "alt": "Configuracion"
+        },
+        "exit": {
+            "title": "Salir",
+            "alt": "Salir"
+        }
     },
-    "search_section": {
-        "result_hint": "Resultados",
-        "no_results": "No se encontraron resultados para tu búsqueda.",
-        "message": "Ingresa el nombre del manga que deseas buscar:",
-        "chapter_hint": "Capítulos",
-        "chapter_list": "Ver lista de capítulos"
+    "chapter_access_options": {
+        "read": {
+            "title": "Leer capitulo",
+            "desc": "Se recomienda terminal kitty para esta operacion"
+        },
+        "download": {
+            "title": "Descargar capitulo",
+            "desc": "Formato PDF"
+        },
+        "resume_read": {
+            "title" : "Continual lectura",
+            "desc": ""
+        },
+        "suscribe": {
+            "title": "Agregar a favoritos",
+            "desc" : ""
+        },
+        "get_chapters": {
+            "title": "Ver lista de capitulos",
+            "desc": ""
+        },
+        "exit": {
+            "title": "Salir",
+            "desc": ""
+        },
+        "prev_ch": {
+            "title": "Capitulo anterior",
+            "desc": ""
+        },
+        "next_ch": {
+            "title": "Capitulo siguiente",
+            "desc": ""
+        }
     },
-    "chapter_select_options": {
-        "read": "Leer capítulo",
-        "download": "Descargar capítulo",
-        "back": "Salir",
-        "question": "¿Qué deseas hacer con este capítulo?"
-    },
-    "reader_options": {
-        "terminal_hint":    "Se recomienda usar (Kitty, !Term) terminal para esta operacion",
-        "next": "Siguiente Capitulo",
-        "previous": "Capitulo Anterior",
-        "exit": "Salir de la lectura"
-    },
-    "history_section": {
-        "no_history": "No tienes historial de lectura.",
-        "message": "Tu historial de lectura:",
-        "select": {
-            "resume": "Continuar lectura",
-            "delete": "Eliminar del historial"
+    "configuration": {
+        "options": {
+            "lang-ui": "Idioma de interfaz",
+            "save": "Guardar",
+            "client": "Clientes",
+            "downloads": "Descargas",
+            "search": "Busqueda",
+            "restore": "Restablecer configuracion"
+        },
+        "lang-ui": {
+            "es": "Español",
+            "en": "Ingles"
         }
     }
 }
