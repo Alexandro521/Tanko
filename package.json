@@ -26,7 +26,7 @@
   },
   "homepage": "https://github.com/Alexandro521/Tanko#readme",
   "bin": {
-    "tanko": "./dist/index.js"
+    "tanko": "./dist/src/index.js"
   },
   "files": [
     "./src/lang"
