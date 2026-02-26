@@ -1,12 +1,9 @@
-import type { BrowserContext, Page } from "playwright";
-
 import esc from 'ansi-escapes';
 import ora from "ora";
 import prompts, { type Choice } from "@alex_521/prompts";
 import { downloadChapter } from "../functions/downloader.js";
 import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
-
 import type {
     ChapterInfo,
     ChapterMinInfo,
@@ -30,7 +27,9 @@ import {
     voidPrompt
 } from './prompts.js';
 import {  WELCOME_MESSAGE } from "../const.js";
-import { configurationUI } from "./configutation.js";
+import { configurationUI } from "./configuration.js";
+import { Configuration } from '@/functions/configuration.js';
+import { int } from 'zod';
 
 const loading = ora();
 
@@ -39,22 +38,23 @@ export const clearScreen = () => {
     console.log(WELCOME_MESSAGE);
 }
 
-export async function init(server: MangaServerInterface, browser: BrowserContext, page: Page) {
+export async function init() {
+    const instace = await Configuration.getInstance()
+    let server = instace.getClient()
+    let config = instace.configuration
     console.log(WELCOME_MESSAGE)
+    instace.on('load', ()=>{
+        server = instace.getClient()
+        config = instace.configuration
+    })
     try {
-        const closeBrowser = async () => {
-            loading.start('Saliendo...')
-            // await context.storageState({path: 'src/data/browser_storage.json'})
-            await page.close()
-            await browser.close()
-            loading.stop()
-        }
+        if(!server && config.client.need_browser) throw new Error('Error al intentar obtener el cliente')
 
         while (true) {
             console.log()
-            const main = await prompts(mainPrompt)
+            const main = await prompts(mainPrompt())
             if (!main?.target) {
-                await closeBrowser();
+                await instace.closeBrowser();
                 break
             }
 
@@ -69,7 +69,7 @@ export async function init(server: MangaServerInterface, browser: BrowserContext
             else if (main.target === SignalsCodes.lasted_section)
                 await lastedSection(server)
             else if (main.target === SignalsCodes.exit) {
-                closeBrowser()
+                await instace.closeBrowser()
                 break
             }
             clearScreen()
@@ -83,7 +83,7 @@ async function searchBar(server: MangaServerInterface) {
     clearScreen()
     try {
         while (true) {
-            const searchQuery = await prompts(searchPrompt)
+            const searchQuery = await prompts(searchPrompt())
             if (!searchQuery?.query) {
                 break
             }
@@ -152,7 +152,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
             const chapterInfo = await server.getChapterPages(select.chapter.src)
             if (loading.isSpinning) loading.stop()
             clearScreen()
-            const options = await prompts(basicChapterOptions)
+            const options = await prompts(basicChapterOptions())
 
             if (!options.target){
                 clearScreen()
@@ -316,7 +316,7 @@ async function lastedSection(server: MangaServerInterface) {
                     break
                 }
                 const chapter = <ChapterMinInfo>select2.chapter
-                const chapterOptions = await prompts(basicChapterOptions)
+                const chapterOptions = await prompts(basicChapterOptions())
 
                 if (!chapterOptions.target) {
                     clearScreen()
