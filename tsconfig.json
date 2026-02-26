@@ -1,6 +1,6 @@
 {
     "compilerOptions": {
-        "target": "es2024",
+        "target": "esnext",
         "module": "NodeNext",
         "moduleResolution": "NodeNext",
         "rootDir": "./src",
@@ -14,14 +14,6 @@
         "declaration": false,
         "verbatimModuleSyntax": true,
         "baseUrl": ".",
-        "paths": {
-            "@/*": ["src/*"],
-            "@types/*": ["src/types/*"],
-            "@backend/*": ["src/backend/*"],
-            "@frontend/*": ["src/cli/*"],
-            "@lang/*": ["src/lang/*"],
-            "clients/*": ["src/clients/*"],
-        }
     },
 
     "include": [
