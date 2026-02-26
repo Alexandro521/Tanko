@@ -26,15 +26,15 @@
   },
   "homepage": "https://github.com/Alexandro521/Tanko#readme",
   "bin": {
-    "tanko": "./dist/src/index.js"
+    "tanko": "./dist/index.js"
   },
   "files": [
     "./src/lang"
   ],
   "scripts": {
-    "copy-assets": "copyfiles -u 1 src/**/*.json dist/src",
+    "copy-assets": "copyfiles -u 1 src/**/*.json dist/",
     "type-check": "tsc --noEmit",
-    "build": "npm run type-check && swc src -d dist && npm run copy-assets",
+    "build": "npm run type-check && swc ./src -d ./dist --strip-leading-paths && npm run copy-assets",
     "dev": "npm run build && node ./dist/index.js",
     "dev:bun": "bun run ./src/index.ts",
     "start": "node ./dist/src/index.js"
@@ -63,5 +63,9 @@
     "sharp": "0.34.5",
     "terminal-image": "4.2.0",
     "zod": "^4.3.6"
+  },
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist"
   }
 }
