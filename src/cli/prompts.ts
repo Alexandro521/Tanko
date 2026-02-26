@@ -2,7 +2,17 @@ import type { PromptObject, Choice } from "@alex_521/prompts";
 import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR } from "../const.js";
+import { Configuration } from "../functions/configuration.js";
 
+const instance =  await Configuration.getInstance()
+let {configuration,main_sections,chapter_access_options} = instance.getLang()
+
+instance.on('update',async () => {
+    const lang = instance.getLang()
+    configuration = lang.configuration
+    main_sections = lang.main_sections
+    chapter_access_options = lang.chapter_access_options
+})
 
 // [General Prompts]
 export const generateChapterList = (title: string, count: number, choices: Choice[]): PromptObject<'chapter'> => {
@@ -33,41 +43,43 @@ export const confirmPrompt = (message: string): PromptObject<'confirm'> => {
     }
 }
 
-const ChapterAccessOptions = {
+const ChapterAccessOptions = () => {
+    return {
     read: {
-        title: 'Leer Capitulo',
-        description: 'Se recomienda terminal kitty para esta operacion',
+        title: chapter_access_options.read.title,
+        description: chapter_access_options.read.desc,
         value: SignalsCodes.read_chapter
     },
     download: {
-        title: 'Descargar Capitulo',
-        description: 'descargar el capitulo en formato PDF',
+        title: chapter_access_options.download.title,
+        description: chapter_access_options.download.desc, 
         value: SignalsCodes.download_chapter,
     },
     resume_read: {
-        title: 'Continuar lectura',
+        title: chapter_access_options.resume_read.title,
         value: SignalsCodes.resume_read,
     },
     suscribe: {
-        title: 'Agregar a favoritos',
+        title: chapter_access_options.suscribe.title, 
         value: SignalsCodes.suscribe_manga,
     },
     getChapters: {
-        title: 'Ver lista de capitulos',
+        title: chapter_access_options.get_chapters.title, 
         value: SignalsCodes.get_chapters_list
     },
     exit: {
-        title: 'Salir',
+        title: chapter_access_options.exit.title,
         value: SignalsCodes.exit
     },
     prevoius_chapter: {
-        title: 'Capitulo Anterior',
+        title: chapter_access_options.prev_ch.title, 
         value: SignalsCodes.previous_chapter
     },
     next_chapter: {
-        title: 'Siguiente Capitulo',
+        title: chapter_access_options.next_ch.title, 
         value: SignalsCodes.nex_chapter
     }
+}
 }
 
 type SelectMode = 'autocomplete' | 'select'
@@ -83,54 +95,59 @@ const SectionPrompt = (title: string, choices: Choice[],hint = '', type: SelectM
 }
 
 // [Principal Sections]
-export const mainPrompt: PromptObject<'target'> = {
+export const mainPrompt = (): PromptObject<'target'> => {
+    return {
     type: 'select',
     name: 'target',
-    message: chalk.bgHex(PRIMARY_COLOR)(' Menu principal '),
+    message: chalk.bgHex(PRIMARY_COLOR)(` ${main_sections.main.title} `),
     choices: [
-        { title: 'Buscar', value: SignalsCodes.search_section },
-        { title: 'Populares', value: SignalsCodes.popular_section },
-        { title: 'Mas Recientes', value: SignalsCodes.lasted_section },
-        { title: 'historial', value: SignalsCodes.history_section },
-        { title: 'configuracion', value: SignalsCodes.configuration_section },
-        { title: 'salir', value: SignalsCodes.exit },
+        { title: main_sections.search.title, value: SignalsCodes.search_section },
+        { title: main_sections.popular.title, value: SignalsCodes.popular_section },
+        { title: main_sections.recent.title, value: SignalsCodes.lasted_section },
+        { title: main_sections.history.title, value: SignalsCodes.history_section },
+        { title: main_sections.config.title, value: SignalsCodes.configuration_section },
+        { title: main_sections.exit.title, value: SignalsCodes.exit },
     ]
+    }
 }
-export const searchPrompt: PromptObject<'query'> = {
-    type: 'text',
-    name: 'query',
-    message: chalk.bgHex(PRIMARY_COLOR)(' Busqueda '),
+export const searchPrompt = (): PromptObject<'query'> =>{
+    return {
+        type: 'text',
+        name: 'query',
+        message: chalk.bgHex(PRIMARY_COLOR)(` ${main_sections.search.title} `),
+    }
 }
 
 // [Sections]
 
-export const searchResultPrompt = (ch: Choice[])=>{
-    return SectionPrompt('Resultados', ch, `resultados: ${ch.length}`)
+export const searchResultPrompt = (ch: Choice[]) =>{
+    return SectionPrompt(main_sections.search.alt, ch, `mangas: ${ch.length}`)
 }
 
 export const popularSectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt('Populares', ch, `mangas: ${ch.length}`)
+    return SectionPrompt(main_sections.popular.title, ch, `mangas: ${ch.length}`)
 }
 
 export const lastedSectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt('Recientes', ch, `mangas: ${ch.length}`)
+    return SectionPrompt(main_sections.recent.title, ch, `mangas: ${ch.length}`)
 }
 
 export const historySectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt('Historial', ch, `mangas: ${ch.length}`)
+    return SectionPrompt(main_sections.history.title, ch, `mangas: ${ch.length}`)
 }
 
-const configurationOptions: Choice[] =  [
-    /* {
-        title: "Server",
+const configurationOptions = ():Choice[] => {
+    return [
+    {
+        title: configuration.options.client,
         value: ConfigurationOptions.Server,
-    },*/
+    },
     /*{
         title: "Search",
         value: ConfigurationOptions.Search,
     },*/
     {
-        title: "Language",
+        title: configuration.options["lang-ui"], 
         value: ConfigurationOptions.language,
     },
     /* {
@@ -138,58 +155,73 @@ const configurationOptions: Choice[] =  [
         value: ConfigurationOptions.downloads,
     },*/
     {
-        title: "Save",
+        title: configuration.options.save, 
         value: ConfigurationOptions.save,
     },
     {
-        title: "Restore Default",
+        title: configuration.options.restore, 
         value: ConfigurationOptions.restoreDefault,
     }
 ]
-
-export const configurationPrompt = SectionPrompt('Configuracion', configurationOptions, '', 'select')
+}
+export const configurationPrompt = () => SectionPrompt(main_sections.config.title, configurationOptions(), '', 'select')
 
 // [ CONFIGURATION PROMPTS ]
 
 export const serverPrompt = (hint:string, ch: Choice[]) => {
     return SectionPrompt('Server', ch, `current: ${hint}`, 'select')
 }
-const lang: Choice[] = [
-    { title: "🇪🇸 Spanish", value: "es" },
-    { title: "🇺🇸 English", value: "en" },]
-export const languagePrompt = (hint?: string) => SectionPrompt('Language', lang, `current: ${hint ?? 'es'}`, 'select')
+
+export const languagePrompt = (hint?: string) => {
+    const langChoice: Choice[] = [
+        { title: configuration["lang-ui"].es, value: "es" },
+        { title: configuration["lang-ui"].en, value: "en" },]
+
+    return SectionPrompt('Language', langChoice, `current: ${hint ?? 'es'}`, 'select')
+}
 
 
 // [Chapter Options]
 
-export const basicChapterOptions = SectionPrompt('Opciones', [
-    ChapterAccessOptions.read,
-    ChapterAccessOptions.download,
+export const basicChapterOptions = ()=>{
+    const sh = ChapterAccessOptions() 
+    return  SectionPrompt('Opciones', [
+    sh.read,
+    sh.download,
     //ChapterAccessOptions.suscribe,
-    ChapterAccessOptions.exit,
+    sh.exit,
 ], '', 'select')
-
-export const historyChapterOptions = (title: string) => SectionPrompt('Opciones', [
-    ChapterAccessOptions.resume_read,
-    ChapterAccessOptions.getChapters,
-    ChapterAccessOptions.download,
+}
+export const historyChapterOptions = (title: string) => {
+    const sh = ChapterAccessOptions()
+    return SectionPrompt('Opciones', [
+    sh.resume_read,
+    sh.getChapters,
+    sh.download,
     //ChapterAccessOptions.suscribe,
-    ChapterAccessOptions.exit,
+    sh.exit,
 ], title, 'select')
-
-export const popularMangaSelectOptions = (title: string) => SectionPrompt('Opciones', [
-    ChapterAccessOptions.read,
-    ChapterAccessOptions.getChapters,
-    ChapterAccessOptions.download,
+}
+export const popularMangaSelectOptions = (title: string) =>{
+    const sh = ChapterAccessOptions()
+    return SectionPrompt('Opciones', [
+    sh.read,
+    sh.getChapters,
+    sh.download,
     //ChapterAccessOptions.suscribe,
-    ChapterAccessOptions.exit,
+    sh.exit,
+
 ], title, 'select')
+}
 
-export const terminalReaderChapterOptions = SectionPrompt('Opciones', [
-    ChapterAccessOptions.prevoius_chapter,
-    ChapterAccessOptions.next_chapter,
-    ChapterAccessOptions.download,
-    ChapterAccessOptions.getChapters,
+export const terminalReaderChapterOptions = ()=>{ 
+    let sh =    ChapterAccessOptions()
+    return SectionPrompt('Opciones', [
+        sh.prevoius_chapter,
+        sh.next_chapter,
+        sh.download,
+        sh.getChapters,
     //ChapterAccessOptions.suscribe,
-    ChapterAccessOptions.exit,
+        sh.exit,
 ], '', 'select')
+}
