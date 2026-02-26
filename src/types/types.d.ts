@@ -27,12 +27,12 @@ export interface ChapterInfo {
 }
 
 export declare class MangaServerInterface{
-     constructor(context: Page)
-     search(query: string ) : Promise<SearchResult[]>
-     getChaptersList(mangaSrc: string): Promise<{title: string, chapters: Chapter[]} | undefined>
-     getChapterPages(chapterSrc: string): Promise<ChapterInfo>
-     getPopulars(): Promise<PopularManga[] | undefined>
-     getLastMangas(): Promise<LastedManga[] | undefined>
+    constructor(context: Page)
+    search(query: string ) : Promise<SearchResult[]>
+    getChaptersList(mangaSrc: string): Promise<{title: string, chapters: Chapter[]} | undefined>
+    getChapterPages(chapterSrc: string): Promise<ChapterInfo>
+    getPopulars(): Promise<PopularManga[] | undefined>
+    getLastMangas(): Promise<LastedManga[] | undefined>
 }
 
 export interface ChapterMinInfo {
@@ -52,8 +52,12 @@ export interface LastedManga {
 }
 
 export interface ConfigurationInterface {
-    server: string,
-    language: string,
+    client : ConfigurationClient,
+    language: 'es' | 'en',
     downloads_path : string,
     deepSearch: boolean,
+}
+export interface ConfigurationClient {
+    name: 'leercapitulo' | 'mangadex',
+    need_browser: boolean
 }
