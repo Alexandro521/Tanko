@@ -29,7 +29,7 @@
     "tanko": "./dist/index.js"
   },
   "files": [
-    "./src/lang"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
