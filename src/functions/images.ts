@@ -1,8 +1,6 @@
 import sharp from "sharp";
 import terminalImage from "terminal-image";
 import type { ChapterPage } from "../types/types.js";
-import ora from "ora";
-const loading = ora()
 
 export class ImageCache {
     static MAX_SIZE = 64000000 //64 MB in KB
@@ -44,9 +42,6 @@ export class ImageCache {
 
 
 export async function loadImage(srcs: ChapterPage) {
-    try {
-        
-        loading.start('cargando...')
         let res: Buffer = Buffer.from('');
 
         if (ImageCache.has(srcs.src)) {
@@ -75,7 +70,6 @@ export async function loadImage(srcs: ChapterPage) {
             }
             if (!isOk) {
                 throw new Error('fallo al descargar la imagen, reintentado 3 veces')
-
             }
         }
 
@@ -85,12 +79,6 @@ export async function loadImage(srcs: ChapterPage) {
             height: '100%',
             preferNativeRender: true
         })
-
-        loading.stop()
         process.stdout.write(image)
-    } catch (e) {
-        loading.fail('error al cargar la imagen')
-        console.log('error: ', e)
-    }
 }
 

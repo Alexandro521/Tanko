@@ -158,6 +158,6 @@ export class Configuration extends EventEmitter {
     }
     async setConfig(conf: ConfigurationInterface) {
         await this.load(conf)
-        this.emit('update', this.config, this.client)
+        this.emit('update', this.config, this.client, this.lang)
     }
 }

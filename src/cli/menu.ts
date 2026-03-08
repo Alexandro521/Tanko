@@ -10,7 +10,6 @@ import type {
     LastedManga,
     MangaServerInterface,
     PopularManga,
-    SearchResult,
 } from "../types/types.js";
 import { SignalsCodes } from '../types/enum.js'
 import {
@@ -29,7 +28,6 @@ import {
 import {  WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configuration.js";
 import { Configuration } from '../functions/configuration.js';
-import { int } from 'zod';
 
 const loading = ora();
 
@@ -38,18 +36,28 @@ export const clearScreen = () => {
     console.log(WELCOME_MESSAGE);
 }
 
+let err_messages: any, loading_states: any
+
+
 export async function init() {
     const instace = await Configuration.getInstance()
     let server = instace.getClient()
     let config = instace.configuration
-    console.log(WELCOME_MESSAGE)
-    instace.on('load', ()=>{
-        server = instace.getClient()
-        config = instace.configuration
-    })
-    try {
-        if(!server && config.client.need_browser) throw new Error('Error al intentar obtener el cliente')
 
+    const lang = instace.getLang()
+    err_messages = lang.err_messages
+    loading_states = lang.loading_states
+
+    instace.on('load', ()=>{
+        server = instace.getClient()      
+        config = instace.configuration
+        const lang = instace.getLang()
+        err_messages = lang.err_messages
+        loading_states = lang.loading_states
+    })
+    console.log(WELCOME_MESSAGE)
+    try {
+        if(!server && config.client.need_browser) throw new Error(err_messages.client_switch.msg)
         while (true) {
             console.log()
             const main = await prompts(mainPrompt())
@@ -88,12 +96,12 @@ async function searchBar(server: MangaServerInterface) {
                 break
             }
 
-            loading.start(`Buscando ${searchQuery.query}...`)
+            loading.start(`${loading_states.searching} ${searchQuery.query}...`)
             const results = await server.search(searchQuery.query)
 
             if (results.length < 1) {
                 clearScreen()
-                loading.fail('Busqueda sin resultados')
+                loading.fail(err_messages.no_results.msg)
                 continue
             }
             const choices = results.map((res): Choice => {
@@ -121,12 +129,12 @@ async function searchBar(server: MangaServerInterface) {
 async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) {
     clearScreen()
     try {
-        loading.start(`Cargando capitulos...`);
+        loading.start(`${loading_states.loading_chapters}...`);
 
         const result = await server.getChaptersList(mangaSrc);
 
         if (!result || result.chapters.length < 0) {
-            loading.fail('Error al obtener Capitulos')
+            loading.fail(err_messages.chapter_loading.msg)
             return
         }
         loading.stop();
@@ -148,7 +156,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
                 break
             }
 
-            loading.start(`cargando ${result.title}...`)
+            loading.start(`${loading_states.default_loading} ${result.title}...`)
             const chapterInfo = await server.getChapterPages(select.chapter.src)
             if (loading.isSpinning) loading.stop()
             clearScreen()
@@ -178,7 +186,7 @@ async function history(server: MangaServerInterface) {
     const history = History.fetch();
 
     if (history.length < 1) {
-        await prompts(voidPrompt('No hay historial'))
+        await prompts(voidPrompt(err_messages.void_Section.msg))
         return;
     }
 
@@ -220,12 +228,12 @@ async function history(server: MangaServerInterface) {
 async function populars(server: MangaServerInterface) {
     clearScreen()
     try {
-        loading.start('cargando...')
+        loading.start(loading_states.default_loading)
         const populars = await server.getPopulars();
         loading.stop()
 
         if (!populars || populars.length < 0) {
-            await prompts(voidPrompt('No se encontraron mangas populares'))
+            await prompts(voidPrompt(err_messages.no_results.msg))
             return;
         }
 
@@ -253,13 +261,13 @@ async function populars(server: MangaServerInterface) {
                 continue
             }
             if (option.target === SignalsCodes.read_chapter) {
-                loading.start(`cargando ${info.title} : ${info.last_chapter.title}`)
+                loading.start(`${loading_states.default_loading} ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
                 await terminalReader(res, server)
             }
             else if (option.target === SignalsCodes.download_chapter) {
-                loading.start(`cargando ${info.title} : ${info.last_chapter.title}`)
+                loading.start(`${loading_states.default_loading} ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
                 await downloadChapter(res.mangaTitle, res.title, res.pages)
@@ -275,7 +283,7 @@ async function populars(server: MangaServerInterface) {
         }
 
     } catch (e) {
-        if (loading.isSpinning) loading.fail('ERROR')
+        if (loading.isSpinning) loading.fail(err_messages.fetching.msg)
         console.log(e)
     }
 }
@@ -283,11 +291,11 @@ async function populars(server: MangaServerInterface) {
 async function lastedSection(server: MangaServerInterface) {
     clearScreen()
     try {
-        loading.start('cargando')
+        loading.start(loading_states.default_loading)
         const mangas = await server.getLastMangas()
         loading.stop()
         if (!mangas || mangas.length < 0) {
-            await prompts(voidPrompt('No se encontraron mangas recientes'))
+            await prompts(voidPrompt(err_messages.no_results.msg))
             return
         }
         const choices = mangas.map((e): Choice => {
@@ -323,7 +331,7 @@ async function lastedSection(server: MangaServerInterface) {
                     continue
                 }
 
-                loading.start(`cargando ${chapter.title} : ${chapter.title}`)
+                loading.start(`${loading_states.default_loading} ${chapter.title} : ${chapter.title}`)
 
                 const res = await server.getChapterPages(chapter.src);
                 loading.stop();

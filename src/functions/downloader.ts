@@ -17,8 +17,8 @@ const PDFOptions: PDFKit.PDFDocumentOptions = {
     tagged: true,
     pdfVersion: '1.4',
     info: {
-        Author: 'tu manga CLI',
-        Keywords: 'manga, manga reader, cli',
+        Author: 'tanko cli',
+        Keywords: 'manga, manga reader, cli, tanko',
     }
 }
 

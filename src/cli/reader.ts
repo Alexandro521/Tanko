@@ -1,16 +1,34 @@
-import prompts from "@alex_521/prompts"
-import esc from "ansi-escapes"
-import chalk from "chalk"
-import { stdin, stdout } from "node:process"
-import readLine from "node:readline"
 import ora from "ora"
-import { History } from "../functions/history.js"
-import { ImageCache, loadImage } from "../functions/images.js"
-import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types/types.js"
+import chalk from "chalk"
+import esc from "ansi-escapes"
+import readLine from "node:readline"
+import { stdin } from "node:process"
+import prompts from "@alex_521/prompts"
+import { Configuration } from "src/functions/configuration.js"
 import { SignalsCodes } from "../types/enum.js"
+import { History } from "../functions/history.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
+import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
+import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types/types.js"
+import type { LangInterface } from "src/types/lang.js"
 
 const loading = ora()
+let instance = await Configuration.getInstance()
+let {err_messages, loading_states} = instance.getLang()
+instance.on('update',(_, __, lang)=>{
+    err_messages = (lang as LangInterface).err_messages
+    loading_states = (lang as LangInterface).loading_states
+})
+
+const loadImage = async (e: ChapterPage)=>{
+    try{
+        loading.start(loading_states.default_loading)
+        await imageLoader(e)
+        loading.stop()
+    }catch(e){
+        loading.fail(err_messages.page_loading.msg)
+    }
+}
 
 function debounce(func: Function, delay: number) {
     let timer: any;
@@ -89,6 +107,7 @@ function chapterNavigator(previousChapter: string | null, nextChapter: string | 
         }
     }
 }
+
 const centerText = (textLength: number, relativeofLenght: number) => {
     return Math.abs(Math.ceil(relativeofLenght / 2) - Math.ceil(textLength / 2))
 }
@@ -114,12 +133,11 @@ const debugLogs = (src: string) => {
 export async function terminalReader(props: ChapterInfo, server: MangaServerInterface) {
     
     return new Promise<void>(async (resolve) => {
-        
-        // guardar el capitulo actual en el historial de lectura
-        History.save(props)
+
         const terminal = TerminalControl()
         const pagesNav = PagesNavigator(props.pages)
         const chapterNav = chapterNavigator(props.prevChapter, props.nextChapter, server)
+        History.save(props)
         terminal.openRawMode()
 
         const renderInfo = () => {
@@ -127,6 +145,7 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
             renderHeader(props.title, props.mangaTitle, pagesNav.getState().index + 1, props.pages.length)
             //debugLogs(pagesNav.getState().src.src)
         }
+
         const pageDebounce = debounce(async (e: ChapterPage) => {
                 await loadImage(e)
                 process.stdout.write(esc.cursorHide)
@@ -142,11 +161,13 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
                 if (stdin.isRaw) {
                     terminal.exitRawMode(handleKeypress)
                 }
-                loading.start('cargando capitulo...')
+                loading.start(loading_states.loading_chapter)
 
-                const data = signal === SignalsCodes.nex_chapter ? await chapterNav.nextChapter() : await chapterNav.backChapter()
+                const data = signal === SignalsCodes.nex_chapter ? 
+                await chapterNav.nextChapter() : 
+                await chapterNav.backChapter()
 
-                if (!data) throw new Error('No hay mas capitulos');
+                if (!data) throw new Error(err_messages.no_results.msg);
                 props = { ...props, ...data }
                 History.save(props)
                 pagesNav.setPages(data.pages)
@@ -155,7 +176,7 @@ export async function terminalReader(props: ChapterInfo, server: MangaServerInte
                 renderInfo()
                 await loadImage(pagesNav.getState().src)
             } catch (e) {
-                loading.fail('no hay mas capitulos!!!')
+                loading.fail(err_messages.no_results.msg)
                 if (stdin.isTTY) terminal.openRawMode(handleKeypress)
             }
         }

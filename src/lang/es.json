@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.0.0",
+        "lang_version": "1.1.0",
         "lang": "es"
     },
     "main_sections": {
@@ -79,6 +79,63 @@
         "lang-ui": {
             "es": "Español",
             "en": "Ingles"
+        }
+    },
+    "loading_states": {
+        "loading_chapters": "cargando capitulos",
+        "loading_chapter": "cargando capitulo",
+        "default_loading": "cargando",
+        "searching": "buscando",
+        "browser_init": "iniciando navegador",
+        "browser_close": "cerrando navegador",
+        "downloading_pages": "descargando paginas",
+        "downloading_chapter": "descargando capitulo",
+        "default_downloading": "descargando",
+        "next_chapter": "cargando capitulo siguiente",
+        "prev_chapter": "cargando capitulo anterior",
+        "reloading_chapter": "recargando capitulo",
+        "retry": "reintentando"
+    },
+    "err_messages": {
+        "network": {
+            "msg": "no tienes conexion a internet!",
+            "hint": "comprueba que estes conectado a una red"
+        },
+        "fetching": {
+            "msg": "A ocurrido un error al intentar obtener los datos",
+            "hint": "si el error persiste, puede reportarlo en"
+        },
+        "pdf_make": {
+            "msg":"Ocurrio un error al intentar crear el PDF",
+            "hint": "si el error persiste, puede reportarlo en"
+        },
+        "client_switch": {
+            "msg":"Ocurrio un error al intentar cambiar el cliente",
+            "hint": "si el error persiste, puede reportarlo en"
+        },
+        "corrupt_conf_file": {
+            "msg": "El archivo de configuracion tiene un formato incorrecto",
+            "hint": "intente restaurar la configuracion a su estado por defecto"
+        },
+        "corrupt_history_file": {
+            "msg": "El archivo de historial esta corrupto!",
+            "hint": "Solucion: configuracion -> historial -> comprobar integridad"
+        },
+        "page_loading": {
+            "msg": "A ocurrido un error al intentar cargar la pagina",
+            "hint": "comprueba que estes conectado a una red"
+        },
+        "chapter_loading": {
+            "msg": "A ocurrido un error al intentar cargar el capitulo",
+            "hint": "comprueba que estes conectado a una red"
+        },       
+        "no_results": {
+            "msg": "Sin resultados",
+            "hint": ""
+        },
+        "void_Section": {
+            "msg": "Este lugar esta vacio",
+            "hint": ""
         }
     }
 }

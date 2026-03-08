@@ -3,6 +3,8 @@ export interface LangInterface {
   main_sections: MainSections
   chapter_access_options: ChapterAccessOptions
   configuration: Configuration
+  loading_states: LoadingStates
+  err_messages: ErrorMessages
 }
 
 export interface Meta {
@@ -11,97 +13,32 @@ export interface Meta {
 }
 
 export interface MainSections {
-  main: Main
-  search: Search
-  recent: Recent
-  popular: Popular
-  history: History
-  config: Config
-  exit: Exit
+  main: Sections
+  search: Sections
+  recent: Sections
+  popular: Sections
+  history: Sections
+  config: Sections
+  exit: Sections
 }
 
-export interface Main {
-  title: string
-  alt: string
-}
-
-export interface Popular {
-  title: string,
-  alt: string
-}
-
-export interface Search {
-  title: string
-  alt: string
-}
-
-export interface Recent {
-  title: string
-  alt: string
-}
-
-export interface History {
-  title: string
-  alt: string
-}
-
-export interface Config {
-  title: string
-  alt: string
-}
-
-export interface Exit {
+export interface Sections {
   title: string
   alt: string
 }
 
 export interface ChapterAccessOptions {
-  read: Read
-  download: Download
-  resume_read: ResumeRead
-  suscribe: Suscribe
-  get_chapters: GetChapters
-  exit: Exit2
-  prev_ch: PrevCh
-  next_ch: NextCh
+  read: AccessOptions
+  download: AccessOptions
+  resume_read: AccessOptions
+  suscribe: AccessOptions
+  get_chapters: AccessOptions
+  exit: AccessOptions
+  prev_ch: AccessOptions
+  next_ch: AccessOptions
 }
 
-export interface Read {
-  title: string
-  desc: string
-}
-
-export interface Download {
-  title: string
-  desc: string
-}
-
-export interface ResumeRead {
-  title: string
-  desc: string
-}
-
-export interface Suscribe {
-  title: string
-  desc: string
-}
-
-export interface GetChapters {
-  title: string
-  desc: string
-}
-
-export interface Exit2 {
-  title: string
-  desc: string
-}
-
-export interface PrevCh {
-  title: string
-  desc: string
-}
-
-export interface NextCh {
+export interface AccessOptions {
   title: string
   desc: string
 }
@@ -123,4 +60,44 @@ export interface Options {
 export interface LangUi {
   es: string
   en: string
+}
+
+interface ErrorDetail {
+  msg: string;
+  hint: string;
+}
+
+interface LoadingStates {
+  loading_chapters: string;
+  loading_chapter: string;
+  default_loading: string;
+  searching: string;
+  browser_init: string;
+  browser_close: string;
+  downloading_pages: string;
+  downloading_chapter: string;
+  default_downloading: string; // Note: kept the typo from the original JSON
+  next_chapter: string;
+  prev_chapter: string;
+  reloading_chapter: string;
+  retry: string;
+}
+
+interface ErrorMessages {
+  network: ErrorDetail;
+  fetching: ErrorDetail;
+  pdf_make: ErrorDetail;
+  client_switch: ErrorDetail;
+  corrupt_conf_file: ErrorDetail;
+  corrupt_history_file: ErrorDetail;
+  page_loading: ErrorDetail;
+  chapter_loading: ErrorDetail;
+  /**----- */
+  no_results: ErrorDetail
+  void_Section: ErrorDetail
+}
+
+export interface AppConfig {
+  loading_states: LoadingStates;
+  err_messages: ErrorMessages;
 }

@@ -185,7 +185,7 @@ export const languagePrompt = (hint?: string) => {
 
 export const basicChapterOptions = ()=>{
     const sh = ChapterAccessOptions() 
-    return  SectionPrompt('Opciones', [
+    return  SectionPrompt('Options', [
     sh.read,
     sh.download,
     //ChapterAccessOptions.suscribe,
@@ -194,7 +194,7 @@ export const basicChapterOptions = ()=>{
 }
 export const historyChapterOptions = (title: string) => {
     const sh = ChapterAccessOptions()
-    return SectionPrompt('Opciones', [
+    return SectionPrompt('Options', [
     sh.resume_read,
     sh.getChapters,
     sh.download,
@@ -204,7 +204,7 @@ export const historyChapterOptions = (title: string) => {
 }
 export const popularMangaSelectOptions = (title: string) =>{
     const sh = ChapterAccessOptions()
-    return SectionPrompt('Opciones', [
+    return SectionPrompt('Options', [
     sh.read,
     sh.getChapters,
     sh.download,

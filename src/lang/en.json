@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.0.0",
+        "lang_version": "1.1.0",
         "lang": "en"
     },
     "main_sections": {
@@ -79,6 +79,63 @@
         "lang-ui": {
             "es": "Spanish",
             "en": "English"
+        }
+    },
+    "loading_states": {
+        "loading_chapters": "loading chapters",
+        "loading_chapter": "loading chapter",
+        "default_loading": "loading",
+        "searching": "searching",
+        "browser_init": "initializing browser",
+        "browser_close": "closing browser",
+        "downloading_pages": "downloading pages",
+        "downloading_chapter": "downloading chapter",
+        "default_downloading": "downloading",
+        "next_chapter": "loading next chapter",
+        "prev_chapter": "loading previous chapter",
+        "reloading_chapter": "reloading chapter",
+        "retry": "retrying"
+    },
+    "err_messages": {
+        "network": {
+            "msg": "No internet connection!",
+            "hint": "Check that you are connected to a network"
+        },
+        "fetching": {
+            "msg": "An error occurred while trying to fetch data",
+            "hint": "If the error persists, you can report it at"
+        },
+        "pdf_make": {
+            "msg": "An error occurred while trying to create the PDF",
+            "hint": "If the error persists, you can report it at"
+        },
+        "client_switch": {
+            "msg": "An error occurred while trying to change the client",
+            "hint": "If the error persists, you can report it at"
+        },
+        "corrupt_conf_file": {
+            "msg": "The configuration file has an invalid format",
+            "hint": "Try restoring the settings to their default state"
+        },
+        "corrupt_history_file": {
+            "msg": "The history file is corrupted!",
+            "hint": "Solution: settings -> history -> check integrity"
+        },
+        "page_loading": {
+            "msg": "An error occurred while trying to load the page",
+            "hint": "Check that you are connected to a network"
+        },
+        "chapter_loading": {
+            "msg": "An error occurred while trying to load the chapter",
+            "hint": "Check that you are connected to a network"
+        },       
+        "no_results": {
+            "msg": "No results found",
+            "hint": ""
+        },
+        "void_Section": {
+            "msg": "This place is empty",
+            "hint": ""
         }
     }
 }
