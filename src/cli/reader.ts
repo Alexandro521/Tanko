@@ -4,13 +4,13 @@ import esc from "ansi-escapes"
 import readLine from "node:readline"
 import { stdin } from "node:process"
 import prompts from "@alex_521/prompts"
-import { Configuration } from "src/functions/configuration.js"
+import { Configuration } from "../functions/configuration.js"
 import { SignalsCodes } from "../types/enum.js"
 import { History } from "../functions/history.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { ChapterInfo, ChapterPage, MangaServerInterface } from "../types/types.js"
-import type { LangInterface } from "src/types/lang.js"
+import type { LangInterface } from "../types/lang.js"
 
 const loading = ora()
 let instance = await Configuration.getInstance()
