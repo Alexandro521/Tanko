@@ -13,7 +13,6 @@
         "sourceMap": true,
         "declaration": false,
         "verbatimModuleSyntax": true,
-        "baseUrl": ".",
     },
 
     "include": [
