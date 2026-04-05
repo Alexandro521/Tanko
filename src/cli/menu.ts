@@ -141,7 +141,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
 
         const choices = result.chapters.map((e): Choice => {
             return {
-                title: e.title,
+                title: e.src['es-la']?.title ?? '',
                 value: e
             }
         })
