@@ -1,12 +1,30 @@
 import  type { Page } from "playwright"
+import type { keyof } from "zod"
 
 export interface ChapterPage  {
     src: string
     page_index: string
 }
+type ChapterLangKey = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr'
 export interface Chapter {
+    index: number | string,
     id: string
     title: string
+    lang_n: number
+    src: {
+        'es'?: ChapterLangStruct,
+        'en'?: ChapterLangStruct,
+        'vi'?: ChapterLangStruct,
+        'ru'?: ChapterLangStruct,
+        'fr'?: ChapterLangStruct,
+        'es-la'?: ChapterLangStruct,
+        'pt-br'?: ChapterLangStruct,
+    }
+}
+
+
+export interface ChapterLangStruct {
+    lang: ChapterLangKey,
     src: string
 }
 
@@ -28,9 +46,9 @@ export interface ChapterInfo {
 
 export declare class MangaServerInterface{
     constructor(context: Page)
-    search(query: string ) : Promise<SearchResult[]>
+    search(query: string ) : Promise<SearchResult[] | undefined>
     getChaptersList(mangaSrc: string): Promise<{title: string, chapters: Chapter[]} | undefined>
-    getChapterPages(chapterSrc: string): Promise<ChapterInfo>
+    getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined>
     getPopulars(): Promise<PopularManga[] | undefined>
     getLastMangas(): Promise<LastedManga[] | undefined>
 }

@@ -99,7 +99,7 @@ async function searchBar(server: MangaServerInterface) {
             loading.start(`${loading_states.searching} ${searchQuery.query}...`)
             const results = await server.search(searchQuery.query)
 
-            if (results.length < 1) {
+            if ((results?.length && results.length < 1) || !results) {
                 clearScreen()
                 loading.fail(err_messages.no_results.msg)
                 continue
@@ -161,8 +161,10 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
             if (loading.isSpinning) loading.stop()
             clearScreen()
             const options = await prompts(basicChapterOptions())
+            console.log(JSON.stringify(chapterInfo?.pages.length,null,'\n'))
 
-            if (!options.target){
+            console.log(JSON.stringify(chapterInfo?.pages,null,'\n'))
+            if (!options.target || !chapterInfo){
                 clearScreen()
                 continue
                 }
@@ -264,13 +266,15 @@ async function populars(server: MangaServerInterface) {
                 loading.start(`${loading_states.default_loading} ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
-                await terminalReader(res, server)
+                if(res)
+                    await terminalReader(res, server)
             }
             else if (option.target === SignalsCodes.download_chapter) {
                 loading.start(`${loading_states.default_loading} ${info.title} : ${info.last_chapter.title}`)
                 const res = await server.getChapterPages(info.last_chapter.src);
                 loading.stop();
-                await downloadChapter(res.mangaTitle, res.title, res.pages)
+                if(res)
+                    await downloadChapter(res.mangaTitle, res.title, res.pages)
             }
             else if (option.target === SignalsCodes.get_chapters_list) {
                 await loadMangaChapter(server, info.src)
@@ -334,6 +338,7 @@ async function lastedSection(server: MangaServerInterface) {
                 loading.start(`${loading_states.default_loading} ${chapter.title} : ${chapter.title}`)
 
                 const res = await server.getChapterPages(chapter.src);
+                if(!res) continue;
                 loading.stop();
                 if (chapterOptions.target === SignalsCodes.read_chapter)
                     await terminalReader(res, server)

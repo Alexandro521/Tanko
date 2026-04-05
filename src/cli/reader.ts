@@ -92,17 +92,20 @@ function chapterNavigator(previousChapter: string | null, nextChapter: string | 
           //  console.log(previousChapter, nextChapter)
             if (!nextChapter) return null
             const data = await server.getChapterPages(nextChapter)
-
-            previousChapter = data.prevChapter
-            nextChapter = data.nextChapter
+            if(data){
+                previousChapter = data.prevChapter
+                nextChapter = data.nextChapter
+            }
             return data;
         },
         backChapter: async () => {
            // console.log(previousChapter, nextChapter)
             if (!previousChapter) return null
             const data = await server.getChapterPages(previousChapter)
-            previousChapter = data.prevChapter
-            nextChapter = data.nextChapter
+            if(data){
+                previousChapter = data.prevChapter
+                nextChapter = data.nextChapter
+            }
             return data;
         }
     }
