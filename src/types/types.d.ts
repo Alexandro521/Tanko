@@ -24,6 +24,7 @@ export interface Chapter {
 
 
 export interface ChapterLangStruct {
+    title: string
     lang: ChapterLangKey,
     src: string
 }
