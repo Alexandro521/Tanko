@@ -3,6 +3,7 @@ import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
+import type { ChapterLangKey, ChapterLangStruct } from "src/types/types.js";
 
 const instance =  await Configuration.getInstance()
 let {configuration,main_sections,chapter_access_options} = instance.getLang()
@@ -224,4 +225,14 @@ export const terminalReaderChapterOptions = ()=>{
     //ChapterAccessOptions.suscribe,
         sh.exit,
 ], '', 'select')
+}
+
+export const chapterLangChoices = (langs: ChapterLangStruct[]) => {
+    const choices = langs.map((e):Choice=>{
+        return {
+            title: e.lang,
+            value: e.src
+        }
+    })
+    return SectionPrompt('Select Language',choices, '', 'select' )
 }
