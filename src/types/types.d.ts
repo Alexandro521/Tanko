@@ -7,7 +7,7 @@ export interface ChapterPage  {
 }
 type ChapterLangKey = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr'
 export interface Chapter {
-    index: number | string,
+
     id: string
     title: string
     lang_n: number
