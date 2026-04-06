@@ -60,8 +60,15 @@ export class MangaServerClient implements MangaServerInterface {
         const anchor = $(node).find('a.xanh')
         chapters.push({
             id: i.toString(),
-            src: anchor.attr('href') ?? '',
-            title: anchor.text()
+            lang_n: 1,
+            title: anchor.text(),
+            src: {
+                "es-la": {
+                    lang: "es-la",
+                    title: anchor.text(),
+                    src: anchor.attr('href') ?? ''
+                }
+            }
         })
         })
         return {
