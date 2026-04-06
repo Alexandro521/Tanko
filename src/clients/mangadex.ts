@@ -4,6 +4,7 @@ import axios from "axios";
 
 import type { SearchResultMangadex } from "src/types/mangadex/search.js";
 import type { Puzzle } from "src/types/mangadex/get_pages.js";
+import { nullableProcessor } from "node_modules/zod/v4/core/json-schema-processors.cjs";
 
 
 export class MangaDex implements MangaServerInterface{
@@ -29,53 +30,69 @@ export class MangaDex implements MangaServerInterface{
             console.log('Error ')
         }
     }
+
     async getChaptersList(mangaSrc: string): Promise<{ title: string; chapters: Chapter[]; } | undefined> {
-        try{ 
-            const res = await axios.get<ChapterListMangadex>(
-                `${this.baseUrl}/manga/${mangaSrc}/feed?limit=256`
-            );
+        try{
+            let offset = 0
+            let data = [];
+            while(true){
+                const res = await axios.get<ChapterListMangadex>(
+                    `${this.baseUrl}/manga/${mangaSrc}/feed?limit=300&offset=${offset}`
+                );
+                data.push(...res.data.data);
+                if(data.length >= res.data.total) 
+                    break;
+                offset += Math.min(300, res.data.total - data.length);
+            }
 
             const chapterMap = new Map<string, number>()
+            interface Chapter_ extends Chapter {index: number | string}
 
-            const chapterList: Chapter[] = []
+            const chapterList: Chapter_[] = []
 
-            for(const chapterData of res.data.data){
+            for(const chapterData of data){
                 const chapterNumber = chapterData.attributes.chapter ?? ''
                 const chapterLang = chapterData.attributes.translatedLanguage as ChapterLangKey
-                const title = `Chapter ${chapterData.attributes.chapter}${chapterData.attributes.title ? ': ' + chapterData.attributes.title : ''}`
+                const title = 
+                `Chapter ${chapterData.attributes.chapter}`+
+                `${chapterData.attributes.title != null ? ': ' + chapterData.attributes.title : ''}`
+
                 if(chapterMap.has(chapterNumber)){
+                    
                     const target = chapterList[chapterMap.get(chapterNumber) ?? 0 ];
                     target.lang_n++
 
                     target.src[chapterLang] = {
-                        lang: chapterLang,
                         title,
+                        lang: chapterLang,
                         src: chapterData.id
                     }
                     continue
                 }
 
-                const chapterInfo:Chapter = {
-                    id: chapterData.id,
-                    index: chapterNumber,
-                    title: `Chapter ${chapterData.attributes.chapter}${chapterData.attributes.title ? ': ' + chapterData.attributes.title : ''}`,
+                const chapterInfo:Chapter_ = {
+                    title,
                     lang_n: 1,
                     src: {},
+                    id: chapterData.id,
+                    index: chapterNumber,
                 }
+
                 chapterInfo.src[chapterLang] = {
+                    title,
                     lang: chapterLang,
-                    title: `Chapter ${chapterData.attributes.chapter}${chapterData.attributes.title ? ': ' + chapterData.attributes.title : ''}`,
                     src: chapterData.id
                 }
                 chapterList.push(chapterInfo)
                 chapterMap.set(chapterNumber, chapterList.length -1)
             }
-            chapterList.sort((a,b) =>  Number(b.index ) - Number(a.index))
+
+            chapterList.sort((a,b) =>  Number(b.index) - Number(a.index))
             return {
-                title: res.data.data[0].attributes.title ?? '',
+                title: chapterList[0]?.title ?? '',
                 chapters: chapterList 
             }
-            
+
         }catch(e){
             console.log('Error ')
         }
@@ -84,10 +101,8 @@ export class MangaDex implements MangaServerInterface{
     async getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined> {
         try{
             let chapterInfo: ChapterInfo;
-            //chapter attributes
-            //chapter pages 
+
             const res = await axios.get<Puzzle>(`${this.baseUrl}/at-home/server/${chapterSrc}`)
-            console.log(res.data)
             let {baseUrl, chapter} = res.data
             baseUrl += `/data/${chapter.hash}/`
 
