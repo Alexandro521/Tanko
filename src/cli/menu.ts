@@ -6,6 +6,7 @@ import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
 import type {
     ChapterInfo,
+    ChapterLangStruct,
     ChapterMinInfo,
     LastedManga,
     MangaServerInterface,
@@ -14,6 +15,7 @@ import type {
 import { SignalsCodes } from '../types/enum.js'
 import {
     basicChapterOptions,
+    chapterLangChoices,
     generateChapterList,
     historyChapterOptions,
     historySectionPrompt,
@@ -131,33 +133,47 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
     try {
         loading.start(`${loading_states.loading_chapters}...`);
 
-        const result = await server.getChaptersList(mangaSrc);
+        const chapterList = await server.getChaptersList(mangaSrc);
 
-        if (!result || result.chapters.length < 0) {
+        if (!chapterList || chapterList.chapters.length < 0) {
             loading.fail(err_messages.chapter_loading.msg)
             return
         }
         loading.stop();
 
-        const choices = result.chapters.map((e): Choice => {
+        const choices = chapterList.chapters.map((e): Choice => {
             return {
-                title: e.src['es-la']?.title ?? '',
+                title: Object.values(e.src)[0].title,
                 value: e
             }
         })
 
         while (true) {
             const select = await prompts(
-                generateChapterList(result.title, choices.length, choices)
+                generateChapterList(chapterList.title, choices.length, choices)
             )
 
             if (!select.chapter) {
                 clearScreen()
                 break
             }
+            let chapterLangStruct = Object.values(select.chapter.src) as ChapterLangStruct[]
+            let chapterSrc = chapterLangStruct[0].src //deafault value
 
-            loading.start(`${loading_states.default_loading} ${result.title}...`)
-            const chapterInfo = await server.getChapterPages(select.chapter.src)
+            if(select.chapter.lang_n > 1){
+                const target = await prompts(
+                    chapterLangChoices(Object.values(select.chapter.src))
+                )
+
+                if(!target?.target){//no chapter lang select
+                    clearScreen()
+                    continue
+                }
+                chapterSrc = target.target
+            }
+
+            loading.start(`${loading_states.default_loading} ${chapterList.title}...`)
+            const chapterInfo = await server.getChapterPages(chapterSrc)
             if (loading.isSpinning) loading.stop()
             clearScreen()
             const options = await prompts(basicChapterOptions())
