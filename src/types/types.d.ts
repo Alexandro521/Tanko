@@ -22,7 +22,7 @@ export interface Chapter {
     }
 }
 
-
+type ClientsName = "mangadex" | "leercapitulo"
 export interface ChapterLangStruct {
     title: string
     lang: ChapterLangKey,
@@ -47,6 +47,7 @@ export interface ChapterInfo {
 
 export declare class MangaServerInterface{
     constructor(context: Page)
+    public name:ClientsName
     search(query: string ) : Promise<SearchResult[] | undefined>
     getChaptersList(mangaSrc: string): Promise<{title: string, chapters: Chapter[]} | undefined>
     getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined>

@@ -1,13 +1,12 @@
 import type { ChapterListMangadex } from "src/types/mangadex/get_chapters.js";
-import type { MangaServerInterface,  Chapter,  ChapterInfo,  LastedManga,  PopularManga,  SearchResult, ChapterPage, ChapterLangKey } from "../types/types.js";
+import type { MangaServerInterface,  Chapter,  ChapterInfo,  LastedManga,  PopularManga,  SearchResult, ChapterPage, ChapterLangKey, ClientsName } from "../types/types.js";
 import axios from "axios";
 
 import type { SearchResultMangadex } from "src/types/mangadex/search.js";
 import type { Puzzle } from "src/types/mangadex/get_pages.js";
-import { nullableProcessor } from "node_modules/zod/v4/core/json-schema-processors.cjs";
-
 
 export class MangaDex implements MangaServerInterface{
+    public name:ClientsName = "mangadex"
     private  baseUrl = 'https://api.mangadex.org'
 
     async search(query: string): Promise<SearchResult[] | undefined> {
@@ -99,12 +98,16 @@ export class MangaDex implements MangaServerInterface{
     }
 
     async getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined> {
-        try{
-            let chapterInfo: ChapterInfo;
-
+      try {
+            /*Get pages URL*/
             const res = await axios.get<Puzzle>(`${this.baseUrl}/at-home/server/${chapterSrc}`)
-            let {baseUrl, chapter} = res.data
-            baseUrl += `/data/${chapter.hash}/`
+            const { baseUrl, chapter } = res.data
+            const pages = chapter.data.map((e, i): ChapterPage => {
+              return {
+                page_index: i.toString(),
+                src: `${baseUrl}/data/${chapter.hash}/${e}`
+              }
+            })
 
             return  {
                 main_src: '',
@@ -113,11 +116,8 @@ export class MangaDex implements MangaServerInterface{
                 prevChapter: '',
                 src: '',
                 title: '',
-                pages: chapter.data.map((e,i):ChapterPage=> {
-                    return {page_index: i.toString(), src: `${baseUrl}${e}`}
-                })
+                pages
             }
-
         }catch(e){
             
         }

@@ -4,6 +4,7 @@ import type {
     Chapter,
     ChapterInfo,
     ChapterMinInfo,
+    ClientsName,
     LastedManga,
     MangaServerInterface,
     PopularManga,
@@ -11,6 +12,7 @@ import type {
 
 export class MangaServerClient implements MangaServerInterface {
     private page: Page
+    public name: ClientsName = "leercapitulo";
     private baseUrl = "https://www.leercapitulo.co"
     constructor(pageContext: Page){
         this.page = pageContext
