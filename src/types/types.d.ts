@@ -5,24 +5,19 @@ export interface ChapterPage  {
     src: string
     page_index: string
 }
-type ChapterLangKey = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr'
-export interface Chapter {
+type ChapterLangKey = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr' 
 
+export interface Chapter {
     id: string
     title: string
     lang_n: number
     src: {
-        'es'?: ChapterLangStruct,
-        'en'?: ChapterLangStruct,
-        'vi'?: ChapterLangStruct,
-        'ru'?: ChapterLangStruct,
-        'fr'?: ChapterLangStruct,
-        'es-la'?: ChapterLangStruct,
-        'pt-br'?: ChapterLangStruct,
+      [key in ChapterLangKey] ?: ChapterLangStruct
     }
 }
 
 type ClientsName = "mangadex" | "leercapitulo"
+
 export interface ChapterLangStruct {
     title: string
     lang: ChapterLangKey,
@@ -44,13 +39,17 @@ export interface ChapterInfo {
     pages: ChapterPage[],
     main_src:string,
 }
+export interface ChapterList {
+  title: string,
+  chapters: Chapter[]
+}
 
 export declare class MangaServerInterface{
     constructor(context: Page)
     public name:ClientsName
     search(query: string ) : Promise<SearchResult[] | undefined>
-    getChaptersList(mangaSrc: string): Promise<{title: string, chapters: Chapter[]} | undefined>
-    getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined>
+    getChaptersList(mangaSrc: string): Promise<ChapterList | undefined>
+    getChapterPages(chapterSrc: string): Promise<ChapterPage[] | undefined>
     getPopulars(): Promise<PopularManga[] | undefined>
     getLastMangas(): Promise<LastedManga[] | undefined>
 }
