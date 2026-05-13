@@ -97,7 +97,7 @@ export class MangaDex implements MangaServerInterface{
         }
     }
 
-    async getChapterPages(chapterSrc: string): Promise<ChapterInfo | undefined> {
+    async getChapterPages(chapterSrc: string): Promise<ChapterPage[] | undefined> {
       try {
             /*Get pages URL*/
             const res = await axios.get<Puzzle>(`${this.baseUrl}/at-home/server/${chapterSrc}`)
@@ -108,16 +108,8 @@ export class MangaDex implements MangaServerInterface{
                 src: `${baseUrl}/data/${chapter.hash}/${e}`
               }
             })
-
-            return  {
-                main_src: '',
-                mangaTitle: '',
-                nextChapter: '', 
-                prevChapter: '',
-                src: '',
-                title: '',
-                pages
-            }
+            return pages
+            
         }catch(e){
             
         }

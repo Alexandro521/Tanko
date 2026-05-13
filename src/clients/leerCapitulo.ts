@@ -4,6 +4,7 @@ import type {
     Chapter,
     ChapterInfo,
     ChapterMinInfo,
+    ChapterPage,
     ClientsName,
     LastedManga,
     MangaServerInterface,
@@ -65,11 +66,11 @@ export class MangaServerClient implements MangaServerInterface {
             lang_n: 1,
             title: anchor.text(),
             src: {
-                "es-la": {
+              "es-la": {
                     lang: "es-la",
                     title: anchor.text(),
                     src: anchor.attr('href') ?? ''
-                }
+              },
             }
         })
         })
@@ -81,17 +82,10 @@ export class MangaServerClient implements MangaServerInterface {
         console.log(e);
     }
     }
-    async getChapterPages(chapterSrc: string): Promise<ChapterInfo>{
+    async getChapterPages(chapterSrc: string): Promise<ChapterPage[]>{
                 await this.page.goto(this.baseUrl + chapterSrc);
                 let pagesNodes = await this.page.locator('.each-page a').all();
-                let title = await this.page.locator('h1').innerText()
-                let mainInfo = this.page.locator("div.container_title h2.chapter-title").nth(1).locator('a').first()
-                let nexChapterLocator = this.page.locator('div.select_page_1 a.next')
-                let prevChapterLocator  = this.page.locator('div.select_page_1 a.pre')
-                let nextChapter =  (await nexChapterLocator.isVisible()) ? await nexChapterLocator.getAttribute('href') ?? null : null
-                let prevChapter =  (await prevChapterLocator.isVisible()) ? await prevChapterLocator.getAttribute('href') ?? null : null
-            
-                //  spin.text = `fetching pages [0/${pages.length}]`
+      
                 const pages =  await Promise.all(
                         pagesNodes.map(async page => {
                         return {
@@ -100,15 +94,7 @@ export class MangaServerClient implements MangaServerInterface {
                         }
                     }
             ))
-            return {
-                    title,
-                    mangaTitle: await mainInfo.getAttribute('title') ?? '',
-                    main_src: await  mainInfo.getAttribute('href') ?? '',
-                    src: chapterSrc,
-                    nextChapter,
-                    prevChapter,
-                    pages,
-            }
+            return pages
     }
     async getPopulars():Promise<PopularManga[] | undefined> {
         try {
