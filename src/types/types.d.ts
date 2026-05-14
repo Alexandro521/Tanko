@@ -30,17 +30,21 @@ export interface SearchResult {
     link: string
     thumbnail: string
 }
-export interface ChapterInfo {
-    mangaTitle: string,
-    title: string,
-    src: string
-    nextChapter: string | null,
-    prevChapter: string | null,
-    pages: ChapterPage[],
-    main_src:string,
+
+export interface HistoryObject {
+  mangaTitle: string,
+  mangaSrc: string,
+  last_title: string,
+  last_index: number,
+  last_lang: ChapterLangKey,
+  chapters_length: number,
+  time: number,
 }
-export interface ChapterList {
+
+export interface MangaInfo {
   title: string,
+  src: string,
+  description?:string,
   chapters: Chapter[]
 }
 
@@ -48,7 +52,7 @@ export declare class MangaServerInterface{
     constructor(context: Page)
     public name:ClientsName
     search(query: string ) : Promise<SearchResult[] | undefined>
-    getChaptersList(mangaSrc: string): Promise<ChapterList | undefined>
+    getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined>
     getChapterPages(chapterSrc: string): Promise<ChapterPage[] | undefined>
     getPopulars(): Promise<PopularManga[] | undefined>
     getLastMangas(): Promise<LastedManga[] | undefined>

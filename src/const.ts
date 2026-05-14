@@ -7,6 +7,7 @@ export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
 export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config.json')
 export const DATA_DEFAULT_DIR = path.resolve(BASE_DIR, 'data')
+export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_test.json')
 export const TEMP_DIR = os.tmpdir()
 
 
