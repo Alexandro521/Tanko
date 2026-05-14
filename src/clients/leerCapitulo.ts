@@ -2,14 +2,15 @@ import type { Page } from "playwright";
 import * as cheerio from "cheerio"
 import type { 
     Chapter,
-    ChapterInfo,
+    HistoryObject,
     ChapterMinInfo,
     ChapterPage,
     ClientsName,
     LastedManga,
     MangaServerInterface,
     PopularManga,
-    SearchResult,} from "../types/types.js"
+    SearchResult,
+    MangaInfo,} from "../types/types.js"
 
 export class MangaServerClient implements MangaServerInterface {
     private page: Page
@@ -48,7 +49,7 @@ export class MangaServerClient implements MangaServerInterface {
         const json: SearchResult[] = await res.json()
         return json
     }
-    async getChaptersList(mangaSrc: string) {
+    async getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined> {
         try{
         const html = await fetch(this.baseUrl+mangaSrc)
         if(!html.ok) {
@@ -76,6 +77,7 @@ export class MangaServerClient implements MangaServerInterface {
         })
         return {
             title,
+            src: mangaSrc,
             chapters
         }
     }catch(e){

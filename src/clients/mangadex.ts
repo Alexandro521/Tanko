@@ -1,5 +1,5 @@
 import type { ChapterListMangadex } from "src/types/mangadex/get_chapters.js";
-import type { MangaServerInterface,  Chapter,  ChapterInfo,  LastedManga,  PopularManga,  SearchResult, ChapterPage, ChapterLangKey, ClientsName } from "../types/types.js";
+import type { MangaServerInterface,  Chapter,  HistoryObject,  LastedManga,  PopularManga,  SearchResult, ChapterPage, ChapterLangKey, ClientsName, MangaInfo } from "../types/types.js";
 import axios from "axios";
 
 import type { SearchResultMangadex } from "src/types/mangadex/search.js";
@@ -30,7 +30,7 @@ export class MangaDex implements MangaServerInterface{
         }
     }
 
-    async getChaptersList(mangaSrc: string): Promise<{ title: string; chapters: Chapter[]; } | undefined> {
+    async getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined> {
         try{
             let offset = 0
             let data = [];
@@ -89,6 +89,7 @@ export class MangaDex implements MangaServerInterface{
             chapterList.sort((a,b) =>  Number(b.index) - Number(a.index))
             return {
                 title: chapterList[0]?.title ?? '',
+                src: mangaSrc,
                 chapters: chapterList 
             }
 
