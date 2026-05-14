@@ -9,7 +9,7 @@ import { SignalsCodes } from "../types/enum.js"
 import { History } from "../functions/history.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
-import type { Chapter,  ChapterPage, MangaServerInterface, ChapterList, ChapterLangKey,ChapterLangStruct } from "../types/types.js"
+import type { Chapter,  ChapterPage, MangaServerInterface, MangaInfo, ChapterLangKey,ChapterLangStruct } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
 
 const loading = ora()
@@ -35,7 +35,7 @@ class PagesControl {
     this.pages = pages;
   }
     nextPage() {
-      if (this.index < this.pages.length)
+      if (this.index < this.pages.length-1)
         this.index++;
     }
     backPage(){
@@ -65,7 +65,8 @@ class PagesControl {
 class TerminalControl {
   static exitRawMode(keyHandler: any) {
     process.stdout.write(esc.cursorShow)
-    process.stdin.removeListener('keypress', keyHandler);
+    if(keyHandler)
+      process.stdin.removeListener('keypress', keyHandler);
     process.stdin.setRawMode(false);
     process.stdin.pause();
     process.stdout.write(esc.clearViewport);
@@ -119,14 +120,12 @@ class ChapterControl{
   async nextChapter() {
     if (this.index < this.chapters.length) {
       this.index++;
-      return this.loadChapter();
     }
     return null
   }
     async prevChapter() {
       if (this.index > 0) {
         this.index--;
-        return this.loadChapter();
       }
       return null
     }
@@ -158,56 +157,59 @@ const debugLogs = (src: string) => {
     process.stdout.write(`[DEBUG INFO] (CACHE SIZE): ${(ImageCache.cacheSize / 1000000).toFixed(2)} MB (MAX CACHE SIZE) : ${(ImageCache.MAX_SIZE / 1000000).toFixed(2)} MB (CACHE POINTER POSITION): ${ImageCache.pointer}, (PAGES IN CACHE) ${ImageCache.cache.size}, (FROM CACHE) ${ImageCache.cache.has(src)}\n\n`)
 }
 
-export async function terminalReader(chapters: ChapterList, startIndex: number, lang:ChapterLangKey , server: MangaServerInterface) {
+export async function terminalReader(manga: MangaInfo, startIndex: number, lang: ChapterLangKey, server: MangaServerInterface) {
     return new Promise<void>(async (resolve) => {
-        const chapterCtrl = new ChapterControl(chapters.chapters, startIndex, lang, server);
-        let startPages = await chapterCtrl.loadChapter()
-        const pageCtrl = new PagesControl(startPages ?? []);
-      //  History.save(chapters)
+        const chapterCtrl = new ChapterControl(manga.chapters, startIndex, lang, server);
+        const pageCtrl = new PagesControl([]);
+      
         TerminalControl.openRawMode()
-
         const renderInfo = () => {
             console.log(esc.clearViewport)
-            renderHeader(chapters.title, chapters.title, pageCtrl.index + 1, 1)
+            renderHeader(manga.title, manga.title, pageCtrl.index + 1, 1)
             //debugLogs(pagesNav.getState().src.src)
         }
-
         const pageDebounce = debounce(async () => {
                 await pageCtrl.loadPage()
                 process.stdout.write(esc.cursorHide)
                 process.stdout.write(chalk.gray("\n   ←            →          Q & ESC            P                    N                C\nAnterior    Siguiente        Exit       capitulo anterior   capitulo siguiente    Opciones"
             ))
         }, 300)
-      
         renderInfo()
-      await pageCtrl.loadPage()
-      
-        const chapterLoader = async (signal: SignalsCodes) => {
+      const chapterLoader = async (signal: SignalsCodes | undefined = undefined, handle: Function | undefined = undefined) => {
             try {
                 if (stdin.isRaw) {
-                    TerminalControl.exitRawMode(handleKeypress)
+                    TerminalControl.exitRawMode(handle)
                 }
                 loading.start(loading_states.loading_chapter)
 
-                if(signal === SignalsCodes.nex_chapter) 
+                if(signal === SignalsCodes.next_chapter) 
                   await chapterCtrl.nextChapter()
-                else
+                else if(signal === SignalsCodes.previous_chapter)
                   await chapterCtrl.prevChapter()
               
                 let newPages = await chapterCtrl.loadChapter()
-                //  History.save(chapters)
+          
+                History.save({
+                    chapters_length: manga.chapters.length,
+                    last_index: startIndex,
+                    last_lang: lang,
+                    last_title: manga.chapters[startIndex].title,
+                    mangaSrc: manga.src,
+                    mangaTitle: manga.title,
+                    time: Date.now()
+                  })
                 pageCtrl.setPages = newPages ?? []
                 loading.stop()
-                if (stdin.isTTY) TerminalControl.openRawMode(handleKeypress)
+                if (stdin.isTTY) TerminalControl.openRawMode(handle)
                 renderInfo()
                 await pageCtrl.loadPage()
             } catch (e) {
                 loading.fail(err_messages.no_results.msg)
-                if (stdin.isTTY) TerminalControl.openRawMode(handleKeypress)
+                if (stdin.isTTY) TerminalControl.openRawMode(handle)
             }
         }
-
-        const handleKeypress = async (str: string, key: any) => {
+      await chapterLoader();
+      const handleKeypress = async (__: string, key: any) => {
 
             const name: string = key.name;
             if (key && key.ctrl && name === 'c') {
@@ -235,10 +237,9 @@ export async function terminalReader(chapters: ChapterList, startIndex: number, 
                     return
                 }
 
-                if (options.target === SignalsCodes.nex_chapter)
-                    await chapterLoader(SignalsCodes.nex_chapter)
-
-                else if (options.target === SignalsCodes.previous_chapter)
+                if (options.target === SignalsCodes.next_chapter)
+                    await chapterLoader(SignalsCodes.next_chapter, handleKeypress)
+                else if (options.target === SignalsCodes.previous_chapter, handleKeypress)
                     await chapterLoader(SignalsCodes.previous_chapter)
 
                 else if (options.target === SignalsCodes.exit) {
@@ -248,10 +249,10 @@ export async function terminalReader(chapters: ChapterList, startIndex: number, 
                 }
             }
             else if (name === 'p' || name === 'P')
-                await chapterLoader(SignalsCodes.previous_chapter)
+                await chapterLoader(SignalsCodes.previous_chapter, handleKeypress)
             else if (name === 'n' || name === 'N')
-                await chapterLoader(SignalsCodes.nex_chapter)
-        }
-        process.stdin.on('keypress', handleKeypress)
+                await chapterLoader(SignalsCodes.next_chapter, handleKeypress)
+      }
+      process.stdin.on('keypress', handleKeypress)
     })
 }
