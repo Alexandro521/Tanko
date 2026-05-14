@@ -20,7 +20,7 @@ export enum SignalsCodes {
     history_section = 453,
     configuration_section = 563,
     search_section = 673,
-    nex_chapter = 27,
+    next_chapter = 27,
     previous_chapter = 29,
     delete_from_history = 456,
     delete_history = 499,

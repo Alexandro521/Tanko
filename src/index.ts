@@ -4,7 +4,7 @@ import fsp from 'fs/promises'
 import path from 'path'
 import ansiEscapes from 'ansi-escapes'
 import { History } from "./functions/history.js";
-import { init } from "./cli/menu.js";
+import { main } from "./cli/menu.js";
 import { BASE_DIR,DATA_DEFAULT_DIR,DOWNLOADS_DEFAULT_DIR} from './const.js'
 import { Configuration } from './functions/configuration.js';
 
@@ -25,4 +25,4 @@ if(!fs.existsSync(DATA_DEFAULT_DIR)){
 }
 
 History.load() 
-await init()
+await main()

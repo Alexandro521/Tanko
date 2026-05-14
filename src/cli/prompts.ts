@@ -78,7 +78,7 @@ const ChapterAccessOptions = () => {
     },
     next_chapter: {
         title: chapter_access_options.next_ch.title, 
-        value: SignalsCodes.nex_chapter
+        value: SignalsCodes.next_chapter
     }
 }
 }
