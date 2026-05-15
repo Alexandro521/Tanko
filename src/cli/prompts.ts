@@ -16,15 +16,15 @@ instance.on('update',async () => {
 })
 
 // [General Prompts]
-export const generateChapterList = (title: string, count: number, choices: Choice[]): PromptObject<'chapter'> => {
+export const generateChapterList = (title: string, choices: Choice[]): PromptObject<'chapter'> => {
     return {
         type: 'autocomplete',
         name: 'chapter',
         message: title,
-        hint: `capitulos: ${count}`,
+        hint: `capitulos: ${choices.length}`,
         choices,
         clearFirst: true,
-        limit: 30
+        //limit: 30
     }
 }
 

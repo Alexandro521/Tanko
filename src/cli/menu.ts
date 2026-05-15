@@ -27,6 +27,7 @@ import {  WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configuration.js";
 import { Configuration } from '../functions/configuration.js';
 import type { ErrorMessages, LoadingStates } from 'src/types/lang.js';
+import fs from 'fs';
 
 const loading = ora();
 
@@ -80,7 +81,7 @@ export async function main() {
           break
         case SignalsCodes.exit:
           await instace.closeBrowser()
-          break
+          process.exit(0)
       }
       clearScreen()
     }
@@ -164,7 +165,7 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
 
         while (true) {
             const select = await prompts(
-                generateChapterList(chapterList.title, choices.length, choices)
+                generateChapterList(chapterList.title, choices)
           )
           if (!select.chapter) {
                 clearScreen()
@@ -178,10 +179,10 @@ async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) 
           clearScreen()
           const options = await prompts(basicChapterOptions())
 
-            if (!options.target){
+          if (!options.target){
                 clearScreen()
                 continue
-            }
+          }
 
             if (options.target === SignalsCodes.read_chapter) {
                 await terminalReader(chapterList,select.chapter, lang, server)
@@ -260,9 +261,10 @@ async function populars(server: MangaServerInterface) {
             return {
                 title: popular.title,
                 description: popular.last_chapter.title,
-                value: index
+                value: index +1
             }
       })
+      
       while (true) {
         const select = await prompts(popularSectionPrompt(choices))
 
@@ -271,13 +273,14 @@ async function populars(server: MangaServerInterface) {
           break;
         }
         clearScreen()
-        const info = populars[select.target]
+        const info = populars[select.target -1]
+        fs.appendFileSync('populars.log', JSON.stringify({index: select.target }, null, '\t'));
         const option = await prompts(popularMangaSelectOptions(info.title))
         if (!option?.target) {
                 clearScreen()
                 continue
         }
-        loading.start("loading...");
+        loading.start(loading_states.default_loading);
         const mangainfo = await server.getMangaInfo(info.src)
         if (!mangainfo) throw new Error("");
         const lastChapter = mangainfo.chapters[mangainfo.chapters.length - 1];
@@ -341,7 +344,8 @@ async function lastedSection(server: MangaServerInterface) {
             })
           
             while (true) {
-              let chapterIndex = await prompts(generateChapterList(targetManga.title, lastChapterList.length, lastChapterList))
+              let chapterIndex = await prompts(
+                generateChapterList(targetManga.title, lastChapterList))
               
                 if (!chapterIndex.chapter) {
                     clearScreen()

@@ -23,7 +23,7 @@ export class History {
       }
       const history = await fsp.readFile(HISTORY_PATH, {encoding: 'utf-8'})
       const obj = <HistoryDataStruct>JSON.parse(history.toString())
-      if (!obj?.history) {
+      if (!obj.history) {
         /*recovering corrupted file */
         await fsp.writeFile(HISTORY_PATH, JSON.stringify({ last_update: Date.now(), History: [] }, null, '\t'))
       }

@@ -74,7 +74,7 @@ export class MangaServerClient implements MangaServerInterface {
               },
             }
         })
-        })
+      })
         return {
             title,
             src: mangaSrc,
