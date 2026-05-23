@@ -1,5 +1,6 @@
 import  type { Page } from "playwright"
 import type { keyof } from "zod"
+import type { AvalibleLangs } from "./lang.js"
 
 export interface ChapterPage  {
     src: string
@@ -16,7 +17,7 @@ export interface Chapter {
     }
 }
 
-type ClientsName = "mangadex" | "leercapitulo"
+export type ServerName = "mangadex" | "leercapitulo"
 
 export interface ChapterLangStruct {
     title: string
@@ -50,7 +51,7 @@ export interface MangaInfo {
 
 export declare class MangaServerInterface{
     constructor(context: Page)
-    public name:ClientsName
+    public name:ServerName
     search(query: string ) : Promise<SearchResult[] | undefined>
     getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined>
     getChapterPages(chapterSrc: string): Promise<ChapterPage[] | undefined>
@@ -75,12 +76,12 @@ export interface LastedManga {
 }
 
 export interface ConfigurationInterface {
-    client : ConfigurationClient,
-    language: 'es' | 'en',
+    client : ServerConfInterface,
+    language: AvalibleLangs,
     downloads_path : string,
     deepSearch: boolean,
 }
-export interface ConfigurationClient {
-    name: 'leercapitulo' | 'mangadex',
+export interface ServerConfInterface {
+    name: ServerName,
     need_browser: boolean
 }

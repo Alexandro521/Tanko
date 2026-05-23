@@ -101,3 +101,4 @@ export interface AppConfig {
   loading_states: LoadingStates;
   err_messages: ErrorMessages;
 }
+export type AvalibleLangs = 'es' | 'en'
