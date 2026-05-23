@@ -132,20 +132,15 @@ async function askChapterLang(chapter: Chapter) {
   return lang;
 }
 
-async function loadMangaChapter(
-  server: MangaServerInterface,
-  mangaSrc: string,
-) {
-  clearScreen();
+async function loadMangaChapter(server: MangaServerInterface, mangaSrc: string) {
   try {
+    clearScreen();
     loading.start(`${loading_states.loading_chapters}...`);
     const chapterList = await server.getMangaInfo(mangaSrc);
     if (!chapterList || chapterList.chapters.length < 0) {
       loading.fail(err_messages.chapter_loading.msg);
       return;
-    }
-    loading.stop();
-
+    } else if (loading.isSpinning) loading.stop();
     const choices: Choice[] = chapterList.chapters.map((e, i) => {
       return {
         title: Object.values(e.src)[0].title,
@@ -188,53 +183,63 @@ async function loadMangaChapter(
 }
 
 async function history(server: MangaServerInterface) {
-  clearScreen();
-  const history = History.fetch();
+try{
+    clearScreen();
+    const history = History.fetch();
 
   if (history.length < 1) {
     await prompts(voidPrompt(err_messages.void_Section.msg));
     return;
   }
 
-  const choices = history.map((e, index): Choice => {
-    return {
+  const choices = history.map((e, i): Choice => (
+    {
       title: e.mangaTitle,
       description: e.last_title,
-      value: index,
-    };
-  });
-
+      value: i + 1,
+    }
+  ));
   while (true) {
     const mangaIndex = await prompts(historySectionPrompt(choices));
-
     if (!mangaIndex?.target) {
       clearScreen();
       break;
     }
-    const manga = history[mangaIndex.target];
+    const mangaTarget = history[mangaIndex.target - 1];
     // clearScreen()
-    const options = await prompts(historyChapterOptions(manga.mangaTitle));
-
+    const options = await prompts(historyChapterOptions(mangaTarget.mangaTitle));
     if (!options.target) {
       clearScreen();
       continue;
     }
-    if (options.target === SignalsCodes.resume_read) {
-      loading.start(loading_states.loading_chapters);
-      const chapterList = await server.getMangaInfo(manga.mangaSrc);
-      if (loading.isSpinning) loading.stop();
-      if (!chapterList) continue;
-      await terminalReader(
-        chapterList,
-        manga.last_index,
-        manga.last_lang,
-        server,
-      );
-    } else if (options.target === SignalsCodes.get_chapters_list)
-      await loadMangaChapter(server, manga.mangaSrc);
-    else if (options.target === SignalsCodes.download_chapter)
-      // await downloadChapter(manga.mangaTitle, manga.mangaSrc, manga.pages)
-      clearScreen();
+    switch (options.target) {
+      case SignalsCodes.resume_read:
+        loading.start(loading_states.loading_chapters);
+        const chapterList = await server.getMangaInfo(mangaTarget.mangaSrc);
+        if (loading.isSpinning) loading.stop();
+        if (!chapterList) continue;
+        await terminalReader(
+          chapterList,
+          mangaTarget.last_index,
+          mangaTarget.last_lang,
+          server,
+        );
+        break;
+      case SignalsCodes.get_chapters_list:
+        await loadMangaChapter(server, mangaTarget.mangaSrc);
+        break;
+      case SignalsCodes.download_chapter:
+        // await downloadChapter(manga.mangaTitle, manga.mangaSrc, manga.pages)
+        clearScreen();
+        break;
+      default:
+        clearScreen();
+        break;
+      }
+    }
+  } catch (e) {
+    clearScreen();
+    console.log(e);
   }
 }
 
@@ -285,7 +290,7 @@ async function populars(server: MangaServerInterface) {
       if (option.target === SignalsCodes.read_chapter) {
         await terminalReader(
           mangainfo,
-          mangainfo.chapters.length - 1,
+          mangainfo.chapters.length,
           lang,
           server,
         );
