@@ -4,8 +4,7 @@ import fsp from 'fs/promises'
 import ansiEscapes from 'ansi-escapes'
 import { History } from "./functions/history.js";
 import { main } from "./cli/menu.js";
-import { BASE_DIR,DATA_DEFAULT_DIR,DOWNLOADS_DEFAULT_DIR} from './const.js'
-
+import { BASE_DIR, DATA_DEFAULT_DIR, DOWNLOADS_DEFAULT_DIR, HISTORY_PATH } from './const.js'
 console.log(ansiEscapes.clearTerminal)
 
 if(!fs.existsSync(BASE_DIR)) {
@@ -17,6 +16,10 @@ if(!fs.existsSync(DOWNLOADS_DEFAULT_DIR)){
 if(!fs.existsSync(DATA_DEFAULT_DIR)){
   await fsp.mkdir(DATA_DEFAULT_DIR,{recursive:true}) 
 }
+if (!fs.existsSync(HISTORY_PATH)) {
+  await fsp.writeFile(HISTORY_PATH, JSON.stringify({ last_update: Date.now(), history: [] }))
+}
 
 await History.load() 
+
 await main()
