@@ -11,7 +11,7 @@ import { terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { Chapter,  ChapterPage, MangaServerInterface, MangaInfo, ChapterLangKey,ChapterLangStruct } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
-
+const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
 let { err_messages, loading_states } = instance.getLang()
@@ -188,11 +188,11 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
                   await chapterCtrl.prevChapter()
               
                 let newPages = await chapterCtrl.loadChapter()
-          
                 History.save({
                     chapters_length: manga.chapters.length,
                     last_index: startIndex,
                     last_lang: lang,
+                    server: confInst.configuration.client.name,
                     last_title: manga.chapters[startIndex].title,
                     mangaSrc: manga.src,
                     mangaTitle: manga.title,
