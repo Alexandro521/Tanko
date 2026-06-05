@@ -77,10 +77,14 @@ export interface LastedManga {
 }
 
 export interface ConfigurationInterface {
-    client : ServerConfInterface,
     language: AvalibleLangs,
-    downloads_path : string,
     deepSearch: boolean,
+    historyServerFilter: boolean,
+    client: ServerConfInterface,
+    imageCacheMaxSize: string,
+    favoriteChapterLang: ChapterLangKey | 'any',
+    historyMaxSize: number,
+    downloads_path : string,
 }
 export interface ServerConfInterface {
     name: ServerName,
