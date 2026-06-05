@@ -16,10 +16,11 @@ instance.on('update',async () => {
 })
 
 // [General Prompts]
-export const generateChapterList = (title: string, choices: Choice[]): PromptObject<'chapter'> => {
+export const generateChapterList = (title: string,startIndex:number, choices: Choice[]): PromptObject<'chapter'> => {
     return {
         type: 'autocomplete',
         name: 'chapter',
+        initial: startIndex,
         message: title,
         hint: `capitulos: ${choices.length}`,
         choices,
@@ -84,11 +85,12 @@ const ChapterAccessOptions = () => {
 }
 
 type SelectMode = 'autocomplete' | 'select'
-const SectionPrompt = (title: string, choices: Choice[],hint = '', type: SelectMode = 'autocomplete'): PromptObject<'target'> => {
+const SectionPrompt = (title: string, choices: Choice[],hint = '', index:number,type: SelectMode = 'autocomplete'): PromptObject<'target'> => {
     return {
         type: type,
         name: 'target',
         hint,
+        initial: index,
         message: chalk.bgHex(PRIMARY_COLOR)(` ${title} `),
         choices,
         clearFirst: true
@@ -121,20 +123,20 @@ export const searchPrompt = (): PromptObject<'query'> =>{
 
 // [Sections]
 
-export const searchResultPrompt = (ch: Choice[]) =>{
-    return SectionPrompt(main_sections.search.alt, ch, `mangas: ${ch.length}`)
+export const searchResultPrompt = (ch: Choice[], index: number) =>{
+    return SectionPrompt(main_sections.search.alt, ch, `mangas: ${ch.length}`, index)
 }
 
-export const popularSectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt(main_sections.popular.title, ch, `mangas: ${ch.length}`)
+export const popularSectionPrompt = (ch: Choice[], index: number)=>{
+    return SectionPrompt(main_sections.popular.title, ch, `mangas: ${ch.length}`, index)
 }
 
-export const lastedSectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt(main_sections.recent.title, ch, `mangas: ${ch.length}`)
+export const lastedSectionPrompt = (ch: Choice[], index: number)=>{
+    return SectionPrompt(main_sections.recent.title, ch, `mangas: ${ch.length}`, index)
 }
 
-export const historySectionPrompt = (ch: Choice[])=>{
-    return SectionPrompt(main_sections.history.title, ch, `mangas: ${ch.length}`)
+export const historySectionPrompt = (ch: Choice[], index: number)=>{
+    return SectionPrompt(main_sections.history.title, ch, `mangas: ${ch.length}`, index)
 }
 
 const configurationOptions = ():Choice[] => {
@@ -165,12 +167,12 @@ const configurationOptions = ():Choice[] => {
     }
 ]
 }
-export const configurationPrompt = () => SectionPrompt(main_sections.config.title, configurationOptions(), '', 'select')
+export const configurationPrompt = () => SectionPrompt(main_sections.config.title, configurationOptions(), '',0, 'select')
 
 // [ CONFIGURATION PROMPTS ]
 
 export const serverPrompt = (hint:string, ch: Choice[]) => {
-    return SectionPrompt('Server', ch, `current: ${hint}`, 'select')
+    return SectionPrompt('Server', ch, `current: ${hint}`,0, 'select')
 }
 
 export const languagePrompt = (hint?: string) => {
@@ -178,7 +180,7 @@ export const languagePrompt = (hint?: string) => {
         { title: configuration["lang-ui"].es, value: "es" },
         { title: configuration["lang-ui"].en, value: "en" },]
 
-    return SectionPrompt('Language', langChoice, `current: ${hint ?? 'es'}`, 'select')
+    return SectionPrompt('Language', langChoice, `current: ${hint ?? 'es'}`, 0, 'select')
 }
 
 
@@ -191,8 +193,9 @@ export const basicChapterOptions = ()=>{
     sh.download,
     //ChapterAccessOptions.suscribe,
     sh.exit,
-], '', 'select')
+], '',0, 'select')
 }
+
 export const historyChapterOptions = (title: string) => {
     const sh = ChapterAccessOptions()
     return SectionPrompt('Options', [
@@ -201,7 +204,7 @@ export const historyChapterOptions = (title: string) => {
     sh.download,
     //ChapterAccessOptions.suscribe,
     sh.exit,
-], title, 'select')
+], title,0, 'select')
 }
 export const popularMangaSelectOptions = (title: string) =>{
     const sh = ChapterAccessOptions()
@@ -212,7 +215,7 @@ export const popularMangaSelectOptions = (title: string) =>{
     //ChapterAccessOptions.suscribe,
     sh.exit,
 
-], title, 'select')
+], title,0, 'select')
 }
 
 export const terminalReaderChapterOptions = ()=>{ 
@@ -224,15 +227,15 @@ export const terminalReaderChapterOptions = ()=>{
         sh.getChapters,
     //ChapterAccessOptions.suscribe,
         sh.exit,
-], '', 'select')
+], '',0, 'select')
 }
 
 export const chapterLangChoices = (langs: ChapterLangStruct[]) => {
     const choices = langs.map((e):Choice=>{
         return {
             title: e.lang,
-            value: e.src
+            value: e.lang
         }
     })
-    return SectionPrompt('Select Language',choices, '', 'select' )
+    return SectionPrompt('Select Language',choices, '', 0, 'select' )
 }
