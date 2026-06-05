@@ -117,13 +117,13 @@ class ChapterControl{
       console.log(e);
     }
   }
-  async nextChapter() {
+  async prevChapter() {
     if (this.index < this.chapters.length) {
       this.index++;
     }
     return null
   }
-    async prevChapter() {
+    async nextChapter() {
       if (this.index > 0) {
         this.index--;
       }
@@ -158,8 +158,12 @@ const debugLogs = (src: string) => {
 }
 
 export async function terminalReader(manga: MangaInfo, startIndex: number, lang: ChapterLangKey, server: MangaServerInterface) {
+    const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
+    const chapterListSort = manga.chapters.sort((a,b)=>{
+     return Number(ChapterSortRegex.exec(b.title)?.[1] ?? 0) - Number(ChapterSortRegex.exec(a.title)?.[1] ?? 0)
+    })
     return new Promise<void>(async (resolve) => {
-        const chapterCtrl = new ChapterControl(manga.chapters, startIndex, lang, server);
+        const chapterCtrl = new ChapterControl(chapterListSort, startIndex, lang, server);
         const pageCtrl = new PagesControl([]);
       
         TerminalControl.openRawMode()
@@ -189,11 +193,11 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
               
                 let newPages = await chapterCtrl.loadChapter()
                 History.save({
-                    chapters_length: manga.chapters.length,
+                    chapters_length: chapterListSort.length,
                     last_index: startIndex,
                     last_lang: lang,
                     server: confInst.configuration.client.name,
-                    last_title: manga.chapters[startIndex].title,
+                    last_title: chapterListSort[startIndex].title,
                     mangaSrc: manga.src,
                     mangaTitle: manga.title,
                     time: Date.now()
