@@ -13,7 +13,7 @@ export interface Chapter {
     title: string
     lang_n: number
     src: {
-      [key in ChapterLangKey] ?: ChapterLangStruct
+        [key in ChapterLangKey] ?: ChapterLangStruct
     }
 }
 
@@ -77,10 +77,10 @@ export interface LastedManga {
 }
 
 export interface ConfigurationInterface {
-    language: AvalibleLangs,
+    langKey: AvalibleLangs,
     deepSearch: boolean,
     historyServerFilter: boolean,
-    client: ServerConfInterface,
+    server: ServerConfInterface,
     imageCacheMaxSize: string,
     favoriteChapterLang: ChapterLangKey | 'any',
     historyMaxSize: number,
