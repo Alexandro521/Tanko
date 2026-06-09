@@ -2,14 +2,14 @@ import type { PromptObject, Choice } from "@alex_521/prompts";
 import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR } from "../const.js";
-import { Configuration } from "../functions/configuration.js";
-import type { ChapterLangKey, ChapterLangStruct } from "src/types/types.js";
+import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
+import type {ChapterLangStruct } from "../types/types.js";
 
 const instance =  await Configuration.getInstance()
-let {configuration,main_sections,chapter_access_options} = instance.getLang()
+let {configuration,main_sections,chapter_access_options} = instance.getLanguageInterface()
 
-instance.on('update',async () => {
-    const lang = instance.getLang()
+instance.on(ConfigurationEvents.updateLanguage, async (nLang) => {
+    const lang = nLang
     configuration = lang.configuration
     main_sections = lang.main_sections
     chapter_access_options = lang.chapter_access_options
@@ -175,12 +175,18 @@ export const serverPrompt = (hint:string, ch: Choice[]) => {
     return SectionPrompt('Server', ch, `current: ${hint}`,0, 'select')
 }
 
-export const languagePrompt = (hint?: string) => {
-    const langChoice: Choice[] = [
-        { title: configuration["lang-ui"].es, value: "es" },
-        { title: configuration["lang-ui"].en, value: "en" },]
+export const languagePrompt = (hint: string = 'es', index: number) => {
 
-    return SectionPrompt('Language', langChoice, `current: ${hint ?? 'es'}`, 0, 'select')
+    const langChoice: Choice[] =   Object.entries(configuration["lang-ui"]).map((lang, index): Choice => {
+        return {
+            title: lang[1],
+            value: {
+                index: String(index),
+                lang: lang[0]
+            }
+        }
+    })
+    return SectionPrompt('Language', langChoice, `current: ${hint}`, index, 'select')
 }
 
 
