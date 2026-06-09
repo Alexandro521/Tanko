@@ -6,6 +6,7 @@ import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
 import type {
   Chapter,
+  ConfigurationInterface,
   MangaInfo,
   MangaServerInterface,
 } from "../types/types.js";
@@ -26,62 +27,59 @@ import {
 } from "./prompts.js";
 import { WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configuration.js";
-import { Configuration } from "../functions/configuration.js";
-import type { ErrorMessages, LoadingStates } from "src/types/lang.js";
-import { getTimeSkip } from "src/utils.js";
+import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
+import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
+import { getTimeSkip } from "../utils.js";
 
 const loading = ora();
+
+let err_messages: ErrorMessages,
+loading_states: LoadingStates,
+lang: LangInterface
 
 export const clearScreen = () => {
   console.log(ansi.clearViewport);
   console.log(WELCOME_MESSAGE);
 };
 
-let err_messages: ErrorMessages, loading_states: LoadingStates;
-
-export async function main() {
-  const instace = await Configuration.getInstance();
-  let server = instace.getClient();
-  let config = instace.configuration;
-  const lang = instace.getLang();
-  err_messages = lang.err_messages;
-  loading_states = lang.loading_states;
-
-  instace.on("load", () => {
-    server = instace.getClient();
-    config = instace.configuration;
-    const lang = instace.getLang();
+export async function main(confInstance: Configuration) {
+  let SERVER = confInstance.getServer()
+  lang = confInstance.getLanguageInterface()
+  loading_states = lang.loading_states
+  err_messages = lang.err_messages
+  confInstance.on(ConfigurationEvents.updateServer, (e)=> SERVER = e)
+  confInstance.on(ConfigurationEvents.updateLanguage, (e)=> {
+    lang = e
     err_messages = lang.err_messages;
     loading_states = lang.loading_states;
-  });
+  })
+
   console.log(WELCOME_MESSAGE);
   try {
-    if (!server && config.client.need_browser)
-      throw new Error(err_messages.client_switch.msg);
     while (true) {
       const main = await prompts(mainPrompt());
       if (!main?.target) {
-        await instace.closeBrowser();
+        await confInstance.closeBrowser();
         process.exit(0);
       }
       switch (main.target) {
         case SignalsCodes.search_section:
-          await search(server);
+          await search(SERVER);
           break;
         case SignalsCodes.history_section:
-          await history(server);
+          await history(SERVER);
           break;
         case SignalsCodes.popular_section:
-          await populars(server);
+          await populars(SERVER);
           break;
         case SignalsCodes.configuration_section:
           await configurationUI();
           break;
         case SignalsCodes.lasted_section:
-          await lastedSection(server);
+          await lastedSection(SERVER);
           break;
         case SignalsCodes.exit:
-          await instace.closeBrowser();
+          await confInstance.closeBrowser();
           process.exit(0);
       }
       clearScreen();
@@ -90,6 +88,7 @@ export async function main() {
     console.log(e);
   }
 }
+
 async function search(server: MangaServerInterface) {
   try {
     clearScreen();
@@ -191,9 +190,11 @@ async function loadMangaChapter(
           server,
         );
       } else if (options.target === SignalsCodes.download_chapter) {
-        //  await downloadChapter(chapterInfo.mangaTitle, chapterInfo.title, chapterInfo.pages)
+        const target = targetChapter.src[lang]
+        const pages = await server.getChapterPages(target?.src as string)
+        if(pages)
+          await downloadChapter(mangaInfo.title ?? 'any', target?.title as string, pages)
       }
-
       clearScreen();
     }
   } catch (e) {
@@ -201,7 +202,6 @@ async function loadMangaChapter(
     console.log(e);
   }
 }
-
 
 async function history(server: MangaServerInterface) {
   try {
@@ -216,7 +216,7 @@ async function history(server: MangaServerInterface) {
       (e, i): Choice => ({
         title: e.mangaTitle,
         description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
-        value: String(i),
+        value: String(i)
       }),
     );
     let memoryChoicePosition = 0;
@@ -237,6 +237,13 @@ async function history(server: MangaServerInterface) {
       if (!options.target) {
         clearScreen();
         continue;
+      }
+      //dynamic server change
+      if(mangaTarget.server !== server.name) {
+        loading.start(`changing server to: ${mangaTarget.server}`)
+        const confInstance = await Configuration.getInstance()
+        if(loading.isSpinning) loading.stop()
+        server = await confInstance.setServerByName(mangaTarget.server) ?? server
       }
       switch (options.target) {
         case SignalsCodes.resume_read:
