@@ -5,6 +5,7 @@ import ansiEscapes from 'ansi-escapes'
 import { History } from "./functions/history.js";
 import { main } from "./cli/menu.js";
 import { BASE_DIR, DATA_DEFAULT_DIR, DOWNLOADS_DEFAULT_DIR, HISTORY_PATH } from './const.js'
+import { Configuration } from './functions/configuration.js';
 console.log(ansiEscapes.clearTerminal)
 
 if(!fs.existsSync(BASE_DIR)) {
@@ -21,5 +22,5 @@ if (!fs.existsSync(HISTORY_PATH)) {
 }
 
 await History.load() 
-
-await main()
+const confInstance = await Configuration.getInstance()
+await main(confInstance)
