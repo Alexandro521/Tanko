@@ -1,0 +1,4 @@
+allowBuilds:
+  sharp: set this to true or false
+minimumReleaseAgeExclude:
+  - '@alex_521/prompts@0.2.0'
