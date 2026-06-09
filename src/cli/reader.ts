@@ -14,7 +14,7 @@ import type { LangInterface } from "../types/lang.js"
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
-let { err_messages, loading_states } = instance.getLang()
+let { err_messages, loading_states } = instance.getLanguageInterface()
 
 instance.on('update',(_, __, lang)=>{
     err_messages = (lang as LangInterface).err_messages
@@ -196,7 +196,7 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
                     chapters_length: chapterListSort.length,
                     last_index: startIndex,
                     last_lang: lang,
-                    server: confInst.configuration.client.name,
+                    server: confInst.configuration.server.name,
                     last_title: chapterListSort[startIndex].title,
                     mangaSrc: manga.src,
                     mangaTitle: manga.title,
