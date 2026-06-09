@@ -1,26 +1,36 @@
-const date = new Date();
-const DAY = 8.64e7;
-const DAY2 = 1.728e8;
-const WEEK = 6.048e8;
+const currentTime = new Date();
+const readTime= new Date();
 
 export function getTimeSkip(time: number) {
-  const now = Date.now();
-  if (time <= 0) {
-    date.setTime(now);
-    return date.toLocaleTimeString();
+  currentTime.setTime(Date.now())
+  readTime.setTime(time);
+
+  const [currentDay, currentMonth, currentYear] = [
+    currentTime.getDay(),
+    currentTime.getMonth(),
+    currentTime.getFullYear()
+  ]
+  const [readDay, readMonth, readYear] = [
+    readTime.getDay(),
+    readTime.getMonth(),
+    readTime.getFullYear()
+    ]
+  const [dayDiff, montDiff, yearDiff] = [
+    Math.abs(currentDay - readDay),
+    Math.abs(currentMonth - readMonth),
+    Math.abs(currentYear - readYear)
+  ];
+  if(yearDiff >= 1 || montDiff >= 1){
+    return readTime.toDateString()
+  }else if(dayDiff >= 7){
+    return `${(dayDiff/7)| 0} Weeks ago`
+  }else if(dayDiff >= 2) {
+    return `${dayDiff} Days ago`
   }
-  date.setTime(time);
-  const timeDiff = Math.abs(time - now);
-  const hours = date.getHours();
-  const timePrefix = hours >= 0 && hours < 12 ? "AM" : "PM";
-  const timeString = `${hours.toString().padStart(2, "0")}:${date.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
-  if (timeDiff < DAY && hours >= 0 && hours <= 23) {
-    return `Today ${timeString}`;
-  } else if (timeDiff >= DAY && timeDiff < DAY2) {
-    return `Yesterday ${timeString}`;
-  } else if (timeDiff >= DAY2 && timeDiff <= WEEK) {
-    return `${Math.ceil(timeDiff / DAY)} Ago`;
-  } else {
-    return date.toLocaleDateString();
+  else {
+    const hours = readTime.getHours()
+    const timePrefix = hours >= 0 && hours < 12 ? "AM" : "PM";
+    const timeString = `${hours.toString().padStart(2, "0")}:${readTime.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
+    return `${ dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
   }
 }
