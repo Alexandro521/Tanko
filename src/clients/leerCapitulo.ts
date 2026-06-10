@@ -1,129 +1,119 @@
 import type { Page } from "playwright";
 import * as cheerio from "cheerio"
-import type { 
+import { Axios } from "axios";
+import { sortChapterList } from "../utils.js";
+import type {
     Chapter,
-    HistoryObject,
-    ChapterMinInfo,
     ChapterPage,
-    ClientsName,
-    LastedManga,
-    MangaServerInterface,
-    PopularManga,
+    ServerName,
+    MangaProvider,
     SearchResult,
-    MangaInfo,} from "../types/types.js"
+    MangaInfo
+} from "../types/types.js"
 
-export class MangaServerClient implements MangaServerInterface {
+export class LeerCapitulo implements MangaProvider {
     private page: Page
-    public name: ClientsName = "leercapitulo";
+    private axios = new Axios({baseURL: "https://www.leercapitulo.co", method: 'GET'})
+    public name: ServerName = "leercapitulo";
     private baseUrl = "https://www.leercapitulo.co"
-    constructor(pageContext: Page){
+    constructor(pageContext: Page) {
         this.page = pageContext
     }
-    async getLastMangas(): Promise<LastedManga[] | undefined> {
-        try {
-            const manga: LastedManga[] = []
-            const html = await fetch('https://www.leercapitulo.co/');
-            if(!html.ok) throw new Error('Erro with network')
-            const $ = cheerio.load(await html.text());
-            $('section.bodycontainer div.row div.col-md-8 div.row > div.col-md-6').each((index, node) => {
-                const root = $('div.mainpage-manga div.media-body', node)
-                const title = root.find('h4.manga-newest').text()
-                const src = root.find('a').first().attr('href') ?? ''
-                const last_chapters: ChapterMinInfo[] = []
-                root.find('div.hotup-list > span').each((index, span) => {
-                    const anchor = $('a.xanh', span)
-                    last_chapters.push({
-                        title: anchor.text() ?? '',
-                        src: anchor.attr('href') ?? ''
-                    })
-                })
-                manga.push({ title, src, last_chapters })
+    async getLastMangas(): Promise<MangaInfo[]> {
+        const mangaList: MangaInfo[] = []
+        const req = await fetch(this.baseUrl);
+        if (!req.ok) throw new Error(`Error at provider.getLastMangas(): ${req.statusText} http status code: ${req.status}`)
+        const $ = cheerio.load( await req.text() );
+        $('section.bodycontainer div.row div.col-md-8 div.row > div.col-md-6').each((_, node) => {
+            const container = $('div.mainpage-manga div.media-body', node)
+            const mangaTtitle = container.find('h4.manga-newest').text()
+            const src = container.find('a').first().attr('href') ?? ''
+            const chapterList: Chapter[] = []
+            container.find('div.hotup-list > span').each((_, span) => {
+                const chapterSrc = $('a.xanh', span)
+                const chapter: Chapter = {
+                    id: 'null',
+                    title: chapterSrc.text() ?? '',
+                    translation_count: 1,
+                    translations: {es: { lang: 'es', src: chapterSrc.attr('href') ?? 'null', title: chapterSrc.text()}
+                    }
+                }
+                chapterList.push(chapter)
             })
-            return manga
-        } catch (error) {
-
-        }
+            mangaList.push({ title: mangaTtitle, src, chapters: sortChapterList(chapterList) })
+        })
+        return mangaList
     }
+
     async search(query: string): Promise<SearchResult[]> {
-        const res = await fetch(`https://www.leercapitulo.co/search-autocomplete?term=${query}`);
-        const json: SearchResult[] = await res.json()
+        const res = await this.axios.get(`/search-autocomplete?term=${query}`,);
+        const json: SearchResult[] = JSON.parse(res.data)
         return json
     }
-    async getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined> {
-        try{
-        const html = await fetch(this.baseUrl+mangaSrc)
-        if(!html.ok) {
+    async getMangaInfo(mangaSrc: string): Promise<MangaInfo> {
+        const res = await fetch(this.baseUrl + mangaSrc)
+                if (!res.ok) {
             throw new Error('red failed');
         }
-        const $ = cheerio.load(await html.text())
+        const $ = cheerio.load(await res.text())
         const title = $('h1.title-manga').text()
         const chapters: Chapter[] = []
-
-        $('div.chapter-list ul > li').each((i,node)=>{
-
-        const anchor = $(node).find('a.xanh')
-        chapters.push({
-            id: i.toString(),
-            lang_n: 1,
-            title: anchor.text(),
-            src: {
-              "es-la": {
-                    lang: "es-la",
-                    title: anchor.text(),
-                    src: anchor.attr('href') ?? ''
-              },
-            }
+        $('div.chapter-list ul > li').each((i, node) => {
+            const anchor = $(node).find('a.xanh')
+            chapters.push({
+                id: i.toString(),
+                translation_count: 1,
+                title: anchor.text(),
+                translations: {
+                    "es-la": { lang: "es-la", title: anchor.text(), src: anchor.attr('href') ?? ''}
+                }
+            })
         })
-      })
         return {
             title,
             src: mangaSrc,
-            chapters
+            chapters: sortChapterList(chapters)
         }
-    }catch(e){
-        console.log(e);
     }
-    }
-    async getChapterPages(chapterSrc: string): Promise<ChapterPage[]>{
-                await this.page.goto(this.baseUrl + chapterSrc);
-                let pagesNodes = await this.page.locator('.each-page a').all();
-      
-                const pages =  await Promise.all(
-                        pagesNodes.map(async page => {
-                        return {
-                            src: await page.locator('img').getAttribute('data-src') ?? 'undefined',
-                            page_index: await page.getAttribute('data-page') ?? '0'
-                        }
-                    }
-            ))
-            return pages
-    }
-    async getPopulars():Promise<PopularManga[] | undefined> {
-        try {
-            const html = await fetch('https://www.leercapitulo.co/');
-            if (!html.ok) throw new Error('Error al intentar obtener Populares');
-
-            const $ = cheerio.load(await html.text());
-            const Populars: PopularManga[] = []
-            $('div.update-list div div > .hot-manga').each((index, e) => {
-                const titleNode = $(e).find('div.caption a h3.manga-title')
-                const chapterNode = $(e).find('div.caption a.Chapter')
-                const src = $(titleNode.parent()).attr('href') ?? '';
-                const title = titleNode.text()
-                const last_chapter = {
-                    title: chapterNode.find('p.chapter').text(),
-                    src: chapterNode.attr('href') ?? ''
+    async getChapterPages(chapterSrc: string): Promise<ChapterPage[]> {
+        await this.page.goto(this.baseUrl + chapterSrc);
+        let pagesNodes = await this.page.locator('.each-page a').all();
+        const pages = await Promise.all(
+            pagesNodes.map(async page => {
+                return {
+                    src: await page.locator('img').getAttribute('data-src') ?? 'undefined',
+                    page_index: await page.getAttribute('data-page') ?? '0'
                 }
-                Populars.push({
-                    title,
-                    src,
-                    last_chapter
-                })
+            }
+            ))
+        return pages
+    }
+    async getPopulars(): Promise<MangaInfo[]> {
+
+        const res = await this.axios.get<string>('');
+        const $ = cheerio.load( res.data);
+        const Populars: MangaInfo[] = []
+        $('div.update-list div div > .hot-manga').each((index, e) => {
+            const titleNode = $(e).find('div.caption a h3.manga-title')
+            const chapterNode = $(e).find('div.caption a.Chapter')
+            const src = $(titleNode.parent()).attr('href') ?? 'null';
+            const title = titleNode.text()
+            const chapterTitle = chapterNode.find('p.chapter').text()
+            const chapterSrc = chapterNode.attr('href') ?? 'null'
+            const ch: Chapter = {
+                title: chapterTitle,
+                id: chapterSrc,
+                translation_count: 1,
+                translations: {es: {lang: 'es', title: chapterTitle, src: chapterSrc}}
+
+            }
+            Populars.push({
+                title,
+                src,
+                chapters: [ch]
             })
-            return Populars
-        } catch (e) {
-            console.log(e)
-        }
+        })
+        return Populars
     }
 }
 

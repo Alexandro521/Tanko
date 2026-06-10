@@ -1,6 +1,6 @@
 import { mangaServerRegister, type Client } from "../clients/port.js";
 import type { AvalibleLangs, LangInterface } from "../types/lang.js";
-import type { ConfigurationInterface, MangaServerInterface, ServerName } from "../types/types.js";
+import type { ConfigurationInterface, MangaProvider, ServerName } from "../types/types.js";
 import chalk from "chalk";
 import fs from "fs";
 import fsPromise from "fs/promises";
@@ -25,7 +25,7 @@ export enum ConfigurationEvents {
 export class Configuration extends EventEmitter {
     private static confInstance: Configuration
     private browser: BrowserContext | null = null
-    private ServerHandler!: MangaServerInterface
+    private ServerHandler!: MangaProvider
     private lang!: LangInterface
     private browserContext!: Page
 

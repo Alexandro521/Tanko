@@ -2,15 +2,16 @@ import ora from "ora"
 import chalk from "chalk"
 import esc from "ansi-escapes"
 import readLine from "node:readline"
-import { stdin } from "node:process"
+import { stdin, title } from "node:process"
 import prompts from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.js"
 import { SignalsCodes } from "../types/enum.js"
 import { History } from "../functions/history.js"
 import { terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
-import type { Chapter,  ChapterPage, MangaServerInterface, MangaInfo, ChapterLangKey,ChapterLangStruct } from "../types/types.js"
+import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
+import { page } from "pdfkit"
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
@@ -30,9 +31,11 @@ function debounce(func: Function, delay: number) {
 
 class PagesControl {
   private pages!: ChapterPage[];
-   index = 0;
+  pagesLength = 0
+  index = 0;
   constructor(pages: ChapterPage[]) {
     this.pages = pages;
+    this.pagesLength = pages.length
   }
     nextPage() {
       if (this.index < this.pages.length-1)
@@ -56,6 +59,7 @@ class PagesControl {
   }
     set setPages(newPages: ChapterPage[]) {
       this.pages = newPages;
+      this.pagesLength = newPages.length
       this.index = 0;
     }
     set setIndex (newIndex: number) {
@@ -85,26 +89,36 @@ class TerminalControl {
 class ChapterControl{
   private chapters!: Chapter[];
   private index!: number;
-  private server!: MangaServerInterface;
-  private lang!: ChapterLangKey;
+  private server!: MangaProvider;
+  private lang!: ChapterLangType;
 
-  constructor(chapterList: Chapter[], chapterIndex: number, lang: ChapterLangKey, server: MangaServerInterface) {
+
+  constructor(chapterList: Chapter[], chapterIndex: number, lang: ChapterLangType, server: MangaProvider) {
     this.chapters = chapterList;
     this.index = chapterIndex;
     this.lang = lang;
     this.server = server;
     }
-
-  extractChapterSrcByLang(chapter: Chapter, lang: ChapterLangKey): ChapterLangStruct {
-    if (chapter.src[lang]) return chapter.src[lang];
+  
+  getChapterInfo(){
+    const target = this.chapters[this.index]
+    const targetChapter = target.translations[this.lang]
+    return {
+      ...target,
+      chapterTarget: targetChapter,
+      title: targetChapter?.title
+    }
+  }
+  extractChapterSrcByLang(chapter: Chapter, lang: ChapterLangType): ChapterLanguage {
+    if (chapter.translations[lang]) return chapter.translations[lang];
     let targetChapter: any = null;
-    Object.values(chapter.src).some((e) => {
+    Object.values(chapter.translations).some((e) => {
       if (e) {
-        targetChapter = e as ChapterLangStruct;
+        targetChapter = e as ChapterLanguage;
         return;
       }
     })
-  return targetChapter as ChapterLangStruct
+  return targetChapter as ChapterLanguage
 }
   async loadChapter() {
     try {
@@ -129,7 +143,7 @@ class ChapterControl{
       }
       return null
     }
-  set chapterLanguage(newLang: ChapterLangKey) {
+  set chapterLanguage(newLang: ChapterLangType) {
     this.lang = newLang;
   }
   set chapterIndex(newIndex: number) {
@@ -157,21 +171,20 @@ const debugLogs = (src: string) => {
     process.stdout.write(`[DEBUG INFO] (CACHE SIZE): ${(ImageCache.cacheSize / 1000000).toFixed(2)} MB (MAX CACHE SIZE) : ${(ImageCache.MAX_SIZE / 1000000).toFixed(2)} MB (CACHE POINTER POSITION): ${ImageCache.pointer}, (PAGES IN CACHE) ${ImageCache.cache.size}, (FROM CACHE) ${ImageCache.cache.has(src)}\n\n`)
 }
 
-export async function terminalReader(manga: MangaInfo, startIndex: number, lang: ChapterLangKey, server: MangaServerInterface) {
-    const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
-    const chapterListSort = manga.chapters.sort((a,b)=>{
-     return Number(ChapterSortRegex.exec(b.title)?.[1] ?? 0) - Number(ChapterSortRegex.exec(a.title)?.[1] ?? 0)
-    })
+export async function terminalReader(manga: MangaInfo, startIndex: number, lang: ChapterLangType, server: MangaProvider) {
+
     return new Promise<void>(async (resolve) => {
-        const chapterCtrl = new ChapterControl(chapterListSort, startIndex, lang, server);
+        const chapterCtrl = new ChapterControl(manga.chapters, startIndex, lang, server);
         const pageCtrl = new PagesControl([]);
       
         TerminalControl.openRawMode()
         const renderInfo = () => {
+            const chapterInfo = chapterCtrl.getChapterInfo()
             console.log(esc.clearViewport)
-            renderHeader(manga.title, manga.title, pageCtrl.index + 1, 1)
+            renderHeader(manga.title, chapterInfo.title || '', pageCtrl.index + 1, pageCtrl.pagesLength)
             //debugLogs(pagesNav.getState().src.src)
         }
+
         const pageDebounce = debounce(async () => {
                 await pageCtrl.loadPage()
                 process.stdout.write(esc.cursorHide)
@@ -193,11 +206,11 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
               
                 let newPages = await chapterCtrl.loadChapter()
                 History.save({
-                    chapters_length: chapterListSort.length,
+                    chapters_length: manga.chapters.length,
                     last_index: startIndex,
                     last_lang: lang,
                     server: confInst.configuration.server.name,
-                    last_title: chapterListSort[startIndex].title,
+                    last_title: manga.chapters[startIndex].title,
                     mangaSrc: manga.src,
                     mangaTitle: manga.title,
                     time: Date.now()
@@ -224,7 +237,7 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
               else
                 pageCtrl.nextPage()
               renderInfo()
-               await pageDebounce()
+              await pageDebounce()
             } 
             else if (name === 'q' || key.name === 'escape') {
                 TerminalControl.exitRawMode(handleKeypress)
@@ -233,8 +246,8 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
                 process.stdout.write(esc.clearViewport)
                 TerminalControl.exitRawMode(handleKeypress)
                 const options = await prompts(terminalReaderChapterOptions())
+                TerminalControl.openRawMode(handleKeypress)
                 if (!options.target) {
-                    TerminalControl.openRawMode(handleKeypress)
                     console.log(esc.clearViewport)
                     renderInfo()
                     await pageCtrl.loadPage()
@@ -245,7 +258,9 @@ export async function terminalReader(manga: MangaInfo, startIndex: number, lang:
                     await chapterLoader(SignalsCodes.next_chapter, handleKeypress)
                 else if (options.target === SignalsCodes.previous_chapter, handleKeypress)
                     await chapterLoader(SignalsCodes.previous_chapter)
-
+                else if (options.target === SignalsCodes.get_chapters_list){
+                    
+                }
                 else if (options.target === SignalsCodes.exit) {
                     TerminalControl.exitRawMode(handleKeypress)
                     console.log(esc.clearViewport)

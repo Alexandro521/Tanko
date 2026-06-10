@@ -10,7 +10,7 @@ import {
   serverPrompt,
 } from "./prompts.js";
 import { ConfigurationOptions } from "../types/enum.js"; 
-import type { ServerConfInterface,MangaServerInterface, ServerName, ConfigurationInterface } from "../types/types.js";
+import type { ServerConfInterface,MangaProvider, ServerName, ConfigurationInterface } from "../types/types.js";
 
 export const clearScreen = () => {
   console.log(esc.clearViewport);

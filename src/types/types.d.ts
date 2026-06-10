@@ -6,30 +6,29 @@ export interface ChapterPage  {
     src: string
     page_index: string
 }
-type ChapterLangKey = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr' 
+type ChapterLangType = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr' 
 
 export interface Chapter {
     id: string
     title: string
-    lang_n: number
-    src: {
-        [key in ChapterLangKey] ?: ChapterLangStruct
+    translation_count: number
+    translations: {
+        [key in ChapterLangType] ?: ChapterLanguage
     }
 }
-
 export type ServerName = "mangadex" | "leercapitulo"
 
-export interface ChapterLangStruct {
+export interface ChapterLanguage {
     title: string
-    lang: ChapterLangKey,
+    lang: ChapterLangType,
     src: string
 }
 
 export interface SearchResult {
     value: string
     label: string
-    link: string
-    thumbnail: string
+    src: string
+    thumbnail?: string
 }
 
 export interface HistoryObject {
@@ -38,7 +37,7 @@ export interface HistoryObject {
   server: ServerName,
   last_title: string,
   last_index: number,
-  last_lang: ChapterLangKey,
+  last_lang: ChapterLangType,
   chapters_length: number,
   time: number,
 }
@@ -50,30 +49,14 @@ export interface MangaInfo {
   chapters: Chapter[]
 }
 
-export declare class MangaServerInterface{
+export declare class MangaProvider{
     constructor(context: Page)
     public name:ServerName
-    search(query: string ) : Promise<SearchResult[] | undefined>
-    getMangaInfo(mangaSrc: string): Promise<MangaInfo | undefined>
-    getChapterPages(chapterSrc: string): Promise<ChapterPage[] | undefined>
-    getPopulars(): Promise<PopularManga[] | undefined>
-    getLastMangas(): Promise<LastedManga[] | undefined>
-}
-
-export interface ChapterMinInfo {
-    title:string,
-    src:string
-}
-
-export interface PopularManga {
-    title: string,
-    src : string,
-    last_chapter: ChapterMinInfo
-}
-export interface LastedManga {
-    title: string,
-    src: string,
-    last_chapters: ChapterMinInfo[]
+    search(query: string ) : Promise<SearchResult[]>
+    getMangaInfo(mangaSrc: string): Promise<MangaInfo>
+    getChapterPages(chapterSrc: string): Promise<ChapterPage[]>
+    getPopulars(): Promise<MangaInfo[]>
+    getLastMangas(): Promise<MangaInfo[]>
 }
 
 export interface ConfigurationInterface {
@@ -82,7 +65,7 @@ export interface ConfigurationInterface {
     historyServerFilter: boolean,
     server: ServerConfInterface,
     imageCacheMaxSize: string,
-    favoriteChapterLang: ChapterLangKey | 'any',
+    favoriteChapterLang: ChapterLangType | 'any',
     historyMaxSize: number,
     downloads_path : string,
 }

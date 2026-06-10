@@ -1,5 +1,7 @@
+import type { Chapter } from "./types/types.js";
 const currentTime = new Date();
 const readTime= new Date();
+const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
 
 export function getTimeSkip(time: number) {
   currentTime.setTime(Date.now())
@@ -33,4 +35,11 @@ export function getTimeSkip(time: number) {
     const timeString = `${hours.toString().padStart(2, "0")}:${readTime.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
     return `${ dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
   }
+}
+
+export function sortChapterList(chapters: Chapter[]): Chapter[] {
+  const chapterListSort = chapters.sort((a, b) => {
+    return Number(ChapterSortRegex.exec(b.title)?.[1] ?? 0) - Number(ChapterSortRegex.exec(a.title)?.[1] ?? 0)
+  })
+  return chapterListSort
 }

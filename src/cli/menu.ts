@@ -8,7 +8,7 @@ import type {
   Chapter,
   ConfigurationInterface,
   MangaInfo,
-  MangaServerInterface,
+  MangaProvider,
 } from "../types/types.js";
 import { SignalsCodes } from "../types/enum.js";
 import {
@@ -89,7 +89,7 @@ export async function main(confInstance: Configuration) {
   }
 }
 
-async function search(server: MangaServerInterface) {
+async function search(server: MangaProvider) {
   try {
     clearScreen();
     while (true) {
@@ -118,7 +118,7 @@ async function search(server: MangaServerInterface) {
         }
         memoryChoicePosition = Number(targetIndex.target);
         const targetResult = results[Number(targetIndex.target)];
-        await loadMangaChapter(server, targetResult.link);
+        await loadMangaChapter(server, targetResult.src);
         clearScreen();
       }
     }
@@ -128,9 +128,9 @@ async function search(server: MangaServerInterface) {
 }
 
 async function askChapterLang(chapter: Chapter) {
-  const avalibleLanguages = Object.values(chapter.src); //as ChapterLangStruct[]
+  const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
   let lang = avalibleLanguages[0].lang; //as default value
-  if (chapter.lang_n > 1) {
+  if (chapter.translation_count > 1) {
     const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
     if (!targetLang?.target) {
       clearScreen();
@@ -142,7 +142,7 @@ async function askChapterLang(chapter: Chapter) {
 }
 
 async function loadMangaChapter(
-  server: MangaServerInterface,
+  server: MangaProvider,
   mangaSrc: string,
   info: MangaInfo | null = null,
 ) {
@@ -156,7 +156,7 @@ async function loadMangaChapter(
     } else if (loading.isSpinning) loading.stop();
     const choices: Choice[] = mangaInfo.chapters.map((e, i) => {
       return {
-        title: Object.values(e.src)[0].title,
+        title: Object.values(e.translations)[0].title,
         value: String(i),
       };
     });
@@ -190,7 +190,7 @@ async function loadMangaChapter(
           server,
         );
       } else if (options.target === SignalsCodes.download_chapter) {
-        const target = targetChapter.src[lang]
+        const target = targetChapter.translations[lang]
         const pages = await server.getChapterPages(target?.src as string)
         if(pages)
           await downloadChapter(mangaInfo.title ?? 'any', target?.title as string, pages)
@@ -203,7 +203,7 @@ async function loadMangaChapter(
   }
 }
 
-async function history(server: MangaServerInterface) {
+async function history(server: MangaProvider) {
   try {
     clearScreen();
     const history = History.parseMap();
@@ -276,7 +276,7 @@ async function history(server: MangaServerInterface) {
   }
 }
 
-async function populars(server: MangaServerInterface) {
+async function populars(server: MangaProvider) {
   clearScreen();
   try {
     loading.start(loading_states.default_loading);
@@ -291,7 +291,7 @@ async function populars(server: MangaServerInterface) {
     const choices = populars.map((popular, index): Choice => {
       return {
         title: popular.title,
-        description: popular.last_chapter.title,
+        description: popular.chapters[0].title,
         value: String(index),
       };
     });
@@ -343,7 +343,7 @@ async function populars(server: MangaServerInterface) {
   }
 }
 
-async function lastedSection(server: MangaServerInterface) {
+async function lastedSection(server: MangaProvider) {
   clearScreen();
   try {
     loading.start(loading_states.default_loading);
@@ -356,10 +356,11 @@ async function lastedSection(server: MangaServerInterface) {
     const choices = mangaList.map((e, index): Choice => {
       return {
         title: e.title,
-        description: e.last_chapters[0].title,
+        description: e.chapters[0].title,
         value: String(index),
       };
     });
+
     let memoryChoicePositionLastMangas = 0;
     while (true) {
       const mangaIndex = await prompts(
@@ -371,7 +372,7 @@ async function lastedSection(server: MangaServerInterface) {
       }
       memoryChoicePositionLastMangas = Number(mangaIndex.target);
       const targetManga = mangaList[Number(mangaIndex.target)];
-      const lastChapterList = targetManga.last_chapters.map(
+      const lastChapterList = targetManga.chapters.map(
         (chapter, index): Choice => {
           return { title: chapter.title, value: String(index) };
         },
@@ -405,8 +406,7 @@ async function lastedSection(server: MangaServerInterface) {
         let lang;
         loading.stop();
         if (!allChapterList) continue;
-        const index =
-          allChapterList.chapters.length - Number(chapterIndex.chapter) - 1;
+        const index = Number(chapterIndex.chapter);
         const chapter = allChapterList.chapters[index];
         if ((lang = await askChapterLang(chapter)) === null) {
           continue;
