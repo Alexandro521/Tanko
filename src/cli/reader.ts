@@ -15,7 +15,7 @@ import { page } from "pdfkit"
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
-let { err_messages, loading_states } = instance.getLanguageInterface()
+let { err_messages, loading_states  } = await instance.getLanguageInterface()
 
 instance.on('update',(_, __, lang)=>{
     err_messages = (lang as LangInterface).err_messages
