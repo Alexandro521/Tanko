@@ -10,6 +10,7 @@ import { type BrowserContext, firefox, type Page } from "playwright";
 import { CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS, TEMP_DIR } from "../const.js";
 import { LANGUAGE_REGISTER } from "./lang.js";
 import EventEmitter from "events";
+import { Notify, NotifyType } from "./notify.js";
 const spin = ora()
 
 export enum ConfigurationEvents {
@@ -22,6 +23,8 @@ export enum ConfigurationEvents {
     browserClose = 'browserClose',
     browserLoaded = 'browserOpen'
 }
+const noti = Notify.getInstace()
+
 export class Configuration extends EventEmitter {
     private static confInstance: Configuration
     private browser: BrowserContext | null = null
@@ -90,8 +93,11 @@ export class Configuration extends EventEmitter {
         } catch (e: any) {
             if(spin.isSpinning) spin.fail()
             if (e instanceof Error) {
-                spin.fail(chalk.redBright('Error: El navegador Firefox Playwright no esta instalado'))
-                console.log(chalk.yellowBright('para instalar el navegador por favor ejecute: '), chalk.gray('npx playwright install firefox'))
+                noti.push({
+                    title: e.name,
+                    message: e.message,
+                    type: NotifyType.error
+                })
             }
         }
     }
@@ -129,8 +135,10 @@ export class Configuration extends EventEmitter {
         try {
             if (fs.existsSync(CONFIG_FILE_PATH) && !conf) {
                 const confRaw = (await fsPromise.readFile(CONFIG_FILE_PATH)).toString()
-                this.config = await JSON.parse(confRaw) as ConfigurationInterface
-                console.log(JSON.stringify(this.config, null, '\t'))
+                const conf = await JSON.parse(confRaw) as ConfigurationInterface
+                this.config.langKey = conf.langKey ?? 'en'
+                this.config.server = conf.server,
+                this.config.favoriteChapterLang = conf.favoriteChapterLang
             }
             if (this.config.langKey)
                 this.lang = LANGUAGE_REGISTER[this.config.langKey]
@@ -159,8 +167,11 @@ export class Configuration extends EventEmitter {
             console.log(e)
         }
     }
-    getLanguageInterface() {
+    async getLanguageInterface() {
+        if(!this.lang)
+            await this.loadConfiguration()    
         return this.lang
+
     }
     getBrowserContext() {
         if (this.browserContext)
