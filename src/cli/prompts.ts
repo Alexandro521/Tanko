@@ -1,12 +1,15 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
 import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
 import chalk from "chalk";
-import { PRIMARY_COLOR } from "../const.js";
+import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
 import type {ChapterLanguage } from "../types/types.js";
-
+import type { Key } from "node:readline";
+import { Notify, NotifyType } from "../functions/notify.js";
+import ansi from 'ansi-escapes'
 const instance =  await Configuration.getInstance()
-let {configuration,main_sections,chapter_access_options} = instance.getLanguageInterface()
+const notify = Notify.getInstace()
+let {configuration, main_sections, chapter_access_options} =await instance.getLanguageInterface()
 
 instance.on(ConfigurationEvents.updateLanguage, async (nLang) => {
     const lang = nLang
@@ -15,8 +18,23 @@ instance.on(ConfigurationEvents.updateLanguage, async (nLang) => {
     chapter_access_options = lang.chapter_access_options
 })
 
+export const clearScreen = () => {
+  console.log(ansi.clearViewport);
+  console.log(WELCOME_MESSAGE);
+};
+function onRender(){
+    notify.render()
+}
+function onKeyPress (this: any, key: Key, name: string): void{
+    if(key.ctrl && key.name === 'q'){
+        notify.pop()
+        this.render()
+    }
+}
+
 // [General Prompts]
 export const generateChapterList = (title: string,startIndex:number, choices: Choice[]): PromptObject<'chapter'> => {
+    clearScreen()
     return {
         type: 'autocomplete',
         name: 'chapter',
@@ -25,6 +43,11 @@ export const generateChapterList = (title: string,startIndex:number, choices: Ch
         hint: `capitulos: ${choices.length}`,
         choices,
         clearFirst: true,
+        onKeyPress,
+        onRender,
+        onClose: ()=>{
+            //process.stdout.write(ansi.clearViewport)
+        }
         //limit: 30
     }
 }
@@ -86,6 +109,7 @@ const ChapterAccessOptions = () => {
 
 type SelectMode = 'autocomplete' | 'select'
 const SectionPrompt = (title: string, choices: Choice[],hint = '', index:number,type: SelectMode = 'autocomplete'): PromptObject<'target'> => {
+    clearScreen()
     return {
         type: type,
         name: 'target',
@@ -93,14 +117,24 @@ const SectionPrompt = (title: string, choices: Choice[],hint = '', index:number,
         initial: index,
         message: chalk.bgHex(PRIMARY_COLOR)(` ${title} `),
         choices,
-        clearFirst: true
+        clearFirst: true,
+        onKeyPress,
+        onRender,
+        onClose: ()=>{
+          //  process.stdout.write(ansi.clearViewport)
+        }
     }
 }
-
 // [Principal Sections]
 export const mainPrompt = (): PromptObject<'target'> => {
+    clearScreen()
     return {
     type: 'select',
+    onRender,
+    onKeyPress,
+    onClose: ()=>{
+        //process.stdout.write(ansi.clearViewport)
+    },
     name: 'target',
     message: chalk.bgHex(PRIMARY_COLOR)(` ${main_sections.main.title} `),
     choices: [
@@ -114,6 +148,7 @@ export const mainPrompt = (): PromptObject<'target'> => {
     }
 }
 export const searchPrompt = (): PromptObject<'query'> =>{
+    clearScreen()
     return {
         type: 'text',
         name: 'query',
@@ -225,7 +260,7 @@ export const popularMangaSelectOptions = (title: string) =>{
 }
 
 export const terminalReaderChapterOptions = ()=>{ 
-    let sh =    ChapterAccessOptions()
+    let sh = ChapterAccessOptions()
     return SectionPrompt('Opciones', [
         sh.prevoius_chapter,
         sh.next_chapter,
