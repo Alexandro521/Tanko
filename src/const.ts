@@ -1,6 +1,6 @@
 import path from "path"
 import os from "os"
-import type {LaunchOptions} from "playwright"
+import type {BrowserContextOptions, LaunchOptions} from "playwright"
 import gradient from "gradient-string"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
@@ -9,7 +9,8 @@ export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config.json')
 export const DATA_DEFAULT_DIR = path.resolve(BASE_DIR, 'data')
 export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_test.json')
 export const TEMP_DIR = os.tmpdir()
-
+export const BROWSER_STORAGE_PATH = path.resolve(DATA_DEFAULT_DIR, 'browser')
+export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.json')
 
 export const PRIMARY_COLOR = '#bf78fa'
 
@@ -50,4 +51,8 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
     'network.http.max-connections': 64,
     // 'network.http.pipelining': true,
   }
+}
+export const BROWSER_CONTEXT_OPTIONS:BrowserContextOptions = {
+  javaScriptEnabled: true,
+  reducedMotion: 'reduce',
 }

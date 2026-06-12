@@ -6,8 +6,8 @@ import fs from "fs";
 import fsPromise from "fs/promises";
 import ora from "ora";
 import path from "path";
-import { type BrowserContext, firefox, type Page } from "playwright";
-import { CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS, TEMP_DIR } from "../const.js";
+import { type Browser, type BrowserContext, firefox, type Page } from "playwright";
+import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS, TEMP_DIR } from "../const.js";
 import { LANGUAGE_REGISTER } from "./lang.js";
 import EventEmitter from "events";
 import { Notify, NotifyType } from "./notify.js";
@@ -24,13 +24,27 @@ export enum ConfigurationEvents {
     browserLoaded = 'browserOpen'
 }
 const noti = Notify.getInstace()
+const contextInitScript = () => {
+    /*for leercapitulo.co */
+    const storageData = [
+        { name: "display_mode", value: "1" },
+        { name: "pic_style", value: "0" }
+    ];
+    if (window.location.hostname.includes('leercapitulo.co')) {
+        storageData.forEach(item => {
+            window.localStorage.setItem(item.name, item.value);
+        });
+    }
+}
 
 export class Configuration extends EventEmitter {
     private static confInstance: Configuration
-    private browser: BrowserContext | null = null
     private ServerHandler!: MangaProvider
     private lang!: LangInterface
-    private browserContext!: Page
+    private browser: Browser | null = null
+    private browserContext!: BrowserContext
+    private browserPage!: Page
+    private static waitLock = false
 
     private config: ConfigurationInterface = {
         downloads_path: DOWNLOADS_DEFAULT_DIR,
@@ -51,38 +65,31 @@ export class Configuration extends EventEmitter {
         if (!this.confInstance) {
             this.confInstance = new Configuration()
             await this.confInstance.loadConfiguration()
-            return this.confInstance
         }
         return this.confInstance
     }
+
 
     get configuration() {
         return this.config
     }
     async loadBrowser() {
+        if (this.browser || this.browserContext) return
         try {
             spin.start(this.lang.loading_states.browser_init)
-            this.browser = await firefox.launchPersistentContext(path.join(TEMP_DIR, 'tanko', 'browser'), LAUNCH_OPTIONS);
+            this.browser = await firefox.launch(LAUNCH_OPTIONS);
+            this.browserContext = await this.browser.newContext(BROWSER_CONTEXT_OPTIONS)
+            if(fs.existsSync(BROWSER_STORAGE_FILE)){
+                await this.browserContext.setStorageState(BROWSER_STORAGE_FILE)
+            }
+            await this.browserContext.addInitScript(contextInitScript);
             spin.stop()
-            await this.browser.addInitScript(() => {
-                /*for leercapitulo.co */
-                const storageData = [
-                    { name: "display_mode", value: "1" },
-                    { name: "pic_style", value: "0" }
-                ];
-                if (window.location.hostname.includes('leercapitulo.co')) {
-                    storageData.forEach(item => {
-                        window.localStorage.setItem(item.name, item.value);
-                    });
-                }
-        });
-            this.browserContext = this.browser.pages()[0] || await this.browser.newPage();
-            this.browserContext.route('**/*', route => {
+            this.browserPage = this.browserContext.pages()[0] || await this.browserContext.newPage();
+            this.browserPage.route('**/*', route => {
                 const requestType = route.request().resourceType();
-                if (requestType === 'script' && route.request().frame() !== this.browserContext.mainFrame()) {
+                if (requestType === 'script' && route.request().frame() !== this.browserPage.mainFrame()) {
                     return route.abort();
                 }
-                //block unnecessary resources to speed up loading times
                 if (['font', 'image', 'media', 'beacon'].includes(requestType)) {
                     route.abort()
                 } else {
@@ -91,7 +98,7 @@ export class Configuration extends EventEmitter {
             })
             this.emit(ConfigurationEvents.browserLoaded)
         } catch (e: any) {
-            if(spin.isSpinning) spin.fail()
+            if (spin.isSpinning) spin.fail()
             if (e instanceof Error) {
                 noti.push({
                     title: e.name,
@@ -105,6 +112,7 @@ export class Configuration extends EventEmitter {
         try {
             if (!this.browser) return
             spin.start(this.lang.loading_states.browser_close)
+            await this.browserContext.storageState({path:BROWSER_STORAGE_FILE})
             await this.browserContext.close()
             await this.browser.close()
             spin.stop()
@@ -115,8 +123,8 @@ export class Configuration extends EventEmitter {
             console.log(e)
         }
     }
-    async setServer(newServer: Client){
-        if(!newServer.need_browser && this.browser) {
+    async setServer(newServer: Client) {
+        if (!newServer.need_browser && this.browser) {
             await this.closeBrowser()
         } else if (newServer.need_browser && !this.browser) {
             await this.loadBrowser()
@@ -124,10 +132,10 @@ export class Configuration extends EventEmitter {
         if ((!this.browserContext || !this.browser) && newServer.need_browser)
             throw new Error('Error on browser loading')
         this.config.server = newServer;
-        this.ServerHandler = newServer.client(this.browserContext)
+        this.ServerHandler = newServer.client(this.browserPage)
         this.emit(ConfigurationEvents.updateServer, this.ServerHandler)
     }
-    async setLanguage(newLang: AvalibleLangs){
+    async setLanguage(newLang: AvalibleLangs) {
         this.lang = LANGUAGE_REGISTER[newLang]
         this.emit(ConfigurationEvents.updateLanguage, this.lang)
     }
@@ -138,7 +146,7 @@ export class Configuration extends EventEmitter {
                 const conf = await JSON.parse(confRaw) as ConfigurationInterface
                 this.config.langKey = conf.langKey ?? 'en'
                 this.config.server = conf.server,
-                this.config.favoriteChapterLang = conf.favoriteChapterLang
+                    this.config.favoriteChapterLang = conf.favoriteChapterLang
             }
             if (this.config.langKey)
                 this.lang = LANGUAGE_REGISTER[this.config.langKey]
@@ -147,12 +155,11 @@ export class Configuration extends EventEmitter {
             } else if (!this.config.server.need_browser && this.browser) {
                 await this.closeBrowser()
             }
-            if ((!this.browserContext || !this.browser) &&
-                this.config.server.need_browser
-            ) throw new Error('Error on browser loading')
-            const serverTarget = mangaServerRegister.find(server=> server.name === this.config.server.name)
-            if(serverTarget) this.ServerHandler = serverTarget?.client(this.browserContext)
-            this.emit(ConfigurationEvents.loadConfiguration, this.config, this.ServerHandler, this.browserContext, this.browser)
+            if (!this.browser && this.config.server.need_browser)
+                throw new Error('Error on browser loading')
+            const serverTarget = mangaServerRegister.find(server => server.name === this.config.server.name)
+            if (serverTarget) this.ServerHandler = serverTarget?.client(this.browserPage)
+            this.emit(ConfigurationEvents.loadConfiguration, this.config, this.ServerHandler, this.browserPage, this.browserContext)
         } catch (e) {
             console.log(e)
         }
@@ -168,8 +175,8 @@ export class Configuration extends EventEmitter {
         }
     }
     async getLanguageInterface() {
-        if(!this.lang)
-            await this.loadConfiguration()    
+        if (!this.lang)
+            await this.loadConfiguration()
         return this.lang
 
     }
@@ -185,8 +192,8 @@ export class Configuration extends EventEmitter {
         return this.ServerHandler
     }
     async setServerByName(newServerName: ServerName) {
-        const serverTarget = mangaServerRegister.find(server=> server.name === newServerName)
-        if(serverTarget){
+        const serverTarget = mangaServerRegister.find(server => server.name === newServerName)
+        if (serverTarget) {
             await this.setServer(serverTarget)
             return this.ServerHandler
         }
