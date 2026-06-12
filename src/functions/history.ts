@@ -22,7 +22,6 @@ export class History {
         if (e.mangaTitle.length > 0) {
           const date = new Date()
           date.setTime(e.time)
-          console.log(date.toLocaleTimeString())
           this.map.set(e.mangaTitle, e);
         }
       })
