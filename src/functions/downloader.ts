@@ -26,7 +26,7 @@ const cfgInst = await Configuration.getInstance()
 
 export async function downloadChapter(mangaTitle: string, chapterTitle: string, srcs: ChapterPage[]) {
     try {
-        const { loading_states, err_messages } = cfgInst.getLanguageInterface()
+        const { loading_states, err_messages } = await cfgInst.getLanguageInterface()
         spin.start(loading_states.downloading_pages + '...')
         const dir = makeDir('pdf', mangaTitle) ?? './';
         const pdf = new PDFDocument(PDFOptions)
