@@ -44,18 +44,18 @@
     "@types/pdfkit": "^0.17.5"
   },
   "dependencies": {
-    "@alex_521/prompts": "0.2.0",
-    "ansi-escapes": "7.2.0",
+    "@alex_521/prompts": "0.2.2",
+    "ansi-escapes": "7.3.0",
     "axios": "1.17.0",
     "boxen": "8.0.1",
     "chalk": "5.6.2",
     "cheerio": "1.2.0",
     "gradient-string": "3.0.0",
     "ora": "9.4.0",
-    "pdfkit": "0.19.0",
+    "pdfkit": "0.19.1",
     "playwright": "1.60.0",
     "sanitize-filename": "1.6.4",
-    "sharp": "0.34.5",
+    "sharp": "0.35.1",
     "terminal-image": "4.3.0"
   }
 }

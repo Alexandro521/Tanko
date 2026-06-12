@@ -2,3 +2,21 @@ allowBuilds:
   sharp: set this to true or false
 minimumReleaseAgeExclude:
   - '@alex_521/prompts@0.2.0'
+  - '@alex_521/prompts@0.2.2'
+  - '@img/sharp-darwin-arm64@0.35.1'
+  - '@img/sharp-darwin-x64@0.35.1'
+  - '@img/sharp-freebsd-wasm32@0.35.1'
+  - '@img/sharp-linux-arm64@0.35.1'
+  - '@img/sharp-linux-arm@0.35.1'
+  - '@img/sharp-linux-ppc64@0.35.1'
+  - '@img/sharp-linux-riscv64@0.35.1'
+  - '@img/sharp-linux-s390x@0.35.1'
+  - '@img/sharp-linux-x64@0.35.1'
+  - '@img/sharp-linuxmusl-arm64@0.35.1'
+  - '@img/sharp-linuxmusl-x64@0.35.1'
+  - '@img/sharp-wasm32@0.35.1'
+  - '@img/sharp-webcontainers-wasm32@0.35.1'
+  - '@img/sharp-win32-arm64@0.35.1'
+  - '@img/sharp-win32-ia32@0.35.1'
+  - '@img/sharp-win32-x64@0.35.1'
+  - sharp@0.35.1
