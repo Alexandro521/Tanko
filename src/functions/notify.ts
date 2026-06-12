@@ -1,7 +1,6 @@
 import type{Options} from "boxen";
 import boxen from "boxen";
 import ansi from 'ansi-escapes'
-import { height, width } from "pdfkit/js/page";
 import { EventEmitter } from "node:events";
 type Colors = Options['borderColor']
 

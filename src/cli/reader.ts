@@ -11,7 +11,7 @@ import { terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
-import { page } from "pdfkit"
+
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
