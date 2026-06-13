@@ -79,7 +79,7 @@ export class Notify extends EventEmitter{
         const notify = this.get()
         if(!notify) return undefined
         let color: Colors = 'gray'
-        const width = Math.min(notify.message.length, 120)
+        const width =Math.min(120, Math.max(notify.message.length, 80))
         const options:Options ={
             title: notify.title,
             textAlignment: 'center',
@@ -95,7 +95,7 @@ export class Notify extends EventEmitter{
                 top: 2
             },
             padding: {
-                bottom: 1,
+                bottom: 2,
                 left: 2,
                 right: 2,
                 top: 1
@@ -120,7 +120,7 @@ export class Notify extends EventEmitter{
                 return
             }
         }
-        const quitText = '(q) quit'
+        const quitText = `(^Q) Quit     ${this.stackIndex} Left`
         //before clear from the cursor pos to the end screen
         process.stdout.write('\x1B[0J'+ s)
         process.stdout.write(
