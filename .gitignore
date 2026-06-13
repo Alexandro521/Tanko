@@ -9,3 +9,5 @@ node_modules/
 download/**
 src/data/read_history.json
 dist/
+.http
+tanko*.tgz
