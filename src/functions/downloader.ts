@@ -3,10 +3,13 @@ import path from 'path';
 import sharp from 'sharp';
 import sanitize from 'sanitize-filename';
 import ora from 'ora';
+import chalk from 'chalk';
+import ansi from 'ansi-escapes'
 import PDFDocument from 'pdfkit'
 import type { ChapterPage } from '../types/types.js';
 import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
 import { Configuration } from './configuration.js';
+import { Notify, NotifyType } from './notify.js';
 const spin = ora();
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
@@ -21,16 +24,16 @@ const PDFOptions: PDFKit.PDFDocumentOptions = {
         Keywords: 'manga, manga reader, cli, tanko',
     }
 }
-
+const noti = Notify.getInstace()
 const cfgInst = await Configuration.getInstance()
 
 export async function downloadChapter(mangaTitle: string, chapterTitle: string, srcs: ChapterPage[]) {
     try {
         const { loading_states, err_messages } = await cfgInst.getLanguageInterface()
         spin.start(loading_states.downloading_pages + '...')
-        const dir = makeDir('pdf', mangaTitle) ?? './';
+        const downloadPath = makeDir('pdf', mangaTitle) ?? './';
         const pdf = new PDFDocument(PDFOptions)
-        pdf.pipe(fs.createWriteStream(`${dir}/${sanitize(chapterTitle)}.pdf`));
+        pdf.pipe(fs.createWriteStream(`${downloadPath}/${sanitize(chapterTitle)}.pdf`));
         let progressCounter = 0;
         let pageImages = await Promise.all(srcs.map(async (image, index) => {
             if (image.src === 'undefined') throw new Error(err_messages.pdf_make.msg);
@@ -54,11 +57,20 @@ export async function downloadChapter(mangaTitle: string, chapterTitle: string, 
             progressCounter++;
         }
         pdf.end();
-        spin.succeed(`${chapterTitle} download succesfully`);
-
+        spin.stop();
+        noti.push({
+            title: 'Download complete',
+            type: NotifyType.event,
+            message: `${mangaTitle} chapter, ${ansi.link(chalk.underline.blueBright(chapterTitle) ,downloadPath)} downloaded`
+        })
     } catch (e) {
-        spin.fail('x download failed');
-        console.log(e)
+        if(e instanceof Error){
+            noti.push({
+            title: 'Download failed',
+            type: NotifyType.error,
+            message: `${e.message}`
+        })
+        }
     }
 }
 
