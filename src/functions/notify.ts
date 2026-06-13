@@ -80,6 +80,20 @@ export class Notify extends EventEmitter{
         if(!notify) return undefined
         let color: Colors = 'gray'
         const width =Math.min(120, Math.max(notify.message.length, 80))
+        switch(notify.type){
+            case NotifyType.error:
+                color = 'redBright'
+                break
+            case NotifyType.message: 
+                color = 'gray'
+                break
+            case NotifyType.event:
+                color = 'blueBright'
+                break
+            case NotifyType.warning:
+                color = 'yellowBright'
+                break
+        }
         const options:Options ={
             title: notify.title,
             textAlignment: 'center',
