@@ -34,6 +34,7 @@ export interface SearchResult {
 export interface HistoryObject {
   mangaTitle: string,
   mangaSrc: string,
+  chapterSrc: string,
   server: ServerName,
   last_title: string,
   last_index: number,
