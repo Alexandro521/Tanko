@@ -1,4 +1,4 @@
-import { mangaServerRegister, type Client } from "../clients/port.js";
+import { mangaServerRegister, type Client } from "../servers/port.js";
 import type { AvalibleLangs, LangInterface } from "../types/lang.js";
 import type { ConfigurationInterface, MangaProvider, ServerName } from "../types/types.js";
 import chalk from "chalk";

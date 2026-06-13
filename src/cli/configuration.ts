@@ -2,7 +2,7 @@ import prompts, { type Choice } from "@alex_521/prompts";
 import esc from "ansi-escapes";
 import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
-import { mangaServerRegister as ServerRegister, type Client } from "../clients/port.js";
+import { mangaServerRegister as ServerRegister, type Client } from "../servers/port.js";
 import {
   configurationPrompt,
   confirmPrompt,
