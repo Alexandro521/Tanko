@@ -3,10 +3,11 @@ import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
-import type {ChapterLanguage } from "../types/types.js";
+import type {Chapter, ChapterLanguage } from "../types/types.js";
 import type { Key } from "node:readline";
 import { Notify, NotifyType } from "../functions/notify.js";
 import ansi from 'ansi-escapes'
+import prompts from "@alex_521/prompts";
 const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
 let {configuration, main_sections, chapter_access_options} =await instance.getLanguageInterface()
@@ -30,6 +31,19 @@ function onKeyPress (this: any, key: Key, name: string): void{
         notify.pop()
         this.render()
     }
+}
+export async function askChapterLang(chapter: Chapter) {
+  const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
+  let lang = avalibleLanguages[0].lang; //as default value
+  if (chapter.translation_count > 1) {
+    const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
+    if (!targetLang?.target) {
+  
+      return null;
+    }
+    lang = targetLang.target;
+  }
+  return lang;
 }
 
 // [General Prompts]
@@ -264,10 +278,9 @@ export const terminalReaderChapterOptions = ()=>{
     return SectionPrompt('Opciones', [
         sh.prevoius_chapter,
         sh.next_chapter,
-        sh.download,
-        sh.getChapters,
-    //ChapterAccessOptions.suscribe,
-        sh.exit,
+     //   sh.download,
+     //   sh.getChapters,
+     //   sh.exit,
 ], '',0, 'select')
 }
 
