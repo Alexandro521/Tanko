@@ -27,7 +27,7 @@ export interface ChapterLanguage {
 export interface SearchResult {
     value: string
     label: string
-    src: string
+    link: string
     thumbnail?: string
 }
 

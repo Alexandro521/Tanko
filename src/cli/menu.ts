@@ -126,7 +126,7 @@ async function search(server: MangaProvider) {
         }
         memoryChoicePosition = Number(targetIndex.target);
         const targetResult = results[Number(targetIndex.target)];
-        await loadMangaChapter(server, targetResult.src);
+        await loadMangaChapter(server, targetResult.link);
         
       }
     }

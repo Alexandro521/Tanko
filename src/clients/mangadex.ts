@@ -30,7 +30,7 @@ export class MangaDex implements MangaProvider {
             return {
                 thumbnail: "",
                 label: e.attributes.title.en ?? e.attributes.title["ja-ro"] ?? '',
-                src: e.id,
+                link: e.id,
                 value: e.attributes.title.en ?? ''
             }
         })
@@ -42,7 +42,7 @@ export class MangaDex implements MangaProvider {
         let data = [];
         while (true) {
             const res = await axios.get<ChapterListMangadex>(
-                `${this.baseUrl}/manga/${mangaSrc}/feed?limit=300&offset=${offset}`
+                `${this.baseUrl}/manga/${mangaSrc}/feed?limit=300&offset=${offset}&includeExternalUrl=0`
             );
             data.push(...res.data.data);
             if (data.length >= res.data.total)
