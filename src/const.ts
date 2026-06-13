@@ -1,13 +1,15 @@
 import path from "path"
 import os from "os"
+import ansi from 'ansi-escapes'
 import type {BrowserContextOptions, LaunchOptions} from "playwright"
 import gradient from "gradient-string"
+import chalk, { Chalk } from "chalk"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
-export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config.json')
+export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config_v2.json')
 export const DATA_DEFAULT_DIR = path.resolve(BASE_DIR, 'data')
-export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_test.json')
+export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_v2.json')
 export const TEMP_DIR = os.tmpdir()
 export const BROWSER_STORAGE_PATH = path.resolve(DATA_DEFAULT_DIR, 'browser')
 export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.json')
@@ -49,10 +51,18 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
     'permissions.default.desktop-notification': 2,
     'network.http.proxy.pipelining': true,
     'network.http.max-connections': 64,
-    // 'network.http.pipelining': true,
   }
 }
 export const BROWSER_CONTEXT_OPTIONS:BrowserContextOptions = {
   javaScriptEnabled: true,
   reducedMotion: 'reduce',
 }
+
+export const FIRST_INIT_MESSAGE = `
+Welcome to Tanko! It's been several months since I last updated this tool,
+but I've been working hard to release an update that lives up to my absence.
+This is just a small preview of my progress. Thanks for using Tanko!
+
+If you find any errors, it would help me a lot if you opened an ${ansi.link(chalk.underline.blueBright('issue'), 'https://github.com/Alexandro521/Tanko/issues')} in the GitHub repository.
+
+P.S.: Press Ctrl+Q to close this message`
