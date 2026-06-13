@@ -12,6 +12,7 @@ import type {
 } from "../types/types.js";
 import { SignalsCodes } from "../types/enum.js";
 import {
+  askChapterLang,
   basicChapterOptions,
   chapterLangChoices,
   generateChapterList,
@@ -45,13 +46,15 @@ const notifyInstance = Notify.getInstace()
 
 
 function pushError(e: any) {
-      if(e instanceof Error){
-      notifyInstance.push({
-        title: e.name,
-        message: e.message,
-        type: NotifyType.error,
-      })
-    }
+  if (loading.isSpinning)
+    loading.stop()
+  if (e instanceof Error) {
+    notifyInstance.push({
+      title: e.name,
+      message: e.message,
+      type: NotifyType.error,
+    })
+  }
 }
 
 export async function main(confInstance: Configuration) {
@@ -105,7 +108,6 @@ async function search(server: MangaProvider) {
       const results = await server.search(searchQuery.query);
       //
       if (!results || results.length < 1) {
-       
         if (loading.isSpinning) loading.fail(err_messages.no_results.msg);
         continue;
       } else if (loading.isSpinning) loading.stop();
@@ -133,20 +135,6 @@ async function search(server: MangaProvider) {
   }
 }
 
-async function askChapterLang(chapter: Chapter) {
-  const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
-  let lang = avalibleLanguages[0].lang; //as default value
-  if (chapter.translation_count > 1) {
-    const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
-    if (!targetLang?.target) {
-  
-      return null;
-    }
-    lang = targetLang.target;
-  }
-  return lang;
-}
-
 async function loadMangaChapter(
   server: MangaProvider,
   mangaSrc: string,
@@ -172,7 +160,6 @@ async function loadMangaChapter(
         generateChapterList(mangaInfo.title, memoryChoicePosition, choices),
       );
       if (!chapterIndex.chapter) {
- 
         break;
       }
       memoryChoicePosition = Number(chapterIndex.chapter);
@@ -195,14 +182,15 @@ async function loadMangaChapter(
           server,
         );
       } else if (options.target === SignalsCodes.download_chapter) {
+        loading.start(loading_states.downloading_chapter)
         const target = targetChapter.translations[lang]
         const pages = await server.getChapterPages(target?.src as string)
+        loading.stop()
         if(pages)
           await downloadChapter(mangaInfo.title ?? 'any', target?.title as string, pages)
       }
     }
   } catch (e) {
-    if (loading.isSpinning) loading.fail();
     pushError(e)
   }
 }
@@ -265,22 +253,21 @@ async function history(server: MangaProvider) {
           await loadMangaChapter(server, mangaTarget.mangaSrc);
           break;
         case SignalsCodes.download_chapter:
-          // await downloadChapter(manga.mangaTitle, manga.mangaSrc, manga.pages)
-
+          loading.start(loading_states.downloading_chapter)
+          const pages= await server.getChapterPages(mangaTarget?.chapterSrc)
+          loading.stop()
+          await downloadChapter(mangaTarget.mangaTitle, mangaTarget.last_title, pages)
           break;
         default:
-
           break;
       }
     }
   } catch (e) {
-
-    console.log(e);
+    pushError(e)
   }
 }
 
 async function populars(server: MangaProvider) {
- 
   try {
     loading.start(loading_states.default_loading);
     const populars = await server.getPopulars();
@@ -311,7 +298,6 @@ async function populars(server: MangaProvider) {
       const info = populars[Number(select.target)];
       const option = await prompts(popularMangaSelectOptions(info.title));
       if (!option?.target || option.target === SignalsCodes.exit) {
-        
         continue;
       }
       loading.start(loading_states.default_loading);
@@ -331,14 +317,16 @@ async function populars(server: MangaProvider) {
           server,
         );
       } else if (option.target === SignalsCodes.download_chapter) {
-        // if (res)
-        // await downloadChapter(res.mangaTitle, res.title, res.pages)
+        loading.start(loading_states.downloading_chapter)
+        const chapterTarget = lastChapter.translations[lang]
+        const pages = await server.getChapterPages(chapterTarget?.src as string)
+        loading.stop()
+        await downloadChapter(mangainfo.title, chapterTarget?.title as string, pages)
       } else if (option.target === SignalsCodes.get_chapters_list) {
         await loadMangaChapter(server, info.src, mangainfo);
       }
     }
   } catch (e) {
-    if (loading.isSpinning) loading.fail(err_messages.fetching.msg);
     pushError(e)
   }
 }
@@ -402,28 +390,31 @@ async function lastedSection(server: MangaProvider) {
         loading.start(
           `${loading_states.default_loading} ${chapterTarget.title} : ${chapterTarget.title}`,
         );
-        const allChapterList = await server.getMangaInfo(targetManga.src);
+        const mangaInfo = await server.getMangaInfo(targetManga.src);
         let lang;
         loading.stop();
-        if (!allChapterList) continue;
+        if (!mangaInfo) continue;
         const index = Number(chapterIndex.chapter);
-        const chapter = allChapterList.chapters[index];
+        const chapter = mangaInfo.chapters[index];
         if ((lang = await askChapterLang(chapter)) === null) {
           continue;
         }
         if (chapterOptions.target === SignalsCodes.read_chapter)
-          await terminalReader(allChapterList, index, lang, server);
-        else if (chapterOptions.target === SignalsCodes.download_chapter)
-          //    await downloadChapter(res.mangaTitle, res.title, res.pages)
+          await terminalReader(mangaInfo, index, lang, server);
+        else if (chapterOptions.target === SignalsCodes.download_chapter){
+          loading.start(loading_states.downloading_chapter)
+          const chapterTargetLang =  chapter.translations[lang]
+          const pages = await server.getChapterPages(chapterTargetLang?.src as string)
+          loading.stop()
+          await downloadChapter(mangaInfo.title, chapterTargetLang?.title as string, pages)
           continue;
+        }
         else if (chapterOptions.target === SignalsCodes.exit) {
           continue;
         }
-
       }
     }
   } catch (e) {
-    console.log(e);
     pushError(e)
   }
 }
