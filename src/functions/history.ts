@@ -46,7 +46,7 @@ export class History {
         last_update: Date.now(),
         history: this.parseMap()
       }
-      await fsp.writeFile(HISTORY_PATH, JSON.stringify(fileStruct, null))
+      await fsp.writeFile(HISTORY_PATH, JSON.stringify(fileStruct, null, '\t'))
     } catch (e) {
       if (e instanceof Error) {
         console.error(e.message)
