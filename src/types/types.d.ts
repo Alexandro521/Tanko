@@ -61,6 +61,7 @@ export declare class MangaProvider{
 }
 
 export interface ConfigurationInterface {
+    isFirstRun: Boolean,
     langKey: AvalibleLangs,
     deepSearch: boolean,
     historyServerFilter: boolean,

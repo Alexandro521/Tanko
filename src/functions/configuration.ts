@@ -44,13 +44,13 @@ export class Configuration extends EventEmitter {
     private browser: Browser | null = null
     private browserContext!: BrowserContext
     private browserPage!: Page
-    private static waitLock = false
 
     private config: ConfigurationInterface = {
+        isFirstRun: true,
         downloads_path: DOWNLOADS_DEFAULT_DIR,
         deepSearch: false,
         langKey: 'es',
-        server: mangaServerRegister[0],
+        server: mangaServerRegister[1], // mangadex is default server
         favoriteChapterLang: 'any',
         historyMaxSize: 256,
         historyServerFilter: true,
@@ -68,7 +68,6 @@ export class Configuration extends EventEmitter {
         }
         return this.confInstance
     }
-
 
     get configuration() {
         return this.config
@@ -144,9 +143,18 @@ export class Configuration extends EventEmitter {
             if (fs.existsSync(CONFIG_FILE_PATH) && !conf) {
                 const confRaw = (await fsPromise.readFile(CONFIG_FILE_PATH)).toString()
                 const conf = await JSON.parse(confRaw) as ConfigurationInterface
-                this.config.langKey = conf.langKey ?? 'en'
-                this.config.server = conf.server,
-                    this.config.favoriteChapterLang = conf.favoriteChapterLang
+                const thisConf = this.config
+                this.config = {
+                    langKey: conf?.langKey ?? thisConf.langKey,
+                    server: conf?.server ??  thisConf.server,
+                    deepSearch: conf?.deepSearch ?? thisConf.deepSearch,
+                    downloads_path: conf?.downloads_path ?? thisConf.downloads_path,
+                    favoriteChapterLang: conf?.favoriteChapterLang ?? thisConf.favoriteChapterLang,
+                    historyMaxSize: conf?.historyMaxSize  ?? thisConf.historyMaxSize,
+                    historyServerFilter: conf?.historyServerFilter ?? thisConf.historyServerFilter,
+                    imageCacheMaxSize: conf?.imageCacheMaxSize ?? thisConf.imageCacheMaxSize,
+                    isFirstRun: conf?.isFirstRun ?? thisConf.isFirstRun
+                }
             }
             if (this.config.langKey)
                 this.lang = LANGUAGE_REGISTER[this.config.langKey]
