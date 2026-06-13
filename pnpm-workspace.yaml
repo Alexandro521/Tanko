@@ -20,7 +20,3 @@ minimumReleaseAgeExclude:
   - '@img/sharp-win32-ia32@0.35.1'
   - '@img/sharp-win32-x64@0.35.1'
   - sharp@0.35.1
-
-minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - '@alex_521/prompts'
