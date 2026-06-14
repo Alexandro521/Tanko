@@ -49,6 +49,7 @@ export class Notify extends EventEmitter{
     push(notify: NotifyProps): void{
         if(this.stackIndex < this.stackSize){
             this.stack[this.stackIndex++] = notify;
+            this.strbox = undefined
             if(this.popTimeout){
             //    clearTimeout(this.popTimeout)
             }
@@ -134,7 +135,7 @@ export class Notify extends EventEmitter{
                 return
             }
         }
-        const quitText = `(^Q) Quit     ${this.stackIndex} Left`
+        const quitText = '[^Q] quit '+ `⏺ ${this.stackIndex > 1 ? this.stackIndex + ' Left' : ''}`
         //before clear from the cursor pos to the end screen
         process.stdout.write('\x1B[0J'+ s)
         process.stdout.write(
