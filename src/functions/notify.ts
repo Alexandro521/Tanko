@@ -135,7 +135,7 @@ export class Notify extends EventEmitter{
                 return
             }
         }
-        const quitText = '[^Q] quit '+ `⏺ ${this.stackIndex > 1 ? this.stackIndex + ' Left' : ''}`
+        const quitText = '[^Q] quit '+ `${this.stackIndex > 1 ?['⏺', this.stackIndex, 'Left'].join(' ') : ''}`
         //before clear from the cursor pos to the end screen
         process.stdout.write('\x1B[0J'+ s)
         process.stdout.write(

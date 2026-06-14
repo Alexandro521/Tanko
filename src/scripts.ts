@@ -14,8 +14,7 @@ export async function versionVerify(){
     if(pkgInfo.version !== lastVersion){
         const message = `
 A new version of Tanko is available!
-
-Current ${chalk.redBright(pkgInfo.version)} ⤳ Lasted ${chalk.greenBright(lastVersion)}
+${chalk.redBright(pkgInfo.version)} 🠆 ${chalk.greenBright(lastVersion)}
 Run: ${chalk.blueBright('$pnpm add -g tanko')} to update to the latest version and enjoy the new features.
 
 Go to ${ansi.link(chalk.underline.blueBright('releases'), 'https://github.com/Alexandro521/Tanko/releases')} to view the release notes`

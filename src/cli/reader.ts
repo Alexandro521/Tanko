@@ -172,7 +172,7 @@ class ChapterControl {
       server: confInst.configuration.server.name,
       last_title: chapter.title,
       mangaSrc: src,
-      mangaTitle: title +' '+ chapter.title,
+      mangaTitle: title,
       time: Date.now()
     })
   }
