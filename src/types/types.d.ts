@@ -47,14 +47,15 @@ export interface MangaInfo {
   title: string,
   src: string,
   description?:string,
-  chapters: Chapter[]
+  lastUploadChapterSrc?: string
 }
 
 export declare class MangaProvider{
     constructor(context: Page)
     public name:ServerName
-    search(query: string ) : Promise<SearchResult[]>
+    search(query: string ) : Promise<MangaInfo[]>
     getMangaInfo(mangaSrc: string): Promise<MangaInfo>
+    getChapterList(mangaSrc:string): Promise<Chapter[]>
     getChapterPages(chapterSrc: string): Promise<ChapterPage[]>
     getPopulars(): Promise<MangaInfo[]>
     getLastMangas(): Promise<MangaInfo[]>

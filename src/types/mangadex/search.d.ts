@@ -7,6 +7,14 @@ export interface SearchResultMangadex {
   offset: number;
   total: number;
 }
+export interface MangadexMangaInfo {
+  result: string;
+  response: string;
+  data: Data;
+  limit: number;
+  offset: number;
+  total: number;
+}
 
 export interface Data {
   id: string;
