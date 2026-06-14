@@ -95,13 +95,10 @@ class ChapterControl {
   private index!: number;
   private server!: MangaProvider;
   private lang!: ChapterLangType;
-  private mainSrc!:string;
-  private mainTitle!:string
 
-  constructor(mangaInfo: MangaInfo, chapterIndex: number, lang: ChapterLangType, server: MangaProvider) {
-    this.chapters = mangaInfo.chapters;
-    this.mainSrc = mangaInfo.src,
-    this.mainTitle = mangaInfo.title,
+
+  constructor(chapterList: Chapter[],chapterIndex: number, lang: ChapterLangType, server: MangaProvider) {
+    this.chapters = chapterList
     this.index = chapterIndex;
     this.lang = lang;
     this.server = server;
@@ -165,7 +162,7 @@ class ChapterControl {
     if (newIndex > -1 && newIndex < this.chapters.length)
       this.index = newIndex;
   }
-  historySave() {
+  historySave(title: string, src:string) {
     const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang)
     History.save({
       chapters_length: this.chapters.length,
@@ -174,8 +171,8 @@ class ChapterControl {
       last_lang: this.lang,
       server: confInst.configuration.server.name,
       last_title: chapter.title,
-      mangaSrc: this.mainSrc,
-      mangaTitle: this.mainTitle,
+      mangaSrc: src,
+      mangaTitle: title +' '+ chapter.title,
       time: Date.now()
     })
   }
@@ -200,10 +197,10 @@ const debugLogs = (src: string) => {
     process.stdout.write(`[DEBUG INFO] (CACHE SIZE): ${(ImageCache.cacheSize / 1000000).toFixed(2)} MB (MAX CACHE SIZE) : ${(ImageCache.MAX_SIZE / 1000000).toFixed(2)} MB (CACHE POINTER POSITION): ${ImageCache.pointer}, (PAGES IN CACHE) ${ImageCache.cache.size}, (FROM CACHE) ${ImageCache.cache.has(src)}\n\n`)
 }
 
-export async function terminalReader(mangaInfo: MangaInfo, startIndex: number, lang: ChapterLangType, server: MangaProvider) {
+export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,startIndex: number, lang: ChapterLangType, server: MangaProvider) {
 
     return new Promise<void>(async (resolve) => {
-        const chapterCtrl = new ChapterControl(mangaInfo, startIndex, lang, server);
+        const chapterCtrl = new ChapterControl(chapters, startIndex, lang, server);
         const pageCtrl = new PagesControl([]);
       
         TerminalControl.openRawMode()
@@ -217,7 +214,7 @@ export async function terminalReader(mangaInfo: MangaInfo, startIndex: number, l
         const pageDebounce = debounce(async () => {
                 await pageCtrl.loadPage()
                 process.stdout.write(esc.cursorHide)
-                process.stdout.write(chalk.gray("\n   ←            →          Q & ESC            P                    N                C\nAnterior    Siguiente        Exit       capitulo anterior   capitulo siguiente    Opciones"
+                process.stdout.write(chalk.gray("\n   ←            →          Q & ESC            P                    N                C\nProvious page    Next page        Exit       Previous chapter   Next Chapter    Options"
             ))
         }, 300)
         renderInfo()
@@ -234,7 +231,7 @@ export async function terminalReader(mangaInfo: MangaInfo, startIndex: number, l
                   await chapterCtrl.prevChapter()
               
                 let newPages = await chapterCtrl.loadChapter()
-                chapterCtrl.historySave();
+                chapterCtrl.historySave(mangaInfo.title, mangaInfo.title);
                 pageCtrl.setPages(newPages ?? [])
                 loading.stop()
                 if (stdin.isTTY) TerminalControl.openRawMode(handle)
@@ -285,10 +282,10 @@ export async function terminalReader(mangaInfo: MangaInfo, startIndex: number, l
                 }
                 else if(options.target === SignalsCodes.get_chapters_list) {
                   TerminalControl.exitRawMode(handleKeypress)
-                  const choices: Choice[] = mangaInfo.chapters.map((e, index):Choice=>({title: e.title, value: String(index)}))
+                  const choices: Choice[] = chapters.map((e, index):Choice=>({title: e.title, value: String(index)}))
                   const chapterIndex = await prompts(generateChapterList(mangaInfo.title, chapterCtrl.chapterIndex, choices))
                   if(!chapterIndex ||!chapterIndex.chapter) return
-                  const targetChapter = mangaInfo.chapters[Number(chapterIndex.chapter)]
+                  const targetChapter = chapters[Number(chapterIndex.chapter)]
                   const lang = await askChapterLang(targetChapter)
                   if(lang)
                     chapterCtrl.chapterLanguage = lang
