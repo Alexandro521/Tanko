@@ -107,8 +107,8 @@ node run dev
 * [X] Descargar capitulos en formato pdf
 * [X] Historial de lectura
 * [ ] Descargar multiples capitulos al mismo tiempo
-* [ ] Seccion de configuracion
+* [X] Seccion de configuracion
 * [ ] Busqueda profunda
-* [ ] Servidores multiples
-* [ ] Notificaciones
+* [X] Servidores multiples
+* [X] Notificaciones
 * [ ] Seccion de Favoritos
