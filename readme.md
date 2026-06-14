@@ -2,6 +2,7 @@
 
 [![npm version](https://img.shields.io/npm/v/tanko.svg)](https://www.npmjs.com/package/tanko)
 [![license](https://img.shields.io/npm/l/tanko.svg)](https://github.com/Alexandro521/tanko/LICENSE)
+[![Publish to NPM](https://github.com/Alexandro521/Tanko/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/Alexandro521/Tanko/actions/workflows/npm-publish.yml)
 
 tanko es una pequeña app de terminal para leer y descargar mangas de forma simple y directa.
 
