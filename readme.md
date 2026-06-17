@@ -17,10 +17,9 @@ Tanko is a CLI tool for reading and downloading manga directly from your termina
 pnpm install -g tanko
 ```
 
+> [!NOTE]
+> Some sources require a web browser to scrape manga, but this step is not mandatory; you can use Tanko with sources that do not require a browser.
 ### 2. Install the Firefox Browser
-
-Tanko requires Firefox to scrape and render correctly. Install it via Playwright:
-
 ```bash
 npx playwright install firefox
 
