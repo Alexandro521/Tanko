@@ -29,7 +29,8 @@ export class LeerCapitulo implements MangaProvider {
             const container = $('div.mainpage-manga div.media-body', node)
             const mangaTtitle = container.find('h4.manga-newest').text()
             const src = container.find('a').first().attr('href') ?? ''
-            mangaList.push({ title: mangaTtitle, src})
+            const lastChapter = container.find('div.hotup-list > span').first().find('a.xanh').text()
+            mangaList.push({ title: mangaTtitle, src, description: lastChapter})
         })
         return mangaList
     }
