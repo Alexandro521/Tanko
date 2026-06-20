@@ -1,5 +1,5 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
-import { SignalsCodes, ConfigurationOptions } from "../types/enum.js";
+import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
@@ -292,4 +292,16 @@ export const chapterLangChoices = (langs: ChapterLanguage[]) => {
         }
     })
     return SectionPrompt('Select Language',choices, '', 0, 'select' )
+}
+
+
+export const downloadFormatOptions = () => {
+    const avalibleDownloadFormats = Object.entries(DownloadFormat)
+    const choices = avalibleDownloadFormats.map(([key, format]):Choice =>{
+        return {
+            title: key,
+            value: format
+        }
+    })
+    return SectionPrompt('Select Format', choices, '', 0, 'autocomplete')
 }
