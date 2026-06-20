@@ -1,9 +1,11 @@
 import type { Chapter } from "./types/types.js";
-const currentTime = new Date();
-const readTime= new Date();
-const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
+import path from "path";
+import fs from "fs/promises"
+import sanitize from "sanitize-filename";
 
 export function getTimeSkip(time: number) {
+  const currentTime = new Date();
+  const readTime= new Date();
   currentTime.setTime(Date.now())
   readTime.setTime(time);
 
@@ -38,8 +40,19 @@ export function getTimeSkip(time: number) {
 }
 
 export function sortChapterList(chapters: Chapter[]): Chapter[] {
+  const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
   const chapterListSort = chapters.sort((a, b) => {
     return Number(ChapterSortRegex.exec(b.title)?.[1] ?? 0) - Number(ChapterSortRegex.exec(a.title)?.[1] ?? 0)
   })
   return chapterListSort
+}
+
+export async function makeDir(root: string, ...paths: string[]) {
+  const sanitizePaths = paths.map(name => sanitize(name))
+  const absolutePath =  path.join(root, ...sanitizePaths)
+  await fs.mkdir(
+    absolutePath,
+    {recursive: true}
+  )
+  return absolutePath
 }
