@@ -246,6 +246,7 @@ async function history(server: MangaProvider) {
       loading.start(loading_states.loading_chapters);
       const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
       if (loading.isSpinning) loading.stop();
+      if(!chapterList) continue;
       switch (options.target) {
         case SignalsCodes.resume_read:
           await terminalReader(

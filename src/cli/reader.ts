@@ -231,7 +231,7 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
                   await chapterCtrl.prevChapter()
               
                 let newPages = await chapterCtrl.loadChapter()
-                chapterCtrl.historySave(mangaInfo.title, mangaInfo.title);
+                chapterCtrl.historySave(mangaInfo.title, mangaInfo.src);
                 pageCtrl.setPages(newPages ?? [])
                 loading.stop()
                 if (stdin.isTTY) TerminalControl.openRawMode(handle)
