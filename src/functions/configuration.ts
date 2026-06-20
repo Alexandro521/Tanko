@@ -96,6 +96,7 @@ export class Configuration extends EventEmitter {
                 }
             })
             this.emit(ConfigurationEvents.browserLoaded)
+            return true
         } catch (e: any) {
             if (spin.isSpinning) spin.fail()
             if (e instanceof Error) {
@@ -105,6 +106,7 @@ export class Configuration extends EventEmitter {
                     type: NotifyType.error
                 })
             }
+            return false
         }
     }
     async closeBrowser() {
@@ -126,7 +128,8 @@ export class Configuration extends EventEmitter {
         if (!newServer.need_browser && this.browser) {
             await this.closeBrowser()
         } else if (newServer.need_browser && !this.browser) {
-            await this.loadBrowser()
+            const state = await this.loadBrowser()
+            if(!state) throw new Error(this.lang.err_messages.client_switch.msg);
         }
         if ((!this.browserContext || !this.browser) && newServer.need_browser)
             throw new Error('Error on browser loading')
