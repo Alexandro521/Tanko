@@ -76,3 +76,20 @@ export interface ServerConfInterface {
     name: ServerName,
     need_browser: boolean
 }
+
+/**Downloader */
+export interface DownloadProps {
+    mangaTitle: string,
+    chapterTitle: string,
+    serverName: ServerName,
+    pages: ChapterPage[],
+    format: DownloadFormat
+}
+export interface FormatProps {
+    path: string,
+    pages: ChapterPage[],
+}
+export interface  ImgBuffer {
+    data: Buffer<ArrayBufferLike> | ArrayBuffer;
+    info: sharp.OutputInfo;
+}
