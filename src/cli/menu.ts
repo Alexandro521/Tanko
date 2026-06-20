@@ -1,4 +1,3 @@
-import ansi from "ansi-escapes";
 import ora from "ora";
 import prompts, {type Choice } from "@alex_521/prompts";
 import { Downloader } from "../functions/downloader.js";
@@ -31,10 +30,8 @@ import { configurationUI } from "./configuration.js";
 import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
 import { getTimeSkip } from "../utils.js";
-
 import { Notify, NotifyType } from "../functions/notify.js";
-import { load } from "cheerio";
-import { page } from "pdfkit";
+
 
 const loading = ora();
 
