@@ -28,3 +28,10 @@ export enum SignalsCodes {
     nullElement = -35454,
     suscribe_manga = 654,
 }
+
+export enum DownloadFormat {
+    pdf = 'pdf',
+    img = 'jpeg',
+    zip = 'zip',
+    cbz = 'cbz'
+}
