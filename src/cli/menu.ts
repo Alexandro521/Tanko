@@ -1,12 +1,13 @@
 import ansi from "ansi-escapes";
 import ora from "ora";
 import prompts, {type Choice } from "@alex_521/prompts";
-import { downloadChapter } from "../functions/downloader.js";
+import { Downloader } from "../functions/downloader.js";
 import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
 import type {
   Chapter,
-  ConfigurationInterface,
+  ChapterLangType,
+  DownloadProps,
   MangaInfo,
   MangaProvider,
 } from "../types/types.js";
@@ -14,7 +15,7 @@ import { SignalsCodes } from "../types/enum.js";
 import {
   askChapterLang,
   basicChapterOptions,
-  chapterLangChoices,
+  downloadFormatOptions,
   generateChapterList,
   historyChapterOptions,
   historySectionPrompt,
@@ -26,13 +27,14 @@ import {
   searchResultPrompt,
   voidPrompt,
 } from "./prompts.js";
-import { WELCOME_MESSAGE } from "../const.js";
 import { configurationUI } from "./configuration.js";
 import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
 import { getTimeSkip } from "../utils.js";
-import type { Key } from "node:readline";
+
 import { Notify, NotifyType } from "../functions/notify.js";
+import { load } from "cheerio";
+import { page } from "pdfkit";
 
 const loading = ora();
 
@@ -40,10 +42,7 @@ let err_messages: ErrorMessages,
 loading_states: LoadingStates,
 lang: LangInterface
 
-
 const notifyInstance = Notify.getInstace()
-
-
 
 function pushError(e: any) {
   if (loading.isSpinning)
@@ -190,7 +189,12 @@ async function loadMangaChapter(
         const pages = await server.getChapterPages(target?.src as string)
         loading.stop()
         if(pages)
-          await downloadChapter(mangaInfo.title ?? 'any', target?.title as string, pages)
+          await downloadSection(        mangaInfo,
+          chapterList,
+          Number(chapterIndex.chapter),
+          lang,
+          server,
+        )
       }
     }
   } catch (e) {
@@ -239,12 +243,11 @@ async function history(server: MangaProvider) {
         if(loading.isSpinning) loading.stop()
         server = await confInstance.setServerByName(mangaTarget.server) ?? server
       }
+      loading.start(loading_states.loading_chapters);
+      const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
+      if (loading.isSpinning) loading.stop();
       switch (options.target) {
         case SignalsCodes.resume_read:
-          loading.start(loading_states.loading_chapters);
-          const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
-          if (loading.isSpinning) loading.stop();
-          if (!chapterList) continue;
           await terminalReader(
             {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
             chapterList,
@@ -257,10 +260,12 @@ async function history(server: MangaProvider) {
           await loadMangaChapter(server, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
           break;
         case SignalsCodes.download_chapter:
-          loading.start(loading_states.downloading_chapter)
-          const pages= await server.getChapterPages(mangaTarget?.chapterSrc)
-          loading.stop()
-          await downloadChapter(mangaTarget.mangaTitle, mangaTarget.last_title, pages)
+          await downloadSection(   {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
+            chapterList,
+            mangaTarget.last_index,
+            mangaTarget.last_lang,
+            server,
+          )
           break;
         default:
           break;
@@ -324,11 +329,13 @@ async function populars(server: MangaProvider) {
           server,
         );
       } else if (option.target === SignalsCodes.download_chapter) {
-        loading.start(loading_states.downloading_chapter)
-        const chapterTarget = lastChapter.translations[lang]
-        const pages = await server.getChapterPages(chapterTarget?.src as string)
-        loading.stop()
-        await downloadChapter(info.title, chapterTarget?.title as string, pages)
+        await downloadSection(
+          info,
+          chapterList,
+          chapterList.length - 1,
+          lang,
+          server
+        )
       } else if (option.target === SignalsCodes.get_chapters_list) {
         await loadMangaChapter(server, info, chapterList);
       }
@@ -410,11 +417,7 @@ async function lastedSection(server: MangaProvider) {
         if (chapterOptions.target === SignalsCodes.read_chapter)
           await terminalReader(mangaInfo,chapterList, index, lang, server);
         else if (chapterOptions.target === SignalsCodes.download_chapter){
-          loading.start(loading_states.downloading_chapter)
-          const chapterTargetLang =  chapter.translations[lang]
-          const pages = await server.getChapterPages(chapterTargetLang?.src as string)
-          loading.stop()
-          await downloadChapter(mangaInfo.title, chapterTargetLang?.title as string, pages)
+          await downloadSection(mangaInfo,chapterList, index, lang, server)
           continue;
         }
         else if (chapterOptions.target === SignalsCodes.exit) {
@@ -425,4 +428,42 @@ async function lastedSection(server: MangaProvider) {
   } catch (e) {
     pushError(e)
   }
+}
+
+export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: ChapterLangType, server: MangaProvider) {
+  try {
+    loading.start('Getting pages url\'s...')
+    const chapterTarget = chapterList[index]
+    const chapterTranslate = chapterTarget.translations[lang]
+    const pages = await server.getChapterPages(chapterTranslate?.src as string)
+    loading.stop()
+    const format = await prompts(downloadFormatOptions())
+    if (!format?.target) return
+    const downloaderInstace = Downloader.getInstance()
+    const downloadProps: DownloadProps = {
+      chapterTitle: chapterTranslate?.title ?? chapterTarget.title,
+      format: format.target,
+      mangaTitle: mangaInfo.title,
+      serverName: server.name,
+      pages: pages,
+    }
+    let pagesCount = 0;
+    downloaderInstace.on('download_page', (e) => {
+      pagesCount++;
+      loading.text = `downloading page #${e+1} [${pagesCount}/${pages.length}]`
+    })
+    downloaderInstace.on('done', (e) => {
+      loading.stop()
+    })
+    downloaderInstace.on('onpdf', ()=>{
+      loading.text = 'making pdf...'
+    })
+    loading.start('downloading...')
+    await downloaderInstace.download(downloadProps)
+    loading.stop()
+  } catch (e) {
+    if (loading.isSpinning) loading.stop()
+    pushError(e)
+  }
+
 }
