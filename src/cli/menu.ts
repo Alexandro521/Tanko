@@ -239,12 +239,12 @@ async function history(server: MangaProvider) {
         if(loading.isSpinning) loading.stop()
         server = await confInstance.setServerByName(mangaTarget.server) ?? server
       }
+      loading.start(loading_states.loading_chapters);
+      const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
+      if (loading.isSpinning) loading.stop();
+      if(!chapterList) continue;
       switch (options.target) {
         case SignalsCodes.resume_read:
-          loading.start(loading_states.loading_chapters);
-          const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
-          if (loading.isSpinning) loading.stop();
-          if (!chapterList) continue;
           await terminalReader(
             {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
             chapterList,
