@@ -11,7 +11,7 @@ import { askChapterLang, generateChapterList, terminalReaderChapterOptions } fro
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
-import { downloadChapter } from "../functions/downloader.js"
+//import { downloadChapter } from "../functions/downloader.js"
 
 const confInst = await Configuration.getInstance()
 const loading = ora()
@@ -277,7 +277,7 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
                   const info =  chapterCtrl.getChapterInfo()
                   const pages = pageCtrl.getPages()
                   TerminalControl.exitRawMode(handleKeypress)
-                  await downloadChapter(mangaInfo.title, info.title as string, pages )
+                 // await downloadChapter(mangaInfo.title, info.title as string, pages )
                   TerminalControl.openRawMode(handleKeypress)
                 }
                 else if(options.target === SignalsCodes.get_chapters_list) {
