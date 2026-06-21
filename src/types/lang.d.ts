@@ -5,6 +5,7 @@ export interface LangInterface {
   configuration: Configuration
   loading_states: LoadingStates
   err_messages: ErrorMessages
+  reader: Reader
 }
 
 export interface Meta {
@@ -46,6 +47,13 @@ export interface AccessOptions {
 export interface Configuration {
   options: Options
   "lang-ui": LangUi
+  unsaved_changes: string
+  need_browser: string
+  yes: string
+  no: string
+  server_title: string
+  options_title: string
+  select_lang_title: string
 }
 
 export interface Options {
@@ -60,6 +68,15 @@ export interface Options {
 export interface LangUi {
   es: string
   en: string
+}
+
+export interface Reader {
+  prev_page: string
+  next_page: string
+  exit: string
+  prev_ch: string
+  next_ch: string
+  options: string
 }
 
 interface ErrorDetail {

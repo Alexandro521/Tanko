@@ -4,7 +4,7 @@ import esc from "ansi-escapes"
 import readLine from "node:readline"
 import { stdin, title } from "node:process"
 import prompts, { type Choice } from "@alex_521/prompts"
-import { Configuration } from "../functions/configuration.js"
+import { Configuration, ConfigurationEvents } from "../functions/configuration.js"
 import { SignalsCodes } from "../types/enum.js"
 import { History } from "../functions/history.js"
 import { askChapterLang, generateChapterList, terminalReaderChapterOptions } from "./prompts.js"
@@ -16,11 +16,17 @@ import type { LangInterface } from "../types/lang.js"
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
-let { err_messages, loading_states  } = await instance.getLanguageInterface()
+let { err_messages, loading_states, reader } = await instance.getLanguageInterface()
 
 instance.on('update',(_, __, lang)=>{
     err_messages = (lang as LangInterface).err_messages
     loading_states = (lang as LangInterface).loading_states
+    reader = (lang as LangInterface).reader
+})
+instance.on(ConfigurationEvents.updateLanguage, (lang)=>{
+    err_messages = (lang as LangInterface).err_messages
+    loading_states = (lang as LangInterface).loading_states
+    reader = (lang as LangInterface).reader
 })
 function debounce(func: Function, delay: number) {
     let timer: any;
@@ -214,8 +220,8 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
         const pageDebounce = debounce(async () => {
                 await pageCtrl.loadPage()
                 process.stdout.write(esc.cursorHide)
-                process.stdout.write(chalk.gray("\n   ←            →          Q & ESC            P                    N                C\nProvious page    Next page        Exit       Previous chapter   Next Chapter    Options"
-            ))
+                const controlBar = `\n   ←            →          Q & ESC            P                    N                C\n${reader.prev_page}    ${reader.next_page}        ${reader.exit}       ${reader.prev_ch}   ${reader.next_ch}    ${reader.options}`
+                process.stdout.write(chalk.gray(controlBar))
         }, 300)
         renderInfo()
       const chapterLoader = async (signal: SignalsCodes | undefined = undefined, handle: Function | undefined = undefined) => {

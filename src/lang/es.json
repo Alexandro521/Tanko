@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.1.0",
+        "lang_version": "1.2.0",
         "lang": "es"
     },
     "main_sections": {
@@ -73,13 +73,28 @@
             "save": "Guardar",
             "client": "Clientes",
             "downloads": "Descargas",
-            "search": "Busqueda",
-            "restore": "Restablecer configuracion"
+            "search": "Búsqueda",
+            "restore": "Restablecer configuración"
         },
         "lang-ui": {
             "es": "Español",
-            "en": "Ingles"
-        }
+            "en": "Inglés"
+        },
+        "unsaved_changes": "Tienes cambios sin guardar. ¿Deseas guardarlos antes de salir?",
+        "need_browser": "¿Requiere navegador?",
+        "yes": "Sí",
+        "no": "No",
+        "server_title": "Servidor",
+        "options_title": "Opciones",
+        "select_lang_title": "Seleccionar idioma"
+    },
+    "reader": {
+        "prev_page": "Página anterior",
+        "next_page": "Página siguiente",
+        "exit": "Salir",
+        "prev_ch": "Capítulo anterior",
+        "next_ch": "Capítulo siguiente",
+        "options": "Opciones"
     },
     "loading_states": {
         "loading_chapters": "cargando capitulos",
