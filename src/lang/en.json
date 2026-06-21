@@ -79,7 +79,22 @@
         "lang-ui": {
             "es": "Spanish",
             "en": "English"
-        }
+        },
+        "unsaved_changes": "You have unsaved changes. Do you want to save them before exiting?",
+        "need_browser": "Requires a browser?",
+        "yes": "Yes",
+        "no": "No",
+        "server_title": "Server",
+        "options_title": "Options",
+        "select_lang_title": "Select Language"
+    },
+    "reader": {
+        "prev_page": "Previous page",
+        "next_page": "Next page",
+        "exit": "Exit",
+        "prev_ch": "Previous chapter",
+        "next_ch": "Next chapter",
+        "options": "Options"
     },
     "loading_states": {
         "loading_chapters": "loading chapters",

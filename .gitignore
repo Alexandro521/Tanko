@@ -11,3 +11,4 @@ src/data/read_history.json
 dist/
 .http
 tanko*.tgz
+.vscode/
