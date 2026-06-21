@@ -20,8 +20,10 @@ export async function configurationUI() {
   clearScreen();
   const confInstance = await Configuration.getInstance();
   let currentConf = confInstance.configuration;
+  const langObj = await confInstance.getLanguageInterface();
+  const { configuration: localizedConfig } = langObj;
   const confirmChages = async () => {
-    let res = await prompts(confirmPrompt("You have unsaved changes. Do you want to save them before exiting?"));
+    let res = await prompts(confirmPrompt(localizedConfig.unsaved_changes));
     if (res) await confInstance.setGlobalConfig(currentConf);
   };
   while (true) {
@@ -47,7 +49,6 @@ export async function configurationUI() {
         }
         break
       case ConfigurationOptions.save:
-        ////await confInstance.setGlobalConfig();
         break
       case ConfigurationOptions.restoreDefault:
         break
@@ -62,23 +63,17 @@ export async function configurationUI() {
 
 function isConfigChange(): boolean {
   return false;
-
-  /*  let changed = false;
-    Object.keys(configurationObject).forEach(key => {
-        if (configurationObject[key as keyof ConfigurationInterface] !== config.) {
-            changed = true;
-        }
-    });
-    return changed;*/
 }
 async function serverCfg() {
   clearScreen();
+  const configInstance = await Configuration.getInstance()
+  const langObj = await configInstance.getLanguageInterface()
+  const { configuration: localizedConfig } = langObj
   const serverChoices = ServerRegister.map((server): Choice => ({
       value: server,
       title: server.name,
-      description: `need a browser?: ${server.need_browser ? 'Yes' : 'No'}`,
+      description: `${localizedConfig.need_browser} ${server.need_browser ? localizedConfig.yes : localizedConfig.no}`,
   }));
-  const configInstance = await Configuration.getInstance()
 
   while (true) {
     const server = await prompts(serverPrompt(configInstance.getServerInfo().name, serverChoices));

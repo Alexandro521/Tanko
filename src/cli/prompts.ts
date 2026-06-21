@@ -221,7 +221,7 @@ export const configurationPrompt = () => SectionPrompt(main_sections.config.titl
 // [ CONFIGURATION PROMPTS ]
 
 export const serverPrompt = (hint:string, ch: Choice[]) => {
-    return SectionPrompt('Server', ch, `current: ${hint}`,0, 'select')
+    return SectionPrompt(configuration.server_title, ch, `current: ${hint}`,0, 'select')
 }
 
 export const languagePrompt = (hint: string = 'es', index: number) => {
@@ -235,7 +235,7 @@ export const languagePrompt = (hint: string = 'es', index: number) => {
             }
         }
     })
-    return SectionPrompt('Language', langChoice, `current: ${hint}`, index, 'select')
+    return SectionPrompt(configuration.options["lang-ui"], langChoice, `current: ${hint}`, index, 'select')
 }
 
 
@@ -243,7 +243,7 @@ export const languagePrompt = (hint: string = 'es', index: number) => {
 
 export const basicChapterOptions = ()=>{
     const sh = ChapterAccessOptions() 
-    return  SectionPrompt('Options', [
+    return  SectionPrompt(configuration.options_title, [
     sh.read,
     sh.download,
     //ChapterAccessOptions.suscribe,
@@ -253,7 +253,7 @@ export const basicChapterOptions = ()=>{
 
 export const historyChapterOptions = (title: string) => {
     const sh = ChapterAccessOptions()
-    return SectionPrompt('Options', [
+    return SectionPrompt(configuration.options_title, [
     sh.resume_read,
     sh.getChapters,
     sh.download,
@@ -263,7 +263,7 @@ export const historyChapterOptions = (title: string) => {
 }
 export const popularMangaSelectOptions = (title: string) =>{
     const sh = ChapterAccessOptions()
-    return SectionPrompt('Options', [
+    return SectionPrompt(configuration.options_title, [
     sh.read,
     sh.getChapters,
     sh.download,
@@ -291,5 +291,5 @@ export const chapterLangChoices = (langs: ChapterLanguage[]) => {
             value: e.lang
         }
     })
-    return SectionPrompt('Select Language',choices, '', 0, 'select' )
+    return SectionPrompt(configuration.select_lang_title,choices, '', 0, 'select' )
 }
