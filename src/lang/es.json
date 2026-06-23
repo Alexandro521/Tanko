@@ -78,7 +78,8 @@
         },
         "lang-ui": {
             "es": "Español",
-            "en": "Inglés"
+            "en": "Inglés",
+            "fr": "Francés"
         },
         "unsaved_changes": "Tienes cambios sin guardar. ¿Deseas guardarlos antes de salir?",
         "need_browser": "¿Requiere navegador?",

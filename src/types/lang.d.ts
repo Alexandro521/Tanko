@@ -68,6 +68,7 @@ export interface Options {
 export interface LangUi {
   es: string
   en: string
+  fr: string
 }
 
 export interface Reader {
@@ -118,4 +119,4 @@ export interface AppConfig {
   loading_states: LoadingStates;
   err_messages: ErrorMessages;
 }
-export type AvalibleLangs = 'es' | 'en'
+export type AvalibleLangs = 'es' | 'en' | 'fr'

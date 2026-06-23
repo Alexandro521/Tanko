@@ -1,0 +1,157 @@
+{
+    "meta": {
+        "lang_version": "1.0.0",
+        "lang": "fr"
+    },
+    "main_sections": {
+        "main": {
+            "title": "Menu",
+            "alt": "Menu principal"
+        },
+        "search": {
+            "title": "Rechercher",
+            "alt": "Résultats"
+        },
+        "recent": {
+            "title": "Les plus récents",
+            "alt": "Récents"
+        },
+        "popular": {
+            "title": "Populaire",
+            "alt": "populaire"
+        },
+        "history": {
+            "title": "Historique",
+            "alt": "Historique"
+        },
+        "config": {
+            "title": "Paramètres",
+            "alt": "Paramètres"
+        },
+        "exit": {
+            "title": "Quitter",
+            "alt": "Quitter"
+        }
+    },
+    "chapter_access_options": {
+        "read": {
+            "title": "Lire le chapitre",
+            "desc": "Le terminal Kitty est recommandé pour cette opération"
+        },
+        "download": {
+            "title": "Télécharger le chapitre",
+            "desc": "Format PDF"
+        },
+        "resume_read": {
+            "title": "Continuer la lecture",
+            "desc": ""
+        },
+        "suscribe": {
+            "title": "Ajouter aux favoris",
+            "desc": ""
+        },
+        "get_chapters": {
+            "title": "Voir la liste des chapitres",
+            "desc": ""
+        },
+        "exit": {
+            "title": "Quitter",
+            "desc": ""
+        },
+        "prev_ch": {
+            "title": "Chapitre précédent",
+            "desc": ""
+        },
+        "next_ch": {
+            "title": "Chapitre suivant",
+            "desc": ""
+        }
+    },
+    "configuration": {
+        "options": {
+            "lang-ui": "Langue de l’interface",
+            "save": "Enregistrer",
+            "client": "Clients",
+            "downloads": "Téléchargements",
+            "search": "Rechercher",
+            "restore": "Réinitialiser les paramètres"
+        },
+        "lang-ui": {
+            "es": "Espagnol",
+            "en": "Anglais",
+            "fr": "Français"
+        },
+        "unsaved_changes": "Vous avez des modifications non enregistrées. Voulez-vous les enregistrer avant de quitter ?",
+        "need_browser": "Un navigateur est-il nécessaire ?",
+        "yes": "Oui",
+        "no": "Non",
+        "server_title": "Serveur",
+        "options_title": "Options",
+        "select_lang_title": "Sélectionner la langue"
+    },
+    "reader": {
+        "prev_page": "Page précédente",
+        "next_page": "Page suivante",
+        "exit": "Quitter",
+        "prev_ch": "Chapitre précédent",
+        "next_ch": "Chapitre suivant",
+        "options": "Options"
+    },
+    "loading_states": {
+        "loading_chapters": "chargement des chapitres",
+        "loading_chapter": "chargement du chapitre",
+        "default_loading": "chargement",
+        "searching": "recherche en cours",
+        "browser_init": "initialisation du navigateur",
+        "browser_close": "fermeture du navigateur",
+        "downloading_pages": "téléchargement des pages",
+        "downloading_chapter": "téléchargement du chapitre",
+        "default_downloading": "téléchargement",
+        "next_chapter": "chargement du chapitre suivant",
+        "prev_chapter": "chargement du chapitre précédent",
+        "reloading_chapter": "rechargement du chapitre",
+        "retry": "nouvelle tentative"
+    },
+    "err_messages": {
+        "network": {
+            "msg": "Aucune connexion Internet !",
+            "hint": "Vérifiez que vous êtes connecté à un réseau"
+        },
+        "fetching": {
+            "msg": "Une erreur est survenue lors de la récupération des données",
+            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+        },
+        "pdf_make": {
+            "msg": "Une erreur est survenue lors de la création du PDF",
+            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+        },
+        "client_switch": {
+            "msg": "Une erreur est survenue lors du changement de client",
+            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+        },
+        "corrupt_conf_file": {
+            "msg": "Le fichier de configuration a un format invalide",
+            "hint": "Essayez de réinitialiser les paramètres à leur état par défaut"
+        },
+        "corrupt_history_file": {
+            "msg": "Le fichier d’historique est corrompu !",
+            "hint": "Solution : paramètres -> historique -> vérifier l’intégrité"
+        },
+        "page_loading": {
+            "msg": "Une erreur est survenue lors du chargement de la page",
+            "hint": "Vérifiez que vous êtes connecté à un réseau"
+        },
+        "chapter_loading": {
+            "msg": "Une erreur est survenue lors du chargement du chapitre",
+            "hint": "Vérifiez que vous êtes connecté à un réseau"
+        },
+        "no_results": {
+            "msg": "Aucun résultat trouvé",
+            "hint": ""
+        },
+        "void_Section": {
+            "msg": "Cet endroit est vide",
+            "hint": ""
+        }
+    }
+}
