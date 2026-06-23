@@ -87,9 +87,12 @@ export interface DownloadProps {
 }
 export interface FormatProps {
     path: string,
-    pages: ChapterPage[],
+    pages: DownloadPageProps[],
+}
+export interface DownloadPageProps {
+    index: number, data: ImgBuffer
 }
 export interface  ImgBuffer {
-    data: Buffer<ArrayBufferLike> | ArrayBuffer;
+    data: Buffer<ArrayBufferLike>;
     info: sharp.OutputInfo;
 }

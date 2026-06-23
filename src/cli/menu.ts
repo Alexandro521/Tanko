@@ -10,7 +10,7 @@ import type {
   MangaInfo,
   MangaProvider,
 } from "../types/types.js";
-import { SignalsCodes } from "../types/enum.js";
+import { DownloadFormat, SignalsCodes } from "../types/enum.js";
 import {
   askChapterLang,
   basicChapterOptions,
@@ -430,38 +430,46 @@ async function lastedSection(server: MangaProvider) {
 
 export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: ChapterLangType, server: MangaProvider) {
   try {
-    loading.start('Getting pages url\'s...')
+    let pagesCount = 0;
     const chapterTarget = chapterList[index]
     const chapterTranslate = chapterTarget.translations[lang]
-    const pages = await server.getChapterPages(chapterTranslate?.src as string)
-    loading.stop()
-    const format = await prompts(downloadFormatOptions())
-    if (!format?.target) return
     const downloaderInstace = Downloader.getInstance()
+    loading.start('Getting pages url\'s...')
+    const pagesUrls = await server.getChapterPages(chapterTranslate?.src as string)
+    loading.stop()
     const downloadProps: DownloadProps = {
       chapterTitle: chapterTranslate?.title ?? chapterTarget.title,
-      format: format.target,
+      format: DownloadFormat.pdf,
       mangaTitle: mangaInfo.title,
       serverName: server.name,
-      pages: pages,
+      pages: pagesUrls,
     }
-    let pagesCount = 0;
     downloaderInstace.on('download_page', (e) => {
       pagesCount++;
-      loading.text = `downloading page #${e+1} [${pagesCount}/${pages.length}]`
+      loading.text = `downloading page #${e + 1} [${pagesCount}/${pagesUrls.length}]`
     })
     downloaderInstace.on('done', (e) => {
       loading.stop()
     })
-    downloaderInstace.on('onpdf', ()=>{
-      loading.text = 'making pdf...'
+    downloaderInstace.on('state', (state) => {
+      if (loading.isSpinning)
+        loading.text = state + '...'
     })
-    loading.start('downloading...')
-    await downloaderInstace.download(downloadProps)
-    loading.stop()
+    while (true) {
+      pagesCount = 0
+      const format = await prompts(downloadFormatOptions())
+      if (!format?.target) {
+        downloaderInstace.free()
+        break
+      }
+      downloadProps.format = format.target
+      loading.start('downloading...')
+      await downloaderInstace.download(downloadProps)
+      loading.stop()
+    }
   } catch (e) {
     if (loading.isSpinning) loading.stop()
+    
     pushError(e)
   }
-
 }
