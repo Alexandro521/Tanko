@@ -1,8 +1,8 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
-import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enum.js";
+import { SignalsCodes, ConfigurationOptions, DownloadFormat, ConfigurationEvents } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
-import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
+import { Configuration } from "../functions/configuration.js";
 import type {Chapter, ChapterLanguage } from "../types/types.js";
 import type { Key } from "node:readline";
 import { Notify, NotifyType } from "../functions/notify.js";

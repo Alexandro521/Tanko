@@ -8,13 +8,14 @@ import sanitize from 'sanitize-filename';
 import ansi from 'ansi-escapes'
 import PDFDocument from 'pdfkit'
 import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
-import { Configuration, ConfigurationEvents } from './configuration.js';
+import { Configuration } from './configuration.js';
 import { Notify, NotifyType } from './notify.js';
 import { makeDir } from '../utils.js';
 import { EventEmitter } from 'events';
 import { DownloadFormat } from '../types/enum.js';
 import type { ChapterPage, DownloadPageProps, DownloadProps, FormatProps, ImgBuffer } from '../types/types.js';
 import { ZipArchive } from "archiver"
+import { ConfigurationEvents } from '../types/enum.js';
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
     margin: '0',

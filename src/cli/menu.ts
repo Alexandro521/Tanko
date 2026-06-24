@@ -10,7 +10,7 @@ import type {
   MangaInfo,
   MangaProvider,
 } from "../types/types.js";
-import { DownloadFormat, SignalsCodes } from "../types/enum.js";
+import { DownloadFormat, SignalsCodes, ConfigurationEvents} from "../types/enum.js";
 import {
   askChapterLang,
   basicChapterOptions,
@@ -27,7 +27,7 @@ import {
   voidPrompt,
 } from "./prompts.js";
 import { configurationUI } from "./configuration.js";
-import { Configuration, ConfigurationEvents } from "../functions/configuration.js";
+import { Configuration } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
 import { getTimeSkip } from "../utils.js";
 import { Notify, NotifyType } from "../functions/notify.js";
