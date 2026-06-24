@@ -1,9 +1,11 @@
-# Tanko
-
-[![npm version](https://img.shields.io/npm/v/tanko.svg)](https://www.npmjs.com/package/tanko)
-[![license](https://img.shields.io/npm/l/tanko.svg)](https://github.com/Alexandro521/tanko/LICENSE)
-[![Publish to NPM](https://github.com/Alexandro521/Tanko/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/Alexandro521/Tanko/actions/workflows/npm-publish.yml)
-
+# Tanko 
+![NPM Downloads](https://img.shields.io/npm/dw/tanko?style=for-the-badge)
+![GitHub Repo stars](https://img.shields.io/github/stars/Alexandro521/Tanko?style=for-the-badge)
+[![npm version](https://img.shields.io/npm/v/tanko.svg?style=for-the-badge)](https://www.npmjs.com/package/tanko)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/Alexandro521/Tanko?style=for-the-badge)
+![GitHub Issues or Pull Requests](https://img.shields.io/github/issues-pr/Alexandro521/Tanko?style=for-the-badge)
+[![license](https://img.shields.io/npm/l/tanko.svg?style=for-the-badge)](https://github.com/Alexandro521/tanko/LICENSE)
+---
 Tanko is a CLI tool for reading and downloading manga directly from your terminal.
 
 ![yomu preview](https://i.imgur.com/wftXbEC.png)
