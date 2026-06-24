@@ -35,7 +35,8 @@
     "build": "tsc",
     "dev": "tsc && node ./dist/index.js",
     "dev:bun": "bun run ./src/index.ts",
-    "start": "node ./dist/index.js"
+    "start": "node ./dist/index.js",
+    "type-check": "tsc --noEmit"
   },
   "license": "ISC",
   "packageManager": "pnpm@11.5.2",
