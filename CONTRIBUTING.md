@@ -1,4 +1,5 @@
 # CONTRIBUTING
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/Alexandro521/Tanko)
 
 # Contributing to Tanko
 
