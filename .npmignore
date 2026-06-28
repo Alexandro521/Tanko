@@ -3,3 +3,6 @@ tsconfig.json
 *.test.ts
 playwright.config.ts
 src/
+anilist-schema.graphql
+codegen.yml
+playwright.config.ts

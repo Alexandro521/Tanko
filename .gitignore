@@ -12,3 +12,4 @@ dist/
 .http
 tanko*.tgz
 .vscode/
+anilist-schema.graphql
