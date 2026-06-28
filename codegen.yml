@@ -1,0 +1,8 @@
+schema: ./anilist-schema.graphql
+generates:
+  ./src/types/anilist-schema.d.ts:
+    plugins:
+      - typescript
+      - typescript-operations
+    config:
+        avoidOptionals: true
