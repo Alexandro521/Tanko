@@ -1,6 +1,6 @@
 import { mangaServerRegister, type Client } from "../servers/port.js";
 import type { AvalibleLangs, LangInterface } from "../types/lang.js";
-import type { ConfigurationInterface, MangaProvider, ServerName } from "../types/types.js";
+import type { ConfigurationInterface, MangaProvider, ServerName, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
 import ora from "ora";
@@ -10,6 +10,7 @@ import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLO
 import { LANGUAGE_REGISTER } from "./lang.js";
 import EventEmitter from "events";
 import { Notify, NotifyType } from "./notify.js";
+import { AniList } from "../integration/anilist.js";
 
 const LOAD_SPIN = ora()
 const NOTIFY_INSTANCE = Notify.getInstace()
@@ -26,6 +27,8 @@ const contextInitScript = () => {
         });
     }
 }
+
+
 
 export class Configuration extends EventEmitter {
     private static singletonInstance: Configuration
@@ -45,9 +48,14 @@ export class Configuration extends EventEmitter {
         historyMaxSize: 256,
         historyServerFilter: true,
         imageCacheMaxSize: '64',
+        login: {
+            anilist: {
+                integration: AniList.getInstance(),
+                isAuth: false
+            }
+        }
         //customBrowserHandlePath: 'NULL',
     }
-
     private constructor() {
         super()
     }
@@ -59,7 +67,6 @@ export class Configuration extends EventEmitter {
         }
         return this.singletonInstance
     }
-
     get configuration() {  // I will delete this later
         return this.settings
     }
@@ -163,7 +170,6 @@ export class Configuration extends EventEmitter {
             return false
         }
     }
-
     async setServer(provider: Client) {
         try{
             if (!provider.need_browser && this.isBrowserRunnig()) {
@@ -191,7 +197,6 @@ export class Configuration extends EventEmitter {
             }
         }
     }
-
     async setLanguage(newLang: AvalibleLangs) {
         this.langInterface = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
         this.emit(ConfigurationEvents.updateLanguage, this.langInterface)
@@ -211,7 +216,8 @@ export class Configuration extends EventEmitter {
                     historyMaxSize: settings?.historyMaxSize ?? self.historyMaxSize,
                     historyServerFilter: settings?.historyServerFilter ?? self.historyServerFilter,
                     imageCacheMaxSize: settings?.imageCacheMaxSize ?? self.imageCacheMaxSize,
-                    isFirstRun: settings?.isFirstRun ?? self.isFirstRun
+                    isFirstRun: settings?.isFirstRun ?? self.isFirstRun,
+                    login: self.login
                 }
             }
             await this.setLanguage(this.settings.langKey)
@@ -272,5 +278,44 @@ export class Configuration extends EventEmitter {
             await this.loadConfiguration(conf)
         await this.writeConfigFile()
         this.emit(ConfigurationEvents.updateGlobal, this.settings, this.mangaProvider, this.langInterface)
+    }
+    async login(trackerName: TrackerNames | undefined = undefined){
+        const trackerLogin = async (name: TrackerNames) =>{
+            const tracker = this.settings.login[name].integration
+            const userData = await tracker.login()
+            if(userData) {
+                this.settings.login[name] = {
+                    isAuth: true,
+                    integration: tracker,
+                    data: userData
+                }
+                this.emit(ConfigurationEvents.login, this.settings.login[name])
+            }
+        }
+        if(trackerName) {
+            await trackerLogin(trackerName)
+            return
+        }
+        await Promise.all(
+            Object.values(this.settings.login).map(({isAuth, integration})=>{
+                if(!isAuth){
+                    return trackerLogin(integration.trackerName)
+                }else {
+                    Promise.resolve()
+                }
+            })
+        )
+        return
+    }
+    async logout(trackerName: TrackerNames){
+        const tracker = this.settings.login[trackerName].integration
+        this.settings.login[trackerName] = {
+            isAuth: false,
+            integration: tracker
+        }
+        await tracker.logout()
+    }
+    getLoginData(){
+        return this.settings.login
     }
 }
