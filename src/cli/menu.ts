@@ -15,7 +15,7 @@ import {
   askChapterLang,
   basicChapterOptions,
   downloadFormatOptions,
-  generateChapterList,
+  chapterListPrompt,
   historyChapterOptions,
   historySectionPrompt,
   lastedSectionPrompt,
@@ -155,7 +155,7 @@ async function loadMangaChapter(
     let memoryChoicePosition = 0;
     while (true) {
       const chapterIndex = await prompts(
-        generateChapterList(mangaInfo.title, memoryChoicePosition, choices),
+        chapterListPrompt(mangaInfo.title, memoryChoicePosition, choices),
       );
       if (!chapterIndex.chapter) {
         break;
@@ -381,7 +381,7 @@ async function lastedSection(server: MangaProvider) {
       let memoryChoicePosition = 0;
       while (true) {
         let chapterIndex = await prompts(
-          generateChapterList(
+          chapterListPrompt(
             targetManga.title,
             memoryChoicePosition,
             lastChapterList,

@@ -7,7 +7,7 @@ import prompts, { type Choice } from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.js"
 import { SignalsCodes, ConfigurationEvents} from "../types/enum.js"
 import { History } from "../functions/history.js"
-import { askChapterLang, generateChapterList, terminalReaderChapterOptions } from "./prompts.js"
+import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.js"
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
@@ -289,7 +289,7 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
                 else if(options.target === SignalsCodes.get_chapters_list) {
                   TerminalControl.exitRawMode(handleKeypress)
                   const choices: Choice[] = chapters.map((e, index):Choice=>({title: e.title, value: String(index)}))
-                  const chapterIndex = await prompts(generateChapterList(mangaInfo.title, chapterCtrl.chapterIndex, choices))
+                  const chapterIndex = await prompts(chapterListPrompt(mangaInfo.title, chapterCtrl.chapterIndex, choices))
                   if(!chapterIndex ||!chapterIndex.chapter) return
                   const targetChapter = chapters[Number(chapterIndex.chapter)]
                   const lang = await askChapterLang(targetChapter)
