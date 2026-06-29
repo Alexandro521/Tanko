@@ -7,9 +7,12 @@ export enum ConfigurationOptions {
     save = 33,
     restoreDefault = 24,
     exit = 0,
+    accout = 9
 }
 
 export enum SignalsCodes {
+    see_profile =423,
+    logout_accout =421,
     download_chapter = 46,
     read_chapter = 36,
     get_chapters_list = 26,
@@ -44,5 +47,6 @@ export enum ConfigurationEvents {
     storeConfFile = 'storeFile',
     failedLoad = 'failLoading',
     browserClose = 'browserClose',
-    browserLoaded = 'browserOpen'
+    browserLoaded = 'browserOpen',
+    login = 'login'
 }
