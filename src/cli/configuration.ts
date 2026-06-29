@@ -4,33 +4,24 @@ import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
 import { mangaServerRegister as ServerRegister, type Client } from "../servers/port.js";
 import {
+  accoutOptionsPrompt,
+  accoutPrompt,
   configurationPrompt,
-  confirmPrompt,
   languagePrompt,
   serverPrompt,
 } from "./prompts.js";
-import { ConfigurationOptions } from "../types/enum.js"; 
-import type { ServerConfInterface,MangaProvider, ServerName, ConfigurationInterface } from "../types/types.js";
+import { ConfigurationOptions, SignalsCodes } from "../types/enum.js"; 
+import type {TrackerProps } from "../types/types.js";
+import { Sign } from "node:crypto";
 
-export const clearScreen = () => {
-  console.log(esc.clearViewport);
-  console.log(WELCOME_MESSAGE);
-};
+
 export async function configurationUI() {
-  clearScreen();
   const confInstance = await Configuration.getInstance();
   let currentConf = confInstance.configuration;
-  const langObj = await confInstance.getLanguageInterface();
-  const { configuration: localizedConfig } = langObj;
-  const confirmChages = async () => {
-    let res = await prompts(confirmPrompt(localizedConfig.unsaved_changes));
-    if (res) await confInstance.setGlobalConfig(currentConf);
-  };
+  let whileStatus = true
   while (true) {
     const prompt = await prompts(configurationPrompt());
-    if (!prompt.target) {
-      if (isConfigChange())
-        await confirmChages();
+    if (!prompt.target || prompt.target === SignalsCodes.exit) {
       break;
     }
     switch (prompt.target) {
@@ -38,34 +29,29 @@ export async function configurationUI() {
         await serverCfg();
         break
       case ConfigurationOptions.language:
-        clearScreen();
         let memoryChoicePosition = 0;  
         while (true) {
           const langSelect = await prompts(languagePrompt(currentConf.langKey, memoryChoicePosition));
           if (!langSelect.target) break;
           memoryChoicePosition = Number(langSelect.target.index)
           confInstance.setLanguage(langSelect.target.lang)
-          clearScreen();
+          currentConf = confInstance.configuration
         }
         break
-      case ConfigurationOptions.save:
+      case ConfigurationOptions.accout:
+        await accoutConf()
         break
       case ConfigurationOptions.restoreDefault:
-        break
-      case ConfigurationOptions.exit:
-        if (isConfigChange())
-          await confirmChages()
+        whileStatus = false
         break
     }
-    clearScreen();
+
   }
 }
 
-function isConfigChange(): boolean {
-  return false;
-}
+
 async function serverCfg() {
-  clearScreen();
+
   const configInstance = await Configuration.getInstance()
   const langObj = await configInstance.getLanguageInterface()
   const { configuration: localizedConfig } = langObj
@@ -79,9 +65,36 @@ async function serverCfg() {
     const server = await prompts(serverPrompt(configInstance.getServerInfo().name, serverChoices));
     if (!server.target) break;
     await configInstance.setServer(server.target)
-    clearScreen();
   }
 }
+async function accoutConf() {
+const confInstance = await Configuration.getInstance();
 
-
+  let whileStatus = true
+  while(whileStatus){
+    const prompt = await prompts(accoutPrompt())
+    if(!prompt.target || prompt.target === SignalsCodes.exit) {
+      whileStatus = false
+      break
+    }
+    const log = prompt.target as TrackerProps
+    const tracker = log.integration
+    if(!log.isAuth || !log.data) {
+      await log.integration.loginTui()
+      await confInstance.login(tracker.trackerName)
+      continue
+    }
+    const accoutOption = await prompts(accoutOptionsPrompt(tracker.trackerName,log.data.name))
+    if(!accoutOption.target || accoutOption.target === SignalsCodes.exit){
+      continue
+    }
+    switch(accoutOption.target){
+      case SignalsCodes.logout_accout:
+        await confInstance.logout(tracker.trackerName)
+        break
+      case SignalsCodes.see_profile: 
+        break
+    }
+  }
+}
 async function downloads() {}
