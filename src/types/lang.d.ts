@@ -63,6 +63,7 @@ export interface Options {
   downloads: string
   search: string
   restore: string
+  accouts: string
 }
 
 export interface LangUi {

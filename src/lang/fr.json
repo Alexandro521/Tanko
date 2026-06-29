@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.0.0",
+        "lang_version": "1.0.1",
         "lang": "fr"
     },
     "main_sections": {
@@ -74,7 +74,8 @@
             "client": "Clients",
             "downloads": "Téléchargements",
             "search": "Rechercher",
-            "restore": "Réinitialiser les paramètres"
+            "restore": "Réinitialiser les paramètres",
+            "accouts": "comptes"
         },
         "lang-ui": {
             "es": "Espagnol",

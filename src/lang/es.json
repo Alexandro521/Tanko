@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.2.0",
+        "lang_version": "1.2.1",
         "lang": "es"
     },
     "main_sections": {
@@ -74,7 +74,8 @@
             "client": "Clientes",
             "downloads": "Descargas",
             "search": "Búsqueda",
-            "restore": "Restablecer configuración"
+            "restore": "Restablecer configuración",
+            "accouts": "Cuentas"
         },
         "lang-ui": {
             "es": "Español",
