@@ -4,15 +4,26 @@ import prompts from '@alex_521/prompts'
 import boxen from 'boxen'
 import chalk from 'chalk'
 import { stdout } from 'node:process'
-import fs from 'fs/promises'
-import type { Query } from '../types/anilist-schema.js'
+import fsPromise from 'fs/promises'
+import fs from 'fs'
 import { DATA_DEFAULT_DIR } from '../const.js'
 import path from 'node:path'
+import { Notify, NotifyType } from '../functions/notify.js'
 
-export class AniList {
+import type { TrackerIntegration, TrackerNames } from '../types/types.js'
+const NOTIFY = Notify.getInstace()
+
+export class AniList implements TrackerIntegration{
     private endPoint = 'https://graphql.anilist.co'
-    constructor() {
-
+    private tokenpath = path.join(DATA_DEFAULT_DIR, 'anilist_token')
+    private static singletonInstance: AniList
+    public trackerName: TrackerNames = 'anilist'
+    private constructor(){}
+    static getInstance(){
+        if(!this.singletonInstance) {
+            this.singletonInstance = new AniList()
+        }
+        return this.singletonInstance
     }
     async loginTui() {
         let logMessage = ''
@@ -53,25 +64,63 @@ export class AniList {
             })
 
             if (!prompt.token) {
-                console.log(chalk.yellowBright('Authentication cancelled.'))
+                NOTIFY.push({
+                    message: 'Authentication cancelled.',
+                    type: NotifyType.warning,
+                    title: 'Notify'
+                })
                 break
             }
             const userData = await this.viewer(prompt.token)
+            let msg = ''
             if (userData) {
-                const msg = `Welcome to Tanko ${chalk.magenta(userData.name)}!`
-                console.log(chalk.greenBright('Successful authentication.\n'), msg)
-                await fs.writeFile(path.join(DATA_DEFAULT_DIR, 'anilist_tok'), prompt.token)
+                NOTIFY.push({
+                    message: `Welcome to Tanko ${chalk.magenta(userData.name)}!`,
+                    title: chalk.blueBright('Successful authentication.'),
+                    type: NotifyType.event
+                })
+                await fsPromise.writeFile(this.tokenpath, prompt.token)
                 break
             } else {
                 console.log(chalk.redBright('Authentication failed'))
                 if (--attempts <= 0) {
-                    console.log(chalk.yellowBright(`Too many failed attempts, please verify your token.`))
+                    NOTIFY.push({
+                        type: NotifyType.warning,
+                        title: chalk.yellowBright('Authentication failed'),
+                        message: chalk.yellowBright(`Too many failed attempts, please verify your token.`)
+                    })
                 }
             }
         }
     }
-
-    async viewer(token: string): Promise<Query['Viewer'] | undefined> {
+    async login(){
+        if(!fs.existsSync(this.tokenpath)) return undefined
+        const token = await fsPromise.readFile(this.tokenpath, {encoding: 'utf-8'})
+        const userInfo = await this.viewer(token)
+        if(userInfo) return userInfo
+        else return undefined
+    }
+    private async request(query:string, variables = '', token = '') {
+        try{
+            const headers = new Headers()
+            headers.append('Authorization', `Bearer ${token}`)
+            headers.append('Content-Type', 'application/json')
+            headers.append('Accept', 'application/json')
+            const req = await fetch(this.endPoint, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify({ 
+                    query: query
+                })
+            })
+            if(!req.ok) return undefined
+            const res = await req.json()
+            return res.data
+        }catch{
+            return undefined
+        }
+    }
+    private async viewer(token: string) {
         const query = `
             query getUser{
                 Viewer {
@@ -80,23 +129,17 @@ export class AniList {
                 }
             }
         `
-        const headers = new Headers()
-        headers.append('Authorization', `Bearer ${token}`)
-        headers.append('Content-Type', 'application/json')
-        headers.append('Accept', 'application/json')
-        const res = await fetch(this.endPoint, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ query: query })
-        })
-        const json = await res.json()
-        if (res.ok) {
+        const res = await this.request(query, '', token)
+        if (res && res.Viewer) {
             return {
-                name: json.data.Viewer.name,
-                id: json.data.Viewer.id
+                name: res.Viewer.name,
+                id: res.Viewer.id
             }
         } else {
             return undefined
         }
+    }
+    async logout() {
+        await fsPromise.rm(this.tokenpath)
     }
 }
