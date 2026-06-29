@@ -1,6 +1,7 @@
 import  type { Page } from "playwright"
 import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
+import type { Query } from "./anilist-schema.js"
 
 export interface ChapterPage  {
     src: string
@@ -49,6 +50,20 @@ export interface MangaInfo {
   description?:string,
   lastUploadChapterSrc?: string
 }
+export type TrackerNames = "anilist"
+export interface LoginData {
+    name: string,
+    id: string | number
+}
+export interface TrackerProps {
+    isAuth: boolean,
+    integration: TrackerIntegration,
+    data?: LoginData
+}
+
+export type TrackerInterface = {
+    [key in TrackerNames]: TrackerProps
+}
 
 export declare class MangaProvider{
     constructor(context: Page)
@@ -61,6 +76,14 @@ export declare class MangaProvider{
     getLastMangas(): Promise<MangaInfo[]>
 }
 
+export declare class TrackerIntegration {
+    public trackerName: TrackerNames
+    static getInstance(): TrackerIntegration
+    loginTui(): Promise<void>
+    login(): Promise<LoginData | undefined>
+    logout():Promise<void>
+}
+
 export interface ConfigurationInterface {
     isFirstRun: Boolean,
     langKey: AvalibleLangs,
@@ -71,6 +94,7 @@ export interface ConfigurationInterface {
     favoriteChapterLang: ChapterLangType | 'any',
     historyMaxSize: number,
     downloads_path : string,
+    login: TrackerInterface
 }
 export interface ServerConfInterface {
     name: ServerName,
