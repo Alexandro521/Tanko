@@ -157,11 +157,11 @@ async function loadMangaChapter(
       const chapterIndex = await prompts(
         chapterListPrompt(mangaInfo.title, memoryChoicePosition, choices),
       );
-      if (!chapterIndex.chapter) {
+      if (!chapterIndex.target) {
         break;
       }
-      memoryChoicePosition = Number(chapterIndex.chapter);
-      const targetChapter = chapterList[Number(chapterIndex.chapter)];
+      memoryChoicePosition = Number(chapterIndex.target);
+      const targetChapter = chapterList[Number(chapterIndex.target)];
       let lang;
       if ((lang = await askChapterLang(targetChapter)) === null) {
         continue;
@@ -176,7 +176,7 @@ async function loadMangaChapter(
         await terminalReader(
           mangaInfo,
           chapterList,
-          Number(chapterIndex.chapter),
+          Number(chapterIndex.target),
           lang,
           server,
         );
@@ -188,7 +188,7 @@ async function loadMangaChapter(
         if(pages)
           await downloadSection(        mangaInfo,
           chapterList,
-          Number(chapterIndex.chapter),
+          Number(chapterIndex.target),
           lang,
           server,
         )
@@ -387,12 +387,12 @@ async function lastedSection(server: MangaProvider) {
             lastChapterList,
           ),
         );
-        if (!chapterIndex.chapter) {
+        if (!chapterIndex.target) {
 
           break;
         }
-        memoryChoicePosition = Number(chapterIndex.chapter);
-        const chapterTarget = lastChapterList[Number(chapterIndex.chapter)];
+        memoryChoicePosition = Number(chapterIndex.target);
+        const chapterTarget = lastChapterList[Number(chapterIndex.target)];
         const chapterOptions = await prompts(basicChapterOptions());
 
         if (!chapterOptions.target) {
@@ -407,7 +407,7 @@ async function lastedSection(server: MangaProvider) {
         let lang;
         loading.stop();
         if (!mangaInfo) continue;
-        const index = Number(chapterIndex.chapter);
+        const index = Number(chapterIndex.target);
         const chapter = chapterList[index];
         if ((lang = await askChapterLang(chapter)) === null) {
           continue;

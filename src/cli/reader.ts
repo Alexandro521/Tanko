@@ -290,12 +290,12 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
                   TerminalControl.exitRawMode(handleKeypress)
                   const choices: Choice[] = chapters.map((e, index):Choice=>({title: e.title, value: String(index)}))
                   const chapterIndex = await prompts(chapterListPrompt(mangaInfo.title, chapterCtrl.chapterIndex, choices))
-                  if(!chapterIndex ||!chapterIndex.chapter) return
-                  const targetChapter = chapters[Number(chapterIndex.chapter)]
+                  if(!chapterIndex ||!chapterIndex.target) return
+                  const targetChapter = chapters[Number(chapterIndex.target)]
                   const lang = await askChapterLang(targetChapter)
                   if(lang)
                     chapterCtrl.chapterLanguage = lang
-                  chapterCtrl.setChapterIndex(Number(chapterIndex.chapter))
+                  chapterCtrl.setChapterIndex(Number(chapterIndex.target))
                   chapterLoader(undefined, handleKeypress)
                 }
                 else if (options.target === SignalsCodes.exit) {
