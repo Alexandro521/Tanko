@@ -32,10 +32,8 @@ if (!fs.existsSync(BROWSER_STORAGE_PATH)) {
 
 console.log(ansi.clearViewport);
 console.log(WELCOME_MESSAGE);
-await History.load() 
 const notify = Notify.getInstace()
 const confInstance = await Configuration.getInstance()
-
 if(confInstance.configuration.isFirstRun) {
   notify.push({
     title: 'Welcome!',
@@ -45,6 +43,8 @@ if(confInstance.configuration.isFirstRun) {
   confInstance.configuration.isFirstRun = false
 }
 await versionVerify()
+await confInstance.login()
+await History.load()
 
 await main(confInstance)
 await confInstance.closeBrowser();
