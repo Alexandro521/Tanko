@@ -3,14 +3,14 @@ import { SignalsCodes, ConfigurationOptions, DownloadFormat, ConfigurationEvents
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
-import type {Chapter, ChapterLanguage } from "../types/types.js";
+import type {Chapter, ChapterLanguage, TrackerNames } from "../types/types.js";
 import type { Key } from "node:readline";
 import { Notify, NotifyType } from "../functions/notify.js";
 import ansi from 'ansi-escapes'
 import prompts from "@alex_521/prompts";
 const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
-let {configuration, main_sections, chapter_access_options} =await instance.getLanguageInterface()
+let {configuration, main_sections, chapter_access_options} = await instance.getLanguageInterface()
 
 instance.on(ConfigurationEvents.updateLanguage, async (nLang) => {
     const lang = nLang
@@ -33,38 +33,16 @@ function onKeyPress (this: any, key: Key, name: string): void{
     }
 }
 export async function askChapterLang(chapter: Chapter) {
-  const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
-  let lang = avalibleLanguages[0].lang; //as default value
-  if (chapter.translation_count > 1) {
-    const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
-    if (!targetLang?.target) {
-  
-      return null;
+    const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
+    let lang = avalibleLanguages[0].lang; //as default value
+    if (chapter.translation_count > 1) {
+        const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
+        if (!targetLang?.target) return null;
+        lang = targetLang.target;
     }
-    lang = targetLang.target;
-  }
-  return lang;
+    return lang;
 }
 
-// [General Prompts]
-export const generateChapterList = (title: string,startIndex:number, choices: Choice[]): PromptObject<'chapter'> => {
-    clearScreen()
-    return {
-        type: 'autocomplete',
-        name: 'chapter',
-        initial: startIndex,
-        message: title,
-        hint: `capitulos: ${choices.length}`,
-        choices,
-        clearFirst: true,
-        onKeyPress,
-        onRender,
-        onClose: ()=>{
-            //process.stdout.write(ansi.clearViewport)
-        }
-        //limit: 30
-    }
-}
 
 export const voidPrompt = (message: string): PromptObject<'void'> => {
     return {
@@ -73,7 +51,6 @@ export const voidPrompt = (message: string): PromptObject<'void'> => {
         message: `${message}\n  ESC  para volver al menu anterior`
     }
 }
-
 export const confirmPrompt = (message: string): PromptObject<'confirm'> => {
     return {
         type: 'confirm',
@@ -81,31 +58,30 @@ export const confirmPrompt = (message: string): PromptObject<'confirm'> => {
         message: message,  
     }
 }
-
-const ChapterAccessOptions = () => {
+const OptionsFactory = () => {
     return {
-    read: {
-        title: chapter_access_options.read.title,
-        description: chapter_access_options.read.desc,
-        value: SignalsCodes.read_chapter
-    },
-    download: {
-        title: chapter_access_options.download.title,
-        description: chapter_access_options.download.desc, 
-        value: SignalsCodes.download_chapter,
-    },
-    resume_read: {
-        title: chapter_access_options.resume_read.title,
-        value: SignalsCodes.resume_read,
-    },
-    suscribe: {
-        title: chapter_access_options.suscribe.title, 
-        value: SignalsCodes.suscribe_manga,
-    },
-    getChapters: {
-        title: chapter_access_options.get_chapters.title, 
-        value: SignalsCodes.get_chapters_list
-    },
+        read: {
+            title: chapter_access_options.read.title,
+            description: chapter_access_options.read.desc,
+            value: SignalsCodes.read_chapter
+        },
+        download: {
+            title: chapter_access_options.download.title,
+            description: chapter_access_options.download.desc, 
+            value: SignalsCodes.download_chapter,
+        },
+        resume_read: {
+            title: chapter_access_options.resume_read.title,
+            value: SignalsCodes.resume_read,
+        },
+        suscribe: {
+            title: chapter_access_options.suscribe.title, 
+            value: SignalsCodes.suscribe_manga,
+        },
+        getChapters: {
+            title: chapter_access_options.get_chapters.title, 
+            value: SignalsCodes.get_chapters_list
+        },
     exit: {
         title: chapter_access_options.exit.title,
         value: SignalsCodes.exit
@@ -117,6 +93,38 @@ const ChapterAccessOptions = () => {
     next_chapter: {
         title: chapter_access_options.next_ch.title, 
         value: SignalsCodes.next_chapter
+    },
+    cfg_server: {
+        title: configuration.options.client,
+        value: ConfigurationOptions.Server,
+    },
+    cfg_search: {
+        title: "Search",
+        value: ConfigurationOptions.Search,
+    },
+    cfg_language: {
+        title: configuration.options["lang-ui"], 
+        value: ConfigurationOptions.language,
+    },
+    cfg_download: {
+        title: "Downloads",
+        value: ConfigurationOptions.downloads,
+    },
+    cfg_accouts: {
+        title: configuration.options.accouts, 
+        value: ConfigurationOptions.accout,
+    },
+    cfg_restores: {
+        title: configuration.options.restore, 
+        value: ConfigurationOptions.restoreDefault,
+    },
+    accout_see: {
+        title: 'see profile',
+        value: SignalsCodes.see_profile
+    },
+    accout_logout: {
+        title: 'Logout',
+        value: SignalsCodes.logout_accout
     }
 }
 }
@@ -141,17 +149,8 @@ const SectionPrompt = (title: string, choices: Choice[],hint = '', index:number,
 }
 // [Principal Sections]
 export const mainPrompt = (): PromptObject<'target'> => {
-    clearScreen()
-    return {
-    type: 'select',
-    onRender,
-    onKeyPress,
-    onClose: ()=>{
-        //process.stdout.write(ansi.clearViewport)
-    },
-    name: 'target',
-    message: chalk.bgHex(PRIMARY_COLOR)(` ${main_sections.main.title} `),
-    choices: [
+
+    const choices: Choice[] = [
         { title: main_sections.search.title, value: SignalsCodes.search_section },
         { title: main_sections.popular.title, value: SignalsCodes.popular_section },
         { title: main_sections.recent.title, value: SignalsCodes.lasted_section },
@@ -159,8 +158,9 @@ export const mainPrompt = (): PromptObject<'target'> => {
         { title: main_sections.config.title, value: SignalsCodes.configuration_section },
         { title: main_sections.exit.title, value: SignalsCodes.exit },
     ]
-    }
+    return SectionPrompt(main_sections.main.title, choices ,'', 0, 'select')
 }
+
 export const searchPrompt = (): PromptObject<'query'> =>{
     clearScreen()
     return {
@@ -169,61 +169,31 @@ export const searchPrompt = (): PromptObject<'query'> =>{
         message: chalk.bgHex(PRIMARY_COLOR)(` ${main_sections.search.title} `),
     }
 }
-
-// [Sections]
-
 export const searchResultPrompt = (ch: Choice[], index: number) =>{
     return SectionPrompt(main_sections.search.alt, ch, `mangas: ${ch.length}`, index)
 }
-
 export const popularSectionPrompt = (ch: Choice[], index: number)=>{
     return SectionPrompt(main_sections.popular.title, ch, `mangas: ${ch.length}`, index)
 }
-
 export const lastedSectionPrompt = (ch: Choice[], index: number)=>{
     return SectionPrompt(main_sections.recent.title, ch, `mangas: ${ch.length}`, index)
 }
-
 export const historySectionPrompt = (ch: Choice[], index: number)=>{
     return SectionPrompt(main_sections.history.title, ch, `mangas: ${ch.length}`, index)
 }
-
-const configurationOptions = ():Choice[] => {
-    return [
-    {
-        title: configuration.options.client,
-        value: ConfigurationOptions.Server,
-    },
-    /*{
-        title: "Search",
-        value: ConfigurationOptions.Search,
-    },*/
-    {
-        title: configuration.options["lang-ui"], 
-        value: ConfigurationOptions.language,
-    },
-    /* {
-        title: "Downloads",
-        value: ConfigurationOptions.downloads,
-    },*/
-    {
-        title: configuration.options.save, 
-        value: ConfigurationOptions.save,
-    },
-    {
-        title: configuration.options.restore, 
-        value: ConfigurationOptions.restoreDefault,
-    }
-]
+export const configurationPrompt = () => {
+    const optionsFactory = OptionsFactory()
+    const choices = [
+        optionsFactory.cfg_server,
+        optionsFactory.cfg_language,
+        optionsFactory.cfg_accouts,
+        optionsFactory.exit
+    ]
+    return SectionPrompt(main_sections.config.title, choices, '',0, 'select')
 }
-export const configurationPrompt = () => SectionPrompt(main_sections.config.title, configurationOptions(), '',0, 'select')
-
-// [ CONFIGURATION PROMPTS ]
-
 export const serverPrompt = (hint:string, ch: Choice[]) => {
     return SectionPrompt(configuration.server_title, ch, `current: ${hint}`,0, 'select')
 }
-
 export const languagePrompt = (hint: string = 'es', index: number) => {
 
     const langChoice: Choice[] =   Object.entries(configuration["lang-ui"]).map((lang, index): Choice => {
@@ -237,53 +207,46 @@ export const languagePrompt = (hint: string = 'es', index: number) => {
     })
     return SectionPrompt(configuration.options["lang-ui"], langChoice, `current: ${hint}`, index, 'select')
 }
-
-
-// [Chapter Options]
-
 export const basicChapterOptions = ()=>{
-    const sh = ChapterAccessOptions() 
+    const $ = OptionsFactory() 
     return  SectionPrompt(configuration.options_title, [
-    sh.read,
-    sh.download,
+    $.read,
+    $.download,
     //ChapterAccessOptions.suscribe,
-    sh.exit,
+    $.exit,
 ], '',0, 'select')
 }
-
 export const historyChapterOptions = (title: string) => {
-    const sh = ChapterAccessOptions()
+    const $ = OptionsFactory()
     return SectionPrompt(configuration.options_title, [
-    sh.resume_read,
-    sh.getChapters,
-    sh.download,
+    $.resume_read,
+    $.getChapters,
+    $.download,
     //ChapterAccessOptions.suscribe,
-    sh.exit,
+    $.exit,
 ], title,0, 'select')
 }
 export const popularMangaSelectOptions = (title: string) =>{
-    const sh = ChapterAccessOptions()
+    const $ = OptionsFactory()
     return SectionPrompt(configuration.options_title, [
-    sh.read,
-    sh.getChapters,
-    sh.download,
-    //ChapterAccessOptions.suscribe,
-    sh.exit,
+    $.read,
+    $.getChapters,
+    $.download,
+    $.exit,
 
 ], title,0, 'select')
 }
-
 export const terminalReaderChapterOptions = ()=>{ 
-    let sh = ChapterAccessOptions()
+    let $ = OptionsFactory()
     return SectionPrompt('Opciones', [
-        sh.prevoius_chapter,
-        sh.next_chapter,
-     //   sh.download,
-     //   sh.getChapters,
-     //   sh.exit,
+        $.prevoius_chapter,
+        $.next_chapter,
+        $.exit,
 ], '',0, 'select')
 }
-
+export const chapterListPrompt = (title: string,startIndex:number, choices: Choice[]) => {
+    return SectionPrompt(title, choices, `capitulos: ${choices.length}`, startIndex, 'autocomplete')
+}
 export const chapterLangChoices = (langs: ChapterLanguage[]) => {
     const choices = langs.map((e):Choice=>{
         return {
@@ -293,8 +256,6 @@ export const chapterLangChoices = (langs: ChapterLanguage[]) => {
     })
     return SectionPrompt(configuration.select_lang_title,choices, '', 0, 'select'  )
 }
-
-
 export const downloadFormatOptions = () => {
     const avalibleDownloadFormats = Object.entries(DownloadFormat)
     const choices = avalibleDownloadFormats.map(([key, format]):Choice =>{
@@ -304,4 +265,27 @@ export const downloadFormatOptions = () => {
         }
     })
     return SectionPrompt('Select Format', choices, '', 0, 'autocomplete')
+}
+export const accoutPrompt = () => {
+    const accouts =  instance.getLoginData()
+    const $ = OptionsFactory()
+    const choices = Object.entries(accouts).map(([name, data]): Choice =>{
+        const description = data.isAuth && data.data ? chalk.dim(chalk.blueBright(data.data.name)) : 'not logged'
+        return {
+            title: name,
+            description,
+            value: data
+        }
+    })
+    choices.push($.exit)
+    return SectionPrompt(configuration.options.accouts, choices, '', 0, 'select')
+}
+export const accoutOptionsPrompt = (trackerName: TrackerNames, userName: string)=>{
+    const $ = OptionsFactory()
+    const choices = [
+       // $.accout_see,
+        $.accout_logout,
+        $.exit
+    ]
+    return SectionPrompt(trackerName, choices, userName , 0, 'select')
 }
