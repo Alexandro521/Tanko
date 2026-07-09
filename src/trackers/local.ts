@@ -1,0 +1,113 @@
+import { DATA_DEFAULT_DIR } from "../const.js";
+import fs from 'fs'
+import fsp from 'fs/promises'
+import path from "path";
+import sanitize from "sanitize-filename";
+export interface LocalTrackerProps {
+    mangaId: string | number,
+    chapterCount: number,
+    chapterIndex: number,
+}
+
+export  class LocalTracker {
+    private workdir = path.join(DATA_DEFAULT_DIR, '.tracker')
+    private static instance: LocalTracker
+    public static getInstance() {
+        if (!this.instance) {
+            this.instance = new LocalTracker()
+        }
+        return this.instance
+    }
+    private constructor() {
+        if (!fs.existsSync(this.workdir)) {
+            const res = fs.mkdirSync(this.workdir, { recursive: true })
+            if (!res) {
+                throw new Error('directory .tracker failed in creation')
+            }
+        }
+    }
+    async exists(props: LocalTrackerProps){
+        if(!fs.existsSync(this.getFilePath(props.mangaId))){
+            return false
+        }
+        return true
+    }
+    getFilePath(Id: string | number) {
+        const filename = sanitize(String(Id), { replacement: '_' })
+        const outputPath = path.join(this.workdir, `${filename}.dat`)
+        return outputPath
+    }
+    async regist(props: LocalTrackerProps) {
+        const bufferSize =  Math.max((props.chapterCount >> 3), 3) + 4
+        const  alloc = Buffer.alloc(bufferSize+8, 0, "binary")
+        const buffer = new Uint16Array(alloc)
+        buffer[0] = props.chapterCount
+        buffer[1] = props.chapterIndex
+
+        await fsp.writeFile(this.getFilePath(props.mangaId), buffer, {
+            encoding: 'binary',
+        })
+    }
+    async markAsRead(props: LocalTrackerProps) {
+        if(await this.hasReading(props)) return
+        const buff16 = new Uint16Array(2)
+        const buff32 = new Uint32Array(1)
+        const wrPosition = ((props.chapterIndex >> 5) << 2) +4 //+4 Skip the first two bytes
+        const file = await fsp.open(this.getFilePath(props.mangaId), 'r+')
+        //obtain the reading count
+        await file.read(buff16, 0, 2, 2)
+
+        await file.read(buff32, 0, 4, wrPosition)
+        buff16[0] += 1
+        buff32[0] |= 0x1 << ((props.chapterIndex & 31))
+        await file.write(buff16, 0, 2, 2)
+        await file.write(buff32, 0, 4, wrPosition)
+        await file.close()
+    }
+    async update(props: LocalTrackerProps) {
+        const file = await fsp.open(this.getFilePath(props.mangaId), 'r+')
+        const stats = await file.stat()
+        const buffer = new Uint16Array(1)
+        await file.read(buffer, 0, 2, 0)
+        if((stats.size - (props.chapterCount >> 3)) <= 2){
+            await file.appendFile(new Uint8Array(8).fill(0))
+        }
+        if(props.chapterCount > buffer[0]){
+            buffer[0] = props.chapterCount
+            await file.write(buffer,0,2,0)
+        }
+        await file.close()
+    }
+    async hasReading(props: LocalTrackerProps) {
+        const file = await fsp.open(this.getFilePath(props.mangaId))
+        const buffer = new Uint8Array(1)
+
+        await file.read(buffer, 0, 1, (props.chapterIndex >> 3)+4)
+        const isRead = ((buffer[0] >> (props.chapterIndex & 7)) & 1) === 1
+        await file.close()
+        return isRead
+    }
+    async getStats(props: LocalTrackerProps, fileTarget: string | undefined = undefined) {
+        const file = await fsp.open(fileTarget ?? this.getFilePath(props.mangaId))
+        const stats = await file.stat()
+        const buffer = new Uint16Array(stats.size>>2)
+        await file.read(buffer)
+        const readingMap = new Map<number, any>()
+        let totalRead = buffer[1], bitIndex = 0
+        for(let chunkIndex = 2; chunkIndex < buffer.length && totalRead > 0 && bitIndex < buffer[0]; chunkIndex++){
+            const chunk = buffer[chunkIndex]
+            for(let i = 0; i < 16; i++, bitIndex++){
+                if(((chunk >> i)&0x0001) === 0x0001){
+                    --totalRead;
+                    readingMap.set(bitIndex, chunkIndex)
+                }
+            }
+        }
+        await file.close()
+        return {
+            chapterCount: buffer[0],
+            reading: buffer[1],
+            readingMap: readingMap
+        }
+    }
+}

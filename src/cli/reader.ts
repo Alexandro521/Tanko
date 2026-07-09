@@ -2,7 +2,7 @@ import ora from "ora"
 import chalk from "chalk"
 import esc from "ansi-escapes"
 import readLine from "node:readline"
-import { stdin, title } from "node:process"
+import { stdin } from "node:process"
 import prompts, { type Choice } from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.js"
 import { SignalsCodes, ConfigurationEvents} from "../types/enum.js"
@@ -11,12 +11,15 @@ import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from 
 import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
 import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
 import type { LangInterface } from "../types/lang.js"
+
 //import { downloadChapter } from "../functions/downloader.js"
+import { LocalTracker } from "../trackers/local.js"
 
 const confInst = await Configuration.getInstance()
 const loading = ora()
 let instance = await Configuration.getInstance()
 let { err_messages, loading_states, reader } = await instance.getLanguageInterface()
+const localTracker = LocalTracker.getInstance()
 
 instance.on('update',(_, __, lang)=>{
     err_messages = (lang as LangInterface).err_messages
@@ -38,11 +41,14 @@ function debounce(func: Function, delay: number) {
 
 class PagesControl {
   private pages!: ChapterPage[];
+  private readCheckList!: boolean[]
+  readPogress = 0
   pagesLength = 0
   index = 0;
   constructor(pages: ChapterPage[]) {
     this.pages = pages;
     this.pagesLength = pages.length
+    this.readCheckList = new Array(pages.length).fill(false)
   }
     nextPage() {
       if (this.index < this.pages.length-1)
@@ -57,12 +63,21 @@ class PagesControl {
     }
   async loadPage() {
     try{
-        loading.start(loading_states.default_loading)
-        await imageLoader(this.pages[this.index])
-        loading.stop()
-      }catch(e){
-        loading.fail(err_messages.page_loading.msg)
+      loading.start(loading_states.default_loading)
+      await imageLoader(this.pages[this.index])
+      loading.stop()
+    }catch(e){
+      loading.fail(err_messages.page_loading.msg)
+    }finally{
+
+      if(!this.readCheckList[this.index]){
+        this.readCheckList[this.index] = true
+        this.readPogress++
       }
+      
+    }
+
+    
   }
   getPages(){
     return this.pages
@@ -71,6 +86,8 @@ class PagesControl {
       this.pages = newPages;
       this.pagesLength = newPages.length
       this.index = 0;
+      this.readPogress = 0;
+      this.readCheckList = new Array(newPages.length).fill(false)
   }
     set setIndex (newIndex: number) {
       this.index = newIndex
@@ -165,8 +182,11 @@ class ChapterControl {
     this.lang = newLang;
   }
   set chapterIndex(newIndex: number) {
-    if (newIndex > -1 && newIndex < this.chapters.length)
+    if (newIndex >= 0 && newIndex < this.chapters.length)
       this.index = newIndex;
+  }
+  geChapterIndex(){
+    return this.index
   }
   historySave(title: string, src:string) {
     const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang)
@@ -194,10 +214,6 @@ const renderHeader = (title: string, mangatitle: string, index: number, n: numbe
     process.stdout.write(esc.clearViewport);
     process.stdout.write(header);
     process.stdout.write(esc.cursorMove(startPoint, 0) + currentPage);
-    // process.stdout.write(esc.cursorSavePosition +esc.cursorMove(0, rows-2))
-    // process.stdout.write(chalk.gray(`   ←            →          Q & ESC            P                    N                C    \n`))
-    // process.stdout.write(chalk.gray(` Anterior    Siguiente       Exit       capitulo anterior   capitulo siguiente    Opciones\n`))
-    // process.stdout.write(esc.cursorRestorePosition)
 };
 const debugLogs = (src: string) => {
     process.stdout.write(`[DEBUG INFO] (CACHE SIZE): ${(ImageCache.cacheSize / 1000000).toFixed(2)} MB (MAX CACHE SIZE) : ${(ImageCache.MAX_SIZE / 1000000).toFixed(2)} MB (CACHE POINTER POSITION): ${ImageCache.pointer}, (PAGES IN CACHE) ${ImageCache.cache.size}, (FROM CACHE) ${ImageCache.cache.has(src)}\n\n`)
@@ -213,15 +229,24 @@ export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,
         const renderInfo = () => {
             const chapterInfo = chapterCtrl.getChapterInfo()
             console.log(esc.clearViewport)
-            renderHeader(mangaInfo.title, chapterInfo.title || '', pageCtrl.index + 1, pageCtrl.pagesLength)
-            //debugLogs(pagesNav.getState().src.src)
+            const progresstr = ' ⏺ Progress: '+ ((pageCtrl.readPogress*100)/pageCtrl.pagesLength).toFixed(1)  + '%'
+            renderHeader(mangaInfo.title + progresstr, (chapterInfo.title || ''), pageCtrl.index + 1, pageCtrl.pagesLength)
+           // debugLogs(mangaInfo.src)
         }
 
         const pageDebounce = debounce(async () => {
-                await pageCtrl.loadPage()
-                process.stdout.write(esc.cursorHide)
-                const controlBar = `\n   ←            →          Q & ESC            P                    N                C\n${reader.prev_page}    ${reader.next_page}        ${reader.exit}       ${reader.prev_ch}   ${reader.next_ch}    ${reader.options}`
-                process.stdout.write(chalk.gray(controlBar))
+              const readProgress = (pageCtrl.readPogress*100)/pageCtrl.pagesLength
+              if(readProgress >=75){
+                await localTracker.markAsRead({
+                    chapterCount: chapters.length,
+                    chapterIndex: chapterCtrl.geChapterIndex(),
+                    mangaId: mangaInfo.src
+                })
+              }
+              await pageCtrl.loadPage()
+              process.stdout.write(esc.cursorHide)
+              const controlBar = `\n   ←            →          Q & ESC            P                    N                C\n${reader.prev_page}    ${reader.next_page}        ${reader.exit}       ${reader.prev_ch}   ${reader.next_ch}    ${reader.options}`
+              process.stdout.write(chalk.gray(controlBar))
         }, 300)
         renderInfo()
       const chapterLoader = async (signal: SignalsCodes | undefined = undefined, handle: Function | undefined = undefined) => {

@@ -244,8 +244,8 @@ export const terminalReaderChapterOptions = ()=>{
         $.exit,
 ], '',0, 'select')
 }
-export const chapterListPrompt = (title: string,startIndex:number, choices: Choice[]) => {
-    return SectionPrompt(title, choices, `capitulos: ${choices.length}`, startIndex, 'autocomplete')
+export const chapterListPrompt = (title: string,startIndex:number, choices: Choice[], customText='') => {
+    return SectionPrompt(title, choices, `capitulos: ${choices.length} ${customText}`, startIndex, 'autocomplete')
 }
 export const chapterLangChoices = (langs: ChapterLanguage[]) => {
     const choices = langs.map((e):Choice=>{

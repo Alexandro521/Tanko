@@ -31,10 +31,12 @@ import { Configuration } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
 import { getTimeSkip } from "../utils.js";
 import { Notify, NotifyType } from "../functions/notify.js";
+import { LocalTracker, type LocalTrackerProps } from "../trackers/local.js";
+import chalk from "chalk";
 
 
 const loading = ora();
-
+const localTracker = LocalTracker.getInstance()
 let err_messages: ErrorMessages,
 loading_states: LoadingStates,
 lang: LangInterface
@@ -146,16 +148,37 @@ async function loadMangaChapter(
       loading.fail(err_messages.chapter_loading.msg);
       return;
     } else if (loading.isSpinning) loading.stop();
-    const choices: Choice[] = chapterList.map((e, i) => {
-      return {
-        title: Object.values(e.translations)[0].title,
-        value: String(i),
-      };
-    });
+    const localTrackerProps: LocalTrackerProps = {
+      chapterCount: chapterList.length,
+      chapterIndex: 0,
+      mangaId: mangaInfo.src
+    }
+    if(!(await localTracker.exists(localTrackerProps))){
+      await localTracker.regist(localTrackerProps)
+    }
+   /* const trackerData = await localTracker.getStats(localTrackerProps)
+    if (trackerData.chapterCount < chapterList.length) {
+      await localTracker.update(localTrackerProps)
+    }*/
     let memoryChoicePosition = 0;
     while (true) {
+      const trackerData = await localTracker.getStats(localTrackerProps)
+      if(trackerData.chapterCount < chapterList.length){
+        await localTracker.update(localTrackerProps)
+      }
+      const choices: Choice[] = chapterList.map((e, i) => {
+        let title = Object.values(e.translations)[0].title
+        if(trackerData.readingMap.has(i)){
+          title +=' ⏺ '+ chalk.dim(chalk.green('Read'))
+        }
+        return {
+          title,
+          value: String(i),
+        };
+      });
+      const readProgress = ((trackerData.reading*100)/trackerData.chapterCount).toFixed(1)
       const chapterIndex = await prompts(
-        chapterListPrompt(mangaInfo.title, memoryChoicePosition, choices),
+        chapterListPrompt(mangaInfo.title, memoryChoicePosition, choices, `⏺ Progress: ${readProgress}%`),
       );
       if (!chapterIndex.target) {
         break;
@@ -373,18 +396,41 @@ async function lastedSection(server: MangaProvider) {
       memoryChoicePositionLastMangas = Number(mangaIndex.target);
       const targetManga = mangaList[Number(mangaIndex.target)];
       const chapterList = await server.getChapterList(targetManga.src)
-      const lastChapterList = chapterList.map(
-        (chapter, index): Choice => {
-          return { title: chapter.title, value: String(index) };
-        },
-      );
+      const localTrackerProps: LocalTrackerProps = {
+        chapterCount: chapterList.length,
+        chapterIndex: 0,
+        mangaId: targetManga.src
+      }
+      if (!(await localTracker.exists(localTrackerProps))) {
+        await localTracker.regist(localTrackerProps)
+      }
+      const trackerData = await localTracker.getStats(localTrackerProps)
+     /* if (trackerData.chapterCount < chapterList.length) {
+        await localTracker.update(localTrackerProps)
+      }*/
       let memoryChoicePosition = 0;
       while (true) {
+        const markRead = await localTracker.getStats(localTrackerProps)
+
+        const lastChapterList = chapterList.map(
+          (chapter, index): Choice => {
+            let title = Object.values(chapter.translations)[0].title
+            if (markRead.readingMap.has(index)) {
+              title += ' ⏺ '+ chalk.dim(chalk.green('Read'))
+            }
+            return { 
+              title,
+              value: String(index) };
+          },
+        );
+        const readProgress = ((trackerData.reading*100)/trackerData.chapterCount).toFixed(1)
+
         let chapterIndex = await prompts(
           chapterListPrompt(
             targetManga.title,
             memoryChoicePosition,
             lastChapterList,
+            `⏺ Progress: ${readProgress}%`
           ),
         );
         if (!chapterIndex.target) {
