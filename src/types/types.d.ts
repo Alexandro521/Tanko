@@ -2,12 +2,17 @@ import  type { Page } from "playwright"
 import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
-
+import type { AltTitles } from "./mangadex/search.js"
 export interface ChapterPage  {
     src: string
     page_index: string
 }
-type ChapterLangType = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr' 
+
+type ChapterLangType = 
+'ru' | 'fr' | 'ro' | 'hu' | 'th' | 'zh'|
+'ko' | 'kk' | 'pt' | 'tr' | 'ja' | 'cb'|
+"es" | 'es-la' | 'pt-br' | 'en' | 'vi' |
+'bn'
 
 export interface Chapter {
     id: string
@@ -48,7 +53,9 @@ export interface MangaInfo {
   title: string,
   src: string,
   description?:string,
-  lastUploadChapterSrc?: string
+  lastUploadChapterSrc?: string,
+  anilistId?: string | number | null
+  altTitles?: AltTitles[] | string[]
 }
 export type TrackerNames = "anilist"
 export interface LoginData {

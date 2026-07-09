@@ -11,7 +11,7 @@ import type {
 } from "../types/types.js";
 import axios from "axios";
 import fs from 'fs/promises'
-import type { MangadexMangaInfo, SearchResultMangadex } from "../types/mangadex/search.js";
+import type { AltTitles, MangadexMangaInfo, SearchResultMangadex } from "../types/mangadex/search.js";
 import type { Puzzle } from "../types/mangadex/get_pages.js";
 interface Chapter_ extends Chapter {
     index: number | string
@@ -137,7 +137,9 @@ export class MangaDex implements MangaProvider {
             title: Object.values(attributes.title)[0] ?? 'No title',
             src: id,
             description: Object.values(attributes.description)[0] ?? 'No title',
-            lastUploadChapterSrc: attributes.latestUploadedChapter
+            lastUploadChapterSrc: attributes.latestUploadedChapter,
+            anilistId: attributes.links.al || null,
+            altTitles: attributes.altTitles as AltTitles[]
         }
     }
     async getChapterPages(chapterSrc: string): Promise<ChapterPage[]> {
