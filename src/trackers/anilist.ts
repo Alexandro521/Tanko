@@ -142,4 +142,5 @@ export class AniList implements TrackerIntegration{
     async logout() {
         await fsPromise.rm(this.tokenpath)
     }
+    track(){}
 }

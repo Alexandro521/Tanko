@@ -10,7 +10,7 @@ import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLO
 import { LANGUAGE_REGISTER } from "./lang.js";
 import EventEmitter from "events";
 import { Notify, NotifyType } from "./notify.js";
-import { AniList } from "../integration/anilist.js";
+import { AniList } from "../trackers/anilist.js";
 
 const LOAD_SPIN = ora()
 const NOTIFY_INSTANCE = Notify.getInstace()
