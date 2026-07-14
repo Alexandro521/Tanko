@@ -9,19 +9,116 @@ import fs from 'fs'
 import { DATA_DEFAULT_DIR } from '../const.js'
 import path from 'node:path'
 import { Notify, NotifyType } from '../functions/notify.js'
+import { MediaListStatus, MediaSort } from '../types/enum.js'
+import type { LoginData, MangaInfo, TrackerIntegration, TrackerNames, TrackProps} from '../types/types.js'
 
-import type { TrackerIntegration, TrackerNames } from '../types/types.js'
+interface SearchResponse {
+    Page: {
+        media: {
+            id: number,
+            idMal: number,
+            popularity: number,
+            title: {
+                romaji: string,
+                english: string,
+                userPreferred: string,
+            }
+        }[]
+    }
+}
+
+interface ReqResponse<T>{
+    data?: T,
+    errors?: {
+        message: string,
+        locations: {
+            line: number,
+            column: number
+        }[]
+    }[]
+}
+
 const NOTIFY = Notify.getInstace()
+class Queries {
+    static querySearch (title: string, sort: MediaSort) {
+        const object = { 
+            variables: {
+                title,
+                sort,
+            },
+            query: "query Search($title: String, $sort: [MediaSort]){\
+                Page(perPage: 3){\
+                    media(search:$title , type: MANGA, sort:$sort){\
+                        id,\
+                        idMal,\
+                        popularity,\
+                        title{\
+                            romaji,\
+                            english,\
+                            userPreferred,\
+                        },\
+                    }\
+                }\
+            }\
+        "
+        }
+        return JSON.stringify(object)
+    }
+    static mutateTrack (props: TrackProps) {
+        const object = {
+            variables: props,
+            query:  `
+                mutation track(
+                    $mediaId: Int,
+                    $status: MediaListStatus = CURRENT,
+                    $progress: Int, 
+                    $progressVolume: Int = 0, 
+                    $repeat: Int = 0
+                ){
+                    SaveMediaListEntry(
+                        mediaId: $mediaId, 
+                        status: $status, 
+                        progress: $progress, 
+                        repeat: $repeat, 
+                        progressVolumes: $progressVolume
+                    ){
+                        mediaId,
+                        status,
+                        progress,
+                        progressVolumes,
+                        repeat
+                    }
+                }`
+        }
+        return JSON.stringify(object)
+    }
+    static queryViewer () {
+        const object = {
+            query:"\
+            query getUser{\
+                Viewer {\
+                    id\
+                    name\
+                }\
+            }\
+        "
+        }
+        return JSON.stringify(object)
+    }
+}
 
 export class AniList implements TrackerIntegration{
+    private static tokenpath = path.join(DATA_DEFAULT_DIR, 'anilist_token')
     private endPoint = 'https://graphql.anilist.co'
-    private tokenpath = path.join(DATA_DEFAULT_DIR, 'anilist_token')
+    private token:string | undefined = undefined
     private static singletonInstance: AniList
     public trackerName: TrackerNames = 'anilist'
-    private constructor(){}
+    private constructor(token: string | undefined){
+        this.token = token
+    }
     static getInstance(){
         if(!this.singletonInstance) {
-            this.singletonInstance = new AniList()
+            this.singletonInstance = new AniList(undefined)
         }
         return this.singletonInstance
     }
@@ -71,17 +168,18 @@ export class AniList implements TrackerIntegration{
                 })
                 break
             }
-            const userData = await this.viewer(prompt.token)
-            let msg = ''
+            this.token = prompt.token
+            const userData = await this.auth() as LoginData | undefined
             if (userData) {
                 NOTIFY.push({
-                    message: `Welcome to Tanko ${chalk.magenta(userData.name)}!`,
+                    message: `Welcome to Tanko ${chalk.magenta(userData.Viewer.name)}!`,
                     title: chalk.blueBright('Successful authentication.'),
                     type: NotifyType.event
                 })
-                await fsPromise.writeFile(this.tokenpath, prompt.token)
+                await fsPromise.writeFile(AniList.tokenpath, prompt.token)
                 break
             } else {
+                this.token = undefined
                 console.log(chalk.redBright('Authentication failed'))
                 if (--attempts <= 0) {
                     NOTIFY.push({
@@ -93,54 +191,69 @@ export class AniList implements TrackerIntegration{
             }
         }
     }
-    async login(){
-        if(!fs.existsSync(this.tokenpath)) return undefined
-        const token = await fsPromise.readFile(this.tokenpath, {encoding: 'utf-8'})
-        const userInfo = await this.viewer(token)
-        if(userInfo) return userInfo
-        else return undefined
-    }
-    private async request(query:string, variables = '', token = '') {
+    private async request<T>(query:string) {
         try{
             const headers = new Headers()
-            headers.append('Authorization', `Bearer ${token}`)
+            if(this.token){
+                headers.append('Authorization', `Bearer ${this.token}`)
+            }
             headers.append('Content-Type', 'application/json')
             headers.append('Accept', 'application/json')
-            const req = await fetch(this.endPoint, {
-                method: 'POST',
+            const res = await fetch(
+                this.endPoint, {
                 headers,
-                body: JSON.stringify({ 
-                    query: query
-                })
+                method: 'POST',
+                body: query
             })
-            if(!req.ok) return undefined
-            const res = await req.json()
-            return res.data
+            const resData = <ReqResponse<T>> await res.json()
+            if(resData.errors){
+                const errors =  resData.errors;
+                const noti = Notify.getInstace()
+                for(let error of errors){
+                    noti.push({
+                        type: NotifyType.error,
+                        message: error.message,
+                        title: 'Anilist Api Request'
+                    })
+                }
+            }
+            if(resData?.data){
+                return resData.data
+            }else {
+                return undefined
+            }
         }catch{
             return undefined
         }
     }
-    private async viewer(token: string) {
-        const query = `
-            query getUser{
-                Viewer {
-                    id
-                    name
-                }
-            }
-        `
-        const res = await this.request(query, '', token)
-        if (res && res.Viewer) {
-            return {
-                name: res.Viewer.name,
-                id: res.Viewer.id
-            }
-        } else {
+    async auth(){
+        if(fs.existsSync(AniList.tokenpath) && !this.token){
+            this.token = await fsPromise.readFile(AniList.tokenpath, {encoding: 'utf-8'})
+        }
+        if(!this.token){
+            return undefined
+        }
+        const query = Queries.queryViewer()
+        return await this.request<LoginData>(query)
+    }
+    async logout() {
+        this.token = undefined
+        await fsPromise.rm(AniList.tokenpath)
+    }
+    async getId(mangaInfo: MangaInfo) {
+        const searchQuery = Queries.querySearch(mangaInfo.title, MediaSort.PopularityDesc);
+        const res  = <SearchResponse>await this.request(searchQuery)
+        if(res.Page){
+            const first = res.Page.media?.[0]
+            return first.id
+        }else {
             return undefined
         }
     }
-    async logout() {
-        await fsPromise.rm(this.tokenpath)
+    async track(props: TrackProps): Promise<boolean> {
+        const query = Queries.mutateTrack(props)
+        const res =  await this.request(query)
+        if (!res) return false
+        return true
     }
-    track(){}
 }
