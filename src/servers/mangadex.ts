@@ -2,15 +2,12 @@ import type { ChapterListMangadex } from "../types/mangadex/get_chapters.js";
 import type {
     MangaProvider,
     Chapter,
-    HistoryObject,
-    SearchResult,
     ChapterPage,
-    ChapterLangType,
+    Translations,
     ServerName,
     MangaInfo
 } from "../types/types.js";
 import axios from "axios";
-import fs from 'fs/promises'
 import type { AltTitles, MangadexMangaInfo, SearchResultMangadex } from "../types/mangadex/search.js";
 import type { Puzzle } from "../types/mangadex/get_pages.js";
 interface Chapter_ extends Chapter {
@@ -94,7 +91,7 @@ export class MangaDex implements MangaProvider {
         /**Adjuntar todas las variantes de idioma en una sola unidad */
         for (const chapterData of chapters) {
             const chapterNumber = chapterData.attributes.chapter ?? ''
-            const chapterLang = chapterData.attributes.translatedLanguage as ChapterLangType
+            const chapterLang = chapterData.attributes.translatedLanguage as Translations
             const title =
                 `Chapter ${chapterData.attributes.chapter}` +
                 `${chapterData.attributes.title != null ? ': ' + chapterData.attributes.title : ''}`
@@ -106,23 +103,21 @@ export class MangaDex implements MangaProvider {
                 target.translations[chapterLang] = {
                     title,
                     lang: chapterLang,
-                    src: chapterData.id
+                    id: chapterData.id
                 }
                 continue
             }
     
             const chapterInfo: Chapter_ = {
-                title,
                 translation_count: 1,
-                translations: {},
-                id: chapterData.id,
+                chapter: Number(chapterData.attributes.chapter),
                 index: chapterNumber,
+                translations: {},
             }
-    
             chapterInfo.translations[chapterLang] = {
                 title,
                 lang: chapterLang,
-                src: chapterData.id
+                id: chapterData.id
             }
             chapterList.push(chapterInfo)
             chapterMap.set(chapterNumber, chapterList.length - 1)
@@ -138,7 +133,7 @@ export class MangaDex implements MangaProvider {
             src: id,
             description: Object.values(attributes.description)[0] ?? 'No title',
             lastUploadChapterSrc: attributes.latestUploadedChapter,
-            anilistId: attributes.links.al || null,
+            anilistId: attributes.links.al,
             altTitles: attributes.altTitles as AltTitles[]
         }
     }
@@ -175,6 +170,7 @@ export class MangaDex implements MangaProvider {
             return {
                 title: Object.values(attributes.title)?.[0] ?? 'no title',
                 src: e.id,
+                anilistId: e.attributes.links.al,
                 description: Object.values(attributes.description)?.[0] ?? 'no description',
                 lastUploadChapterSrc: attributes.latestUploadedChapter
             }
