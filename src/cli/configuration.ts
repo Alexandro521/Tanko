@@ -69,7 +69,6 @@ async function serverCfg() {
 }
 async function accoutConf() {
 const confInstance = await Configuration.getInstance();
-
   let whileStatus = true
   while(whileStatus){
     const prompt = await prompts(accoutPrompt())
@@ -78,13 +77,14 @@ const confInstance = await Configuration.getInstance();
       break
     }
     const log = prompt.target as TrackerProps
-    const tracker = log.integration
+    const tracker = log.instance
     if(!log.isAuth || !log.data) {
-      await log.integration.loginTui()
+      await log.instance.loginTui()
       await confInstance.login(tracker.trackerName)
       continue
     }
-    const accoutOption = await prompts(accoutOptionsPrompt(tracker.trackerName,log.data.name))
+    const userInfo = log.data.Viewer ?? {name: 'error', id: -1}
+    const accoutOption = await prompts(accoutOptionsPrompt(tracker.trackerName, userInfo.name))
     if(!accoutOption.target || accoutOption.target === SignalsCodes.exit){
       continue
     }

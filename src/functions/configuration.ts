@@ -48,16 +48,17 @@ export class Configuration extends EventEmitter {
         historyMaxSize: 256,
         historyServerFilter: true,
         imageCacheMaxSize: '64',
-        login: {
+        trackers: {
             anilist: {
-                integration: AniList.getInstance(),
+                instance: AniList.getInstance(),
                 isAuth: false
             }
         }
         //customBrowserHandlePath: 'NULL',
     }
-    private constructor() {
+    private  constructor() {
         super()
+
     }
 
     static async getInstance() {
@@ -217,7 +218,7 @@ export class Configuration extends EventEmitter {
                     historyServerFilter: settings?.historyServerFilter ?? self.historyServerFilter,
                     imageCacheMaxSize: settings?.imageCacheMaxSize ?? self.imageCacheMaxSize,
                     isFirstRun: settings?.isFirstRun ?? self.isFirstRun,
-                    login: self.login
+                    trackers: self.trackers
                 }
             }
             await this.setLanguage(this.settings.langKey)
@@ -281,15 +282,15 @@ export class Configuration extends EventEmitter {
     }
     async login(trackerName: TrackerNames | undefined = undefined){
         const trackerLogin = async (name: TrackerNames) =>{
-            const tracker = this.settings.login[name].integration
-            const userData = await tracker.login()
+            const tracker = this.settings.trackers[name].instance
+            const userData = await tracker.auth()
             if(userData) {
-                this.settings.login[name] = {
+                this.settings.trackers[name] = {
                     isAuth: true,
-                    integration: tracker,
+                    instance: tracker,
                     data: userData
                 }
-                this.emit(ConfigurationEvents.login, this.settings.login[name])
+                this.emit(ConfigurationEvents.login, this.settings.trackers[name])
             }
         }
         if(trackerName) {
@@ -297,7 +298,7 @@ export class Configuration extends EventEmitter {
             return
         }
         await Promise.all(
-            Object.values(this.settings.login).map(({isAuth, integration})=>{
+            Object.values(this.settings.trackers).map(({isAuth, instance: integration})=>{
                 if(!isAuth){
                     return trackerLogin(integration.trackerName)
                 }else {
@@ -308,14 +309,17 @@ export class Configuration extends EventEmitter {
         return
     }
     async logout(trackerName: TrackerNames){
-        const tracker = this.settings.login[trackerName].integration
-        this.settings.login[trackerName] = {
+        const tracker = this.settings.trackers[trackerName].instance
+        this.settings.trackers[trackerName] = {
             isAuth: false,
-            integration: tracker
+            instance: tracker
         }
         await tracker.logout()
     }
+    getTracker(trackerName: TrackerNames){
+        return this.settings.trackers[trackerName]
+    }
     getLoginData(){
-        return this.settings.login
+        return this.settings.trackers
     }
 }

@@ -267,10 +267,11 @@ export const downloadFormatOptions = () => {
     return SectionPrompt('Select Format', choices, '', 0, 'autocomplete')
 }
 export const accoutPrompt = () => {
-    const accouts =  instance.getLoginData()
+    const accouts = instance.getLoginData()
     const $ = OptionsFactory()
     const choices = Object.entries(accouts).map(([name, data]): Choice =>{
-        const description = data.isAuth && data.data ? chalk.dim(chalk.blueBright(data.data.name)) : 'not logged'
+        const userInfo = data.data?.Viewer ?? {name: 'error', id: -1}
+        const description = data.isAuth && data.data ? chalk.dim(chalk.blueBright(userInfo.name)) : 'not logged'
         return {
             title: name,
             description,
