@@ -5,10 +5,10 @@ import { History } from "../functions/history.js";
 import { terminalReader } from "./reader.js";
 import type {
   Chapter,
-  ChapterLangType,
   DownloadProps,
   MangaInfo,
   MangaProvider,
+  Translations,
 } from "../types/types.js";
 import { DownloadFormat, SignalsCodes, ConfigurationEvents} from "../types/enum.js";
 import {
@@ -144,31 +144,33 @@ async function loadMangaChapter(
     loading.start(`${loading_states.loading_chapters}...`);
     const chapterList = chaptersMemory ?? await server.getChapterList(mangaInfo.src)
 
-    if (!chapterList ||chapterList.length < 0) {
+    if(!chapterList ||chapterList.length < 0) {
       loading.fail(err_messages.chapter_loading.msg);
       return;
-    } else if (loading.isSpinning) loading.stop();
+    } else if(loading.isSpinning) loading.stop();
+
     const localTrackerProps: LocalTrackerProps = {
       chapterCount: chapterList.length,
       chapterIndex: 0,
       mangaId: mangaInfo.src
     }
+
     if(!(await localTracker.exists(localTrackerProps))){
       await localTracker.regist(localTrackerProps)
     }
-   /* const trackerData = await localTracker.getStats(localTrackerProps)
-    if (trackerData.chapterCount < chapterList.length) {
+    let trackData = await localTracker.getStats(localTrackerProps)
+
+    if (trackData.chapterCount < chapterList.length) {
       await localTracker.update(localTrackerProps)
-    }*/
-    let memoryChoicePosition = 0;
+    }
+
+    let indexOfLastChoice = 0;
     while (true) {
-      const trackerData = await localTracker.getStats(localTrackerProps)
-      if(trackerData.chapterCount < chapterList.length){
-        await localTracker.update(localTrackerProps)
-      }
+      trackData = await localTracker.getStats(localTrackerProps)
+
       const choices: Choice[] = chapterList.map((e, i) => {
         let title = Object.values(e.translations)[0].title
-        if(trackerData.readingMap.has(i)){
+        if(trackData.readingMap.has(e.chapter)){
           title +=' ⏺ '+ chalk.dim(chalk.green('Read'))
         }
         return {
@@ -176,20 +178,19 @@ async function loadMangaChapter(
           value: String(i),
         };
       });
-      const readProgress = ((trackerData.reading*100)/trackerData.chapterCount).toFixed(1)
+      const readProgress = ((trackData.reading*100)/trackData.chapterCount).toFixed(1)
       const chapterIndex = await prompts(
-        chapterListPrompt(mangaInfo.title, memoryChoicePosition, choices, `⏺ Progress: ${readProgress}%`),
+        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ Progress: ${readProgress}%`),
       );
       if (!chapterIndex.target) {
         break;
       }
-      memoryChoicePosition = Number(chapterIndex.target);
+      indexOfLastChoice = Number(chapterIndex.target);
       const targetChapter = chapterList[Number(chapterIndex.target)];
-      let lang;
-      if ((lang = await askChapterLang(targetChapter)) === null) {
+      let targetLang;
+      if ((targetLang = await askChapterLang(targetChapter)) === null) {
         continue;
       }
-
       const options = await prompts(basicChapterOptions());
 
       if (!options.target) {
@@ -200,19 +201,19 @@ async function loadMangaChapter(
           mangaInfo,
           chapterList,
           Number(chapterIndex.target),
-          lang,
-          server,
+          targetLang,
         );
       } else if (options.target === SignalsCodes.download_chapter) {
         loading.start(loading_states.downloading_chapter)
-        const target = targetChapter.translations[lang]
-        const pages = await server.getChapterPages(target?.src as string)
+        const target = targetChapter.translations[targetLang]
+        const pages = await server.getChapterPages(target?.id as string)
         loading.stop()
         if(pages)
-          await downloadSection(        mangaInfo,
+          await downloadSection(
+          mangaInfo,
           chapterList,
           Number(chapterIndex.target),
-          lang,
+          targetLang,
           server,
         )
       }
@@ -274,7 +275,7 @@ async function history(server: MangaProvider) {
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
-            server,
+  
           );
           break;
         case SignalsCodes.get_chapters_list:
@@ -347,7 +348,6 @@ async function populars(server: MangaProvider) {
           chapterList,
           chapterList.length - 1,
           lang,
-          server,
         );
       } else if (option.target === SignalsCodes.download_chapter) {
         await downloadSection(
@@ -405,9 +405,9 @@ async function lastedSection(server: MangaProvider) {
         await localTracker.regist(localTrackerProps)
       }
       const trackerData = await localTracker.getStats(localTrackerProps)
-     /* if (trackerData.chapterCount < chapterList.length) {
+      if (trackerData.chapterCount < chapterList.length) {
         await localTracker.update(localTrackerProps)
-      }*/
+      }
       let memoryChoicePosition = 0;
       while (true) {
         const markRead = await localTracker.getStats(localTrackerProps)
@@ -415,7 +415,7 @@ async function lastedSection(server: MangaProvider) {
         const lastChapterList = chapterList.map(
           (chapter, index): Choice => {
             let title = Object.values(chapter.translations)[0].title
-            if (markRead.readingMap.has(index)) {
+            if (markRead.readingMap.has(chapter.chapter)) {
               title += ' ⏺ '+ chalk.dim(chalk.green('Read'))
             }
             return { 
@@ -459,7 +459,7 @@ async function lastedSection(server: MangaProvider) {
           continue;
         }
         if (chapterOptions.target === SignalsCodes.read_chapter)
-          await terminalReader(mangaInfo,chapterList, index, lang, server);
+          await terminalReader(mangaInfo,chapterList, index, lang);
         else if (chapterOptions.target === SignalsCodes.download_chapter){
           await downloadSection(mangaInfo,chapterList, index, lang, server)
           continue;
@@ -474,17 +474,17 @@ async function lastedSection(server: MangaProvider) {
   }
 }
 
-export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: ChapterLangType, server: MangaProvider) {
+export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: Translations, server: MangaProvider) {
   try {
     let pagesCount = 0;
     const chapterTarget = chapterList[index]
     const chapterTranslate = chapterTarget.translations[lang]
     const downloaderInstace = Downloader.getInstance()
     loading.start('Getting pages url\'s...')
-    const pagesUrls = await server.getChapterPages(chapterTranslate?.src as string)
+    const pagesUrls = await server.getChapterPages(chapterTranslate?.id as string)
     loading.stop()
     const downloadProps: DownloadProps = {
-      chapterTitle: chapterTranslate?.title ?? chapterTarget.title,
+      chapterTitle: chapterTranslate?.title ?? chapterTranslate?.title ?? '',
       format: DownloadFormat.pdf,
       mangaTitle: mangaInfo.title,
       serverName: server.name,
