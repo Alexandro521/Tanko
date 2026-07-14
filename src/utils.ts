@@ -39,12 +39,26 @@ export function getTimeSkip(time: number) {
   }
 }
 
-export function sortChapterList(chapters: Chapter[]): Chapter[] {
-  const ChapterSortRegex = new RegExp(/\w+\s+(\d+):?/)
-  const chapterListSort = chapters.sort((a, b) => {
-    return Number(ChapterSortRegex.exec(b.title)?.[1] ?? 0) - Number(ChapterSortRegex.exec(a.title)?.[1] ?? 0)
-  })
+export function sortChapterList(chapters: Chapter[], sort: 'asc' | 'desc' = 'desc'): Chapter[] {
+  const handle: (a:Chapter,b:Chapter)=>number = sort === 'desc' ? 
+  (a, b) => {
+    return b.chapter - a.chapter
+  } :
+  (a, b) => {
+    return a.chapter - b.chapter
+  }
+  const chapterListSort = chapters.sort(handle) 
   return chapterListSort
+}
+export function extractChapterNumber(str: string){
+  const chapterRegex = new RegExp(/\w+\s+(\d+):?/)
+  if(chapterRegex.test(str)){
+    const n = chapterRegex.exec(str)?.[1]
+    if(typeof n === 'string'){
+      return Number(n)
+    }
+  }
+  return undefined
 }
 
 export async function makeDir(root: string, ...paths: string[]) {
