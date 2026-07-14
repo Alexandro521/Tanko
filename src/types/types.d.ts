@@ -3,31 +3,34 @@ import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
+
+
 export interface ChapterPage  {
     src: string
     page_index: string
 }
 
-type ChapterLangType = 
+type Translations = 
 'ru' | 'fr' | 'ro' | 'hu' | 'th' | 'zh'|
 'ko' | 'kk' | 'pt' | 'tr' | 'ja' | 'cb'|
 "es" | 'es-la' | 'pt-br' | 'en' | 'vi' |
 'bn'
 
 export interface Chapter {
-    id: string
-    title: string
+    chapter: number
     translation_count: number
+    volume?:number
     translations: {
-        [key in ChapterLangType] ?: ChapterLanguage
+        [key in Translations] ?: ChapterLanguage
     }
 }
+
 export type ServerName = "mangadex" | "leercapitulo"
 
 export interface ChapterLanguage {
     title: string
-    lang: ChapterLangType,
-    src: string
+    lang: Translations,
+    id: string
 }
 
 export interface SearchResult {
@@ -44,7 +47,7 @@ export interface HistoryObject {
   server: ServerName,
   last_title: string,
   last_index: number,
-  last_lang: ChapterLangType,
+  last_lang: Translations,
   chapters_length: number,
   time: number,
 }
@@ -59,12 +62,14 @@ export interface MangaInfo {
 }
 export type TrackerNames = "anilist"
 export interface LoginData {
-    name: string,
-    id: string | number
+    Viewer: {
+        id: number,
+        name: string
+    }
 }
 export interface TrackerProps {
     isAuth: boolean,
-    integration: TrackerIntegration,
+    instance: TrackerIntegration,
     data?: LoginData
 }
 
@@ -82,13 +87,23 @@ export declare class MangaProvider{
     getPopulars(): Promise<MangaInfo[]>
     getLastMangas(): Promise<MangaInfo[]>
 }
+interface TrackProps { 
+    mediaId: number, 
+    status: MediaListStatus, 
+    progress: number,
+    lastRead: number,
+    progressVolume?: number, 
+    repeat?: number 
+}
 
 export declare class TrackerIntegration {
     public trackerName: TrackerNames
     static getInstance(): TrackerIntegration
     loginTui(): Promise<void>
-    login(): Promise<LoginData | undefined>
+    track(props: TrackProps): Promise<boolean>
+    auth(): Promise<LoginData | undefined>
     logout():Promise<void>
+    getId(mangaInfo: MangaInfo):Promise<number | undefined>
 }
 
 export interface ConfigurationInterface {
@@ -98,10 +113,10 @@ export interface ConfigurationInterface {
     historyServerFilter: boolean,
     server: ServerConfInterface,
     imageCacheMaxSize: string,
-    favoriteChapterLang: ChapterLangType | 'any',
+    favoriteChapterLang: Translations | 'any',
     historyMaxSize: number,
     downloads_path : string,
-    login: TrackerInterface
+    trackers: TrackerInterface
 }
 export interface ServerConfInterface {
     name: ServerName,

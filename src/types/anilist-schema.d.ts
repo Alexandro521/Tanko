@@ -1663,21 +1663,7 @@ export enum MediaListSort {
   UpdatedTimeDesc = 'UPDATED_TIME_DESC'
 }
 
-/** Media list watching/reading status enum. */
-export enum MediaListStatus {
-  /** Finished watching/reading */
-  Completed = 'COMPLETED',
-  /** Currently watching/reading */
-  Current = 'CURRENT',
-  /** Stopped watching/reading before completing */
-  Dropped = 'DROPPED',
-  /** Paused watching/reading */
-  Paused = 'PAUSED',
-  /** Planning to watch/read */
-  Planning = 'PLANNING',
-  /** Re-watching/reading */
-  Repeating = 'REPEATING'
-}
+
 
 /** A user's list options for anime or manga lists */
 export type MediaListTypeOptions = {
@@ -1788,47 +1774,6 @@ export enum MediaSeason {
   Summer = 'SUMMER',
   /** Predominantly started airing between January and March */
   Winter = 'WINTER'
-}
-
-/** Media sort enums */
-export enum MediaSort {
-  Chapters = 'CHAPTERS',
-  ChaptersDesc = 'CHAPTERS_DESC',
-  Duration = 'DURATION',
-  DurationDesc = 'DURATION_DESC',
-  EndDate = 'END_DATE',
-  EndDateDesc = 'END_DATE_DESC',
-  Episodes = 'EPISODES',
-  EpisodesDesc = 'EPISODES_DESC',
-  Favourites = 'FAVOURITES',
-  FavouritesDesc = 'FAVOURITES_DESC',
-  Format = 'FORMAT',
-  FormatDesc = 'FORMAT_DESC',
-  Id = 'ID',
-  IdDesc = 'ID_DESC',
-  Popularity = 'POPULARITY',
-  PopularityDesc = 'POPULARITY_DESC',
-  Score = 'SCORE',
-  ScoreDesc = 'SCORE_DESC',
-  SearchMatch = 'SEARCH_MATCH',
-  StartDate = 'START_DATE',
-  StartDateDesc = 'START_DATE_DESC',
-  Status = 'STATUS',
-  StatusDesc = 'STATUS_DESC',
-  TitleEnglish = 'TITLE_ENGLISH',
-  TitleEnglishDesc = 'TITLE_ENGLISH_DESC',
-  TitleNative = 'TITLE_NATIVE',
-  TitleNativeDesc = 'TITLE_NATIVE_DESC',
-  TitleRomaji = 'TITLE_ROMAJI',
-  TitleRomajiDesc = 'TITLE_ROMAJI_DESC',
-  Trending = 'TRENDING',
-  TrendingDesc = 'TRENDING_DESC',
-  Type = 'TYPE',
-  TypeDesc = 'TYPE_DESC',
-  UpdatedAt = 'UPDATED_AT',
-  UpdatedAtDesc = 'UPDATED_AT_DESC',
-  Volumes = 'VOLUMES',
-  VolumesDesc = 'VOLUMES_DESC'
 }
 
 /** Source type the media was adapted from */
