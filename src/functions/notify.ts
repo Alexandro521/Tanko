@@ -2,6 +2,7 @@ import type{Options} from "boxen";
 import boxen from "boxen";
 import ansi from 'ansi-escapes'
 import { EventEmitter } from "node:events";
+import chalk from "chalk";
 type Colors = Options['borderColor']
 
 export enum NotifyType {
@@ -80,7 +81,7 @@ export class Notify extends EventEmitter{
         const notify = this.get()
         if(!notify) return undefined
         let color: Colors = 'gray'
-        const width =Math.min(120, Math.max(notify.message.length, 80))
+        const width =Math.min(120, Math.max(notify.message.length, 80), process.stdout.columns -2)
         switch(notify.type){
             case NotifyType.error:
                 color = 'redBright'
