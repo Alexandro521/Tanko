@@ -33,8 +33,8 @@ export  class LocalTracker {
         return true
     }
     getFilePath(Id: string | number) {
-        const filename = sanitize(String(Id), { replacement: '_' })
-        const outputPath = path.join(this.workdir, `${filename}.dat`)
+        const filename = sanitize(typeof Id === 'number' ? String(Id) : Id, { replacement: '_' })
+        const outputPath = path.join(this.workdir, `manga_${filename}.dat`)
         return outputPath
     }
     async regist(props: LocalTrackerProps) {
@@ -49,7 +49,7 @@ export  class LocalTracker {
         })
     }
     async markAsRead(props: LocalTrackerProps) {
-        if(await this.hasReading(props)) return
+        if(await this.hasReading(props)) return false
         const buff16 = new Uint16Array(2)
         const buff32 = new Uint32Array(1)
         const wrPosition = ((props.chapterIndex >> 5) << 2) +4 //+4 Skip the first two bytes
@@ -63,6 +63,7 @@ export  class LocalTracker {
         await file.write(buff16, 0, 2, 2)
         await file.write(buff32, 0, 4, wrPosition)
         await file.close()
+        return true
     }
     async update(props: LocalTrackerProps) {
         const file = await fsp.open(this.getFilePath(props.mangaId), 'r+')
