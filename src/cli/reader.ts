@@ -87,9 +87,9 @@ export async function terminalReader(
           await localTracker.regist(localTrackerProps)
         }
         const markStatus = await localTracker.markAsRead(localTrackerProps)
-        if (anilistTracker.isAuth && markStatus) {
+        if (anilistTracker.isAuth && !markStatus && anilistId) {
           await anilistTracker.instance.track({
-            mediaId: anilistId ?? 123132,
+            mediaId: anilistId,
             lastRead: chapterInfo.chapter,
             progress: chapterInfo.chapter,
             status: MediaListStatus.Current,

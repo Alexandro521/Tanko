@@ -12,8 +12,6 @@ import {
 } from "./prompts.js";
 import { ConfigurationOptions, SignalsCodes } from "../types/enum.js"; 
 import type {TrackerProps } from "../types/types.js";
-import { Sign } from "node:crypto";
-
 
 export async function configurationUI() {
   const confInstance = await Configuration.getInstance();
@@ -48,10 +46,7 @@ export async function configurationUI() {
 
   }
 }
-
-
 async function serverCfg() {
-
   const configInstance = await Configuration.getInstance()
   const langObj = await configInstance.getLanguageInterface()
   const { configuration: localizedConfig } = langObj
