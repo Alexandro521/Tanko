@@ -1,84 +1,125 @@
 import sharp from "sharp";
 import terminalImage from "terminal-image";
+import { Configuration } from "./configuration.js";
 import type { ChapterPage } from "../types/types.js";
+import { Notify, NotifyType, type NotifyProps } from "./notify.js";
 
-export class ImageCache {
-    static MAX_SIZE = 64000000 //64 MB in KB
-    static priorityList = new Array<string>(24); // 24 pages history on cache 
-    static cacheSize = 0;
-    static pointer = 0;
-    static cache = new Map<string, Buffer>()
+export class ImageCache extends Map {
+    private MAX_CACHE_SIZE = 64 * 1024 //64 MB
+    private byteLength = 0;
+    private pointer = 0;
+    private fifo!: string[];
 
-    private static pop() {
-        if (ImageCache.pointer === 0) return;
-        let key = ImageCache.priorityList[0];
-        if (!ImageCache.cache.has(key)) return;
-        const data = <Buffer>ImageCache.cache.get(key)
-        ImageCache.cacheSize = Math.max(0, ImageCache.cacheSize - data.byteLength);
-        ImageCache.cache.delete(key)
-
-        if (ImageCache.pointer > 0) ImageCache.pointer -= 1;
-        //move elements
-        for (let i = 1; i < ImageCache.priorityList.length; i++) {
-            ImageCache.priorityList[i - 1] = ImageCache.priorityList[i];
+    constructor() {
+        super();
+        Configuration.getInstance().then(conf => {
+            this.MAX_CACHE_SIZE = conf.settings.cacheImageMaxByteLength;
+            this.fifo = new Array(conf.settings.cacheImagePagesLength)
+        })
+            .catch(err => {
+                const notify = Notify.getInstace()
+                if (err instanceof Error) {
+                    const props: NotifyProps = {
+                        type: NotifyType.error,
+                        message: 'from Image Cache: ' + err.message,
+                        title: err.name,
+                    }
+                    notify.push(props)
+                }
+            })
+    }
+    pop() {
+        const key = this.fifo[0];
+        if (!super.has(key) || this.pointer <= 0) return;
+        const buffer = <Buffer>super.get(key);
+        this.byteLength = Math.max(0, this.byteLength - buffer.byteLength);
+        this.pointer = Math.max(0, this.pointer - 1);
+        super.delete(key)
+        this.fifo.shift()
+    }
+    free() {
+        super.keys().forEach((key) => {
+            super.delete(key as string)
+        })
+        this.pointer = 0;
+        this.byteLength = 0;
+    }
+    push(key: string, buffer: Buffer) {
+        if (
+            this.pointer >= this.fifo.length ||
+            this.byteLength + buffer.byteLength >= this.MAX_CACHE_SIZE
+        ) this.pop()
+        super.set(key, buffer);
+        this.byteLength += buffer.byteLength;
+        this.fifo[this.pointer++] = key;
+    }
+    get stats() {
+        return {
+            size: this.byteLength,
+            length: this.pointer,
         }
     }
 
-    static add(key: string, data: Buffer) {
-        if (ImageCache.pointer > ImageCache.priorityList.length || (ImageCache.cacheSize + data.byteLength) >= ImageCache.MAX_SIZE) ImageCache.pop()
-        ImageCache.cache.set(key, data);
-        ImageCache.cacheSize += data.byteLength;
-        ImageCache.priorityList[ImageCache.pointer] = key;
-        ImageCache.pointer++;
-    }
-
-    static has(key: string) {
-        return ImageCache.cache.has(key);
-    }
-    static get(key: string) {
-        return ImageCache.cache.get(key)
-    }
 }
 
-
-export async function loadImage(srcs: ChapterPage) {
-        let res: Buffer = Buffer.from('');
-
-        if (ImageCache.has(srcs.src)) {
-            res = <Buffer>ImageCache.get(srcs.src)
-
-        } else {
-            let isOk = false;
-            let retrieves = 3
-
-            while (!isOk && retrieves > 0) {
-                let response = await fetch(srcs.src)
-
-                if (!response.ok) {
-                    retrieves--;
-                    continue
-                }
-                if (response.headers.get('Content-Type') === 'image/webp') {
-                    res = await sharp((await response.arrayBuffer())).jpeg().toBuffer()
-                } else {
-                    res = Buffer.from(await response.arrayBuffer())
-                }
-
-                ImageCache.add(srcs.src, res);
-                isOk = true
-
+export class ImageLoader extends ImageCache {
+    constructor() {
+        super()
+    }
+    private error(err: any) {
+        const notify = Notify.getInstace()
+        if (err instanceof Error) {
+            const props: NotifyProps = {
+                type: NotifyType.error,
+                message: 'from Image Loader: ' + err.message,
+                title: err.name,
             }
-            if (!isOk) {
-                throw new Error('fallo al descargar la imagen, reintentado 3 veces')
+            notify.push(props)
+        }
+    }
+    async loadImage(page: ChapterPage) {
+        let buffer: Buffer | ArrayBuffer | undefined = undefined
+        if (super.has(page.src))
+            buffer = <Buffer>super.get(page.src)
+        else {
+            try {
+                let isOk = false;
+                let retrieves = 3
+                while (!isOk && retrieves > 0) {
+                    const res = await fetch(page.src)
+                    const contentType = res.headers.get('Content-Type');
+                    if (!res.ok) {
+                        retrieves--;
+                        continue
+                    }
+                    buffer = await res.arrayBuffer();
+                    if (contentType === 'image/webp') {
+                        buffer = await sharp (buffer).jpeg().toBuffer()
+                    } else {
+                        buffer = Buffer.from(buffer)
+                    }
+                    super.push(page.src, buffer);
+                    isOk = true
+                }
+                if (!isOk || !buffer) {
+                    const confInstance = await Configuration.getInstance()
+                    const {err_messages} = await confInstance.getLanguageInterface()
+                    throw new Error(err_messages.page_loading.msg)
+                }
+
+            } catch (e) {
+                this.error(e)
             }
         }
+        //const metadata = await sharp(buffer).metadata()
 
-        const image = await terminalImage.buffer(res, {
+        const encodedString = await terminalImage.buffer(buffer as Uint8Array, {
             preserveAspectRatio: true,
             width: '100%',
             height: '100%',
             preferNativeRender: true
         })
-        process.stdout.write(image)
+        return encodedString
+    }
 }
 

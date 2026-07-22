@@ -1,7 +1,7 @@
 import ora from "ora";
 import type { ChapterPage, Chapter, MangaProvider, Translations, ChapterLanguage } from "../types/types.js";
 import { Configuration } from "./configuration.js";
-import { loadImage as imageLoader } from "./images.js"
+import { ImageLoader } from "./images.js"
 import { History } from "./history.js";
 import readLine from 'readline'
 import esc from 'ansi-escapes'
@@ -15,7 +15,7 @@ export class PagesControl {
     private readCheckList!: boolean[]
     private readProgress = 0
     private pageIndex = 0;
-
+    private loader = new ImageLoader()
     constructor(pages: ChapterPage[]) {
         this.pages = pages;
         this.readCheckList = new Array(pages.length).fill(false)
@@ -40,8 +40,10 @@ export class PagesControl {
                 if(!LOADER.isSpinning)
                     LOADER.start(loading_states.default_loading)
             }
-            await imageLoader(this.pages[this.pageIndex])
-            LOADER.stop()
+            const image = await this.loader.loadImage(this.pages[this.pageIndex])
+            if(LOADER.isSpinning)
+                LOADER.stop()
+            process.stdout.write(image)
         } catch (e) {
             LOADER.fail(err_messages.page_loading.msg)
         }

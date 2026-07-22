@@ -112,11 +112,12 @@ export interface ConfigurationInterface {
     deepSearch: boolean,
     historyServerFilter: boolean,
     server: ServerConfInterface,
-    imageCacheMaxSize: string,
+    cacheImageMaxByteLength: number,
     favoriteChapterLang: Translations | 'any',
     historyMaxSize: number,
     downloads_path : string,
-    trackers: TrackerInterface
+    trackers: TrackerInterface,
+    cacheImagePagesLength: number,
 }
 export interface ServerConfInterface {
     name: ServerName,

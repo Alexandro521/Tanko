@@ -47,7 +47,8 @@ export class Configuration extends EventEmitter {
         favoriteChapterLang: 'any',
         historyMaxSize: 256,
         historyServerFilter: true,
-        imageCacheMaxSize: '64',
+        cacheImageMaxByteLength: 64 * 1024,
+        cacheImagePagesLength: 24,
         trackers: {
             anilist: {
                 instance: AniList.getInstance(),
@@ -216,7 +217,8 @@ export class Configuration extends EventEmitter {
                     favoriteChapterLang: settings?.favoriteChapterLang ?? self.favoriteChapterLang,
                     historyMaxSize: settings?.historyMaxSize ?? self.historyMaxSize,
                     historyServerFilter: settings?.historyServerFilter ?? self.historyServerFilter,
-                    imageCacheMaxSize: settings?.imageCacheMaxSize ?? self.imageCacheMaxSize,
+                    cacheImageMaxByteLength: Number(settings?.cacheImageMaxByteLength) ?? self.cacheImageMaxByteLength,
+                    cacheImagePagesLength:  settings?.cacheImagePagesLength ?? self.cacheImagePagesLength,
                     isFirstRun: settings?.isFirstRun ?? self.isFirstRun,
                     trackers: self.trackers
                 }
