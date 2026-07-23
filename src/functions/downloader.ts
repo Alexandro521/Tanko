@@ -1,21 +1,18 @@
 import fs from 'fs'
 import fsp from 'fs/promises'
 import sharp from 'sharp';
-import ora from 'ora';
 import chalk from 'chalk';
 import path from 'path';
 import sanitize from 'sanitize-filename';
 import ansi from 'ansi-escapes'
 import PDFDocument from 'pdfkit'
 import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
-import { Configuration } from './configuration.js';
 import { Notify, NotifyType } from './notify.js';
 import { makeDir } from '../utils.js';
 import { EventEmitter } from 'events';
 import { DownloadFormat } from '../types/enum.js';
 import type { ChapterPage, DownloadPageProps, DownloadProps, FormatProps, ImgBuffer } from '../types/types.js';
 import { ZipArchive } from "archiver"
-import { ConfigurationEvents } from '../types/enum.js';
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
     margin: '0',
@@ -29,14 +26,6 @@ const PDFOptions: PDFKit.PDFDocumentOptions = {
         Keywords: 'manga, manga reader, cli, tanko',
     }
 }
-const noti = Notify.getInstace()
-const config = await Configuration.getInstance()
-let { loading_states, err_messages } = await config.getLanguageInterface()
-config.on(ConfigurationEvents.updateLanguage, async () => {
-    const lang = await config.getLanguageInterface()
-    loading_states = lang.loading_states
-    err_messages = lang.err_messages
-})
 
 export class Downloader extends EventEmitter {
     private static instance: Downloader;
@@ -45,14 +34,13 @@ export class Downloader extends EventEmitter {
     }
     private imageCaching!: DownloadPageProps[] | undefined
     public lastFetchId!: string | undefined;
-
     private async getImagesBuffer(images: ChapterPage[]) {
         const contentRexp = new RegExp(/image\/(webp|jpeg|png)/)
         const fetchImage = async (img: ChapterPage, index: number): Promise<DownloadPageProps> => {
             return new Promise(async (resolve, reject) => {
                 const res = await fetch(img.src)
                 const contentType = res.headers.get('Content-Type') ?? ''
-                if (!res.ok) reject(err_messages.fetching.msg)
+                if (!res.ok) reject('Error trying to retrieve images')
                 else if (!contentRexp.test(contentType)) reject(`Invalid mime type ${contentType}`)
                 let buffImg: ImgBuffer =
                     await sharp((await res.arrayBuffer()))
@@ -151,6 +139,7 @@ export class Downloader extends EventEmitter {
                 await this.images(fprops)
                 break
         }
+        const noti = Notify.getInstace()
         noti.push({
             title: 'Download complete',
             type: NotifyType.event,
