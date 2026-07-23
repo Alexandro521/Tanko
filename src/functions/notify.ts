@@ -145,4 +145,15 @@ export class Notify extends EventEmitter{
     clear(): void{
         this.stackIndex = 0
     }
+    static pushError(err: Error) {
+        const notify = Notify.getInstace()
+        if (err instanceof Error) {
+            const props: NotifyProps = {
+                type: NotifyType.error,
+                message: 'from Image Loader: ' + err.message,
+                title: err.name,
+            }
+            notify.push(props)
+        }
+    }
 }
