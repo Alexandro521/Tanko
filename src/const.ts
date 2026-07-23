@@ -13,7 +13,7 @@ export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_v2.json
 export const TEMP_DIR = os.tmpdir()
 export const BROWSER_STORAGE_PATH = path.resolve(DATA_DEFAULT_DIR, 'browser')
 export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.json')
-
+export const ISSUES_REPO = "https://github.com/Alexandro521/Tanko/issues"
 export const PRIMARY_COLOR = '#bf78fa'
 
 export const WELCOME_MESSAGE = gradient('#84b7fa', PRIMARY_COLOR).multiline(`
