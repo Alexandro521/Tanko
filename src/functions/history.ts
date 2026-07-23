@@ -1,6 +1,7 @@
 import type { HistoryObject } from "../types/types.js";
 import { HISTORY_PATH } from "../const.js";
 import fsp from 'node:fs/promises'
+import { Notify } from "./notify.js";
 
 interface HistoryDataStruct {
   last_update: number,
@@ -28,8 +29,7 @@ export class History {
       return true;
     } catch (e) {
       if (e instanceof Error) {
-        console.log(e.message)
-        await fsp.writeFile(HISTORY_PATH, JSON.stringify({ last_update: Date.now(), history: [] }, null))
+        Notify.pushError(e)
       }
       return false
     }
@@ -49,7 +49,7 @@ export class History {
       await fsp.writeFile(HISTORY_PATH, JSON.stringify(fileStruct, null, '\t'))
     } catch (e) {
       if (e instanceof Error) {
-        console.error(e.message)
+        Notify.pushError(e)
       }
     }
   }
