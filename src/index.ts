@@ -9,6 +9,7 @@ import { BASE_DIR, BROWSER_STORAGE_PATH, DATA_DEFAULT_DIR, DOWNLOADS_DEFAULT_DIR
 import { Configuration } from './functions/configuration.js';
 import { Notify, NotifyType } from './functions/notify.js';
 import { versionVerify } from './scripts.js';
+import { TerminalControl } from './functions/reader.js';
 
 console.log(ansiEscapes.clearTerminal)
 
@@ -34,6 +35,7 @@ console.log(ansi.clearViewport);
 console.log(WELCOME_MESSAGE);
 const notify = Notify.getInstace()
 const confInstance = await Configuration.getInstance()
+await TerminalControl.getWindowDimension()
 if(confInstance.configuration.isFirstRun) {
   notify.push({
     title: 'Welcome!',
