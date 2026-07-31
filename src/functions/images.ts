@@ -1,11 +1,11 @@
-import sharp from "sharp";
-import terminalImage from "terminal-image";
-import { Configuration } from "./configuration.js";
-import type { ChapterPage } from "../types/types.js";
-import { Notify, NotifyType, type NotifyProps } from "./notify.js";
+import { TermImageGraphics } from "./graphics.protocol.ts";
+import { Configuration } from "./configuration.ts";
+import { Notify, NotifyType, type NotifyProps } from "./notify.ts";
+import { TankoFetch } from "./fetch.ts";
+import type { ChapterPage, LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
 
 export class ImageCache extends Map {
-    private MAX_CACHE_SIZE = 64 * 1024 //64 MB
+    private MAX_CACHE_SIZE = 64 * 1024
     private byteLength = 0;
     private pointer = 0;
     private fifo!: string[];
@@ -44,82 +44,87 @@ export class ImageCache extends Map {
         this.pointer = 0;
         this.byteLength = 0;
     }
-    push(key: string, buffer: Buffer) {
+    push(key: string, value: TankoTermImgOutput) {
         if (
             this.pointer >= this.fifo.length ||
-            this.byteLength + buffer.byteLength >= this.MAX_CACHE_SIZE
+            this.byteLength + value.buffer.byteLength >= this.MAX_CACHE_SIZE
         ) this.pop()
-        super.set(key, buffer);
-        this.byteLength += buffer.byteLength;
+        super.set(key, value);
+        this.byteLength += value.buffer.byteLength;
         this.fifo[this.pointer++] = key;
     }
-    get stats() {
+    getStats() {
         return {
             size: this.byteLength,
             length: this.pointer,
         }
     }
-
 }
 
 export class ImageLoader extends ImageCache {
+    AbortCtl!: AbortController
     constructor() {
         super()
+        this.AbortCtl = new AbortController()
     }
-    private error(err: any) {
-        const notify = Notify.getInstace()
-        if (err instanceof Error) {
-            const props: NotifyProps = {
-                type: NotifyType.error,
-                message: 'from Image Loader: ' + err.message,
-                title: err.name,
+    cacheHit(page: ChapterPage) {
+        return this.has(page.src)
+    }
+
+    async loadImage(imgUrl: string, props: LoadImageProps) {
+        if (this.has(imgUrl) && props?.forceReload === false) {
+            const cache = <TankoTermImgOutput>this.get(imgUrl)
+            let cacheWsz = cache.wsz
+            let currentWsz = props.cotainerSize
+            let index = 0
+            let keyList = Object.keys(cacheWsz)
+            let hasDiff = false;
+            while (!hasDiff && index < keyList.length) {
+                const keyName = keyList[index++] as keyof WSZ
+                hasDiff = (cacheWsz[keyName]) !== (currentWsz[keyName])
             }
-            notify.push(props)
+            if (props?.invalidateCache === true || hasDiff) {
+                let remasterImg = TermImageGraphics.remaster(cache.buffer, props.position, cache.imgsz, props.cotainerSize);
+                this.push(imgUrl, remasterImg)
+                return
+            }
+            else {
+                return
+            }
         }
-    }
-    async loadImage(page: ChapterPage) {
-        let buffer: Buffer | ArrayBuffer | undefined = undefined
-        if (super.has(page.src))
-            buffer = <Buffer>super.get(page.src)
-        else {
-            try {
-                let isOk = false;
-                let retrieves = 3
-                while (!isOk && retrieves > 0) {
-                    const res = await fetch(page.src)
-                    const contentType = res.headers.get('Content-Type');
-                    if (!res.ok) {
-                        retrieves--;
-                        continue
-                    }
-                    buffer = await res.arrayBuffer();
-                    if (contentType === 'image/webp') {
-                        buffer = await sharp (buffer).jpeg().toBuffer()
-                    } else {
-                        buffer = Buffer.from(buffer)
-                    }
-                    super.push(page.src, buffer);
-                    isOk = true
+
+        let buffer: ArrayBuffer | undefined = undefined
+        try {
+            let isOk = false;
+            let retrieves = 3
+            let contentType: string | null = ''
+            while (!isOk && retrieves > 0) {
+                const res = await fetch(imgUrl)
+                contentType = res.headers.get('Content-Type');
+                if (!res.ok || contentType === null || !contentType?.startsWith('image')) {
+                    retrieves--;
+                    continue
                 }
-                if (!isOk || !buffer) {
-                    const confInstance = await Configuration.getInstance()
-                    const {err_messages} = await confInstance.getLanguageInterface()
+                buffer = await res.arrayBuffer();
+                isOk = true
+            }
+            if (!isOk || !buffer) {
+                const confInstance = await Configuration.getInstance()
+                const { err_messages } = await confInstance.getLanguageInterface()
+                if (contentType === null || contentType?.startsWith('image'))
+                    throw new Error(`Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`)
+                else
                     throw new Error(err_messages.page_loading.msg)
-                }
-
-            } catch (e) {
-                this.error(e)
             }
+            const imgObject = await TermImageGraphics.make({
+                buffer: buffer,
+                wsz: props.cotainerSize,
+                position: props.position
+            })
+            this.push(imgUrl, imgObject)
+        } catch (e) {
+            if (e instanceof Error)
+                Notify.pushError(e)
         }
-        //const metadata = await sharp(buffer).metadata()
-
-        const encodedString = await terminalImage.buffer(buffer as Uint8Array, {
-            preserveAspectRatio: true,
-            width: '100%',
-            height: '100%',
-            preferNativeRender: true
-        })
-        return encodedString
     }
 }
-
