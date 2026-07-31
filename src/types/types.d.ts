@@ -143,3 +143,73 @@ export interface  ImgBuffer {
     data: Buffer<ArrayBufferLike>;
     info: sharp.OutputInfo;
 }
+
+//?Terminal Interfaces
+//window size
+export interface WSZ{
+    w_height: number,
+    w_width: number,
+    w_colums: number,
+    w_rows: number,
+    w_cellPxWidth: number,
+    w_cellPxHeight: number,
+    w_ratio: number,
+    w_position_x: number,
+    w_position_y: number
+}
+
+export interface IMGSZ {
+    img_originalWidth: number,
+    img_originalHeight: number,
+    img_pixelWidth: number,
+    img_pixelHeigth: number,
+    img_cellsHeigth: number,
+    img_cellsWidth: number,
+    img_ratio: number,
+}
+
+export interface TermImgProtocolOutput{
+    id: number,
+    encodedImg: string | Buffer<ArrayBufferLike>
+}
+
+export interface StructImgPosition{
+    x: 'center' | 'left' | 'right' 
+    y: 'center' | 'top' | 'bottom',
+    padding?:{
+        top?: number
+        bottom?: number
+        left?: number
+        right?: number
+    }
+}
+export interface StructImgPositionProtocol{
+    x: number,
+    y: number
+}
+type TermImgProtocolName = 'kitty' | 'ascii'
+
+export interface TermImgProtocolInput{
+    id?: number,
+    position: StructImgPositionProtocol,
+    imgsz: IMGSZ,
+    wsz: WSZ,
+}
+export interface TankoTermImgInput{
+    buffer: Buffer | ArrayBuffer | string,
+    wsz: WSZ,
+    position: StructImgPosition
+}
+export interface TankoTermImgOutput{
+    data: TermImgProtocolOutput,
+    imgsz: IMGSZ,
+    buffer: Buffer<ArrayBufferLike> | ArrayBuffer
+    position: StructImgPositionProtocol,
+    wsz: WSZ
+}
+export interface LoadImageProps {
+    cotainerSize: WSZ,
+    position: StructImgPosition,
+    invalidateCache?: boolean,
+    forceReload?: boolean 
+}
