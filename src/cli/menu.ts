@@ -494,7 +494,7 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
       pagesCount++;
       loading.text = `downloading page #${e + 1} [${pagesCount}/${pagesUrls.length}]`
     })
-    downloaderInstace.on('done', (e) => {
+    downloaderInstace.on('done', () => {
       loading.stop()
     })
     downloaderInstace.on('state', (state) => {

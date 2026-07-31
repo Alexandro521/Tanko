@@ -26,7 +26,7 @@ export const clearScreen = () => {
 function onRender(){
     notify.render()
 }
-function onKeyPress (this: any, key: Key, name: string): void{
+function onKeyPress (this: any, key: Key): void{
     if(key.ctrl && key.name === 'q'){
         notify.pop()
         this.render()
@@ -241,6 +241,8 @@ export const terminalReaderChapterOptions = ()=>{
     return SectionPrompt('Opciones', [
         $.prevoius_chapter,
         $.next_chapter,
+        $.download,
+        $.getChapters,
         $.exit,
 ], '',0, 'select')
 }

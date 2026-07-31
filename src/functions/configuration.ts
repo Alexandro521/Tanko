@@ -203,7 +203,7 @@ export class Configuration extends EventEmitter {
         this.langInterface = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
         this.emit(ConfigurationEvents.updateLanguage, this.langInterface)
     }
-    async loadConfiguration(conf: ConfigurationInterface | null = null) {
+    async loadConfiguration() {
         try {
             const self = this.settings
             if (fs.existsSync(CONFIG_FILE_PATH)) {
@@ -278,7 +278,7 @@ export class Configuration extends EventEmitter {
     }
     async setGlobalConfig(conf: ConfigurationInterface) {
         if (conf)
-            await this.loadConfiguration(conf)
+            await this.loadConfiguration()
         await this.writeConfigFile()
         this.emit(ConfigurationEvents.updateGlobal, this.settings, this.mangaProvider, this.langInterface)
     }
