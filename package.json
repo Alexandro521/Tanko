@@ -46,7 +46,8 @@
     "@graphql-codegen/typescript": "6.0.2",
     "@types/archiver": "^8.0.0",
     "@types/node": "26.0.0",
-    "@types/pdfkit": "0.17.6"
+    "@types/pdfkit": "0.17.6",
+    "@types/supports-color": "^10.0.0"
   },
   "dependencies": {
     "@alex_521/prompts": "0.2.2",
@@ -62,6 +63,7 @@
     "playwright": "1.61.0",
     "sanitize-filename": "1.6.4",
     "sharp": "0.35.2",
+    "supports-color": "^11.0.0",
     "supports-hyperlinks": "4.5.0",
     "supports-terminal-graphics": "^0.1.0"
   }
