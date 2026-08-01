@@ -198,7 +198,8 @@ export interface TermImgProtocolInput{
 export interface TankoTermImgInput{
     buffer: Buffer | ArrayBuffer | string,
     wsz: WSZ,
-    position: StructImgPosition
+    position: StructImgPosition,
+    forceAscii?: boolean
 }
 export interface TankoTermImgOutput{
     data: TermImgProtocolOutput,
