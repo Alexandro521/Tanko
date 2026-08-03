@@ -1,4 +1,4 @@
-import sharp from "sharp";
+import sharp, { type SharpInput } from "sharp";
 import supportsTerminalGraphics from "supports-terminal-graphics";
 import supportsColor from "supports-color";
 import type {
@@ -8,11 +8,11 @@ import type {
    StructImgPosition,
    TankoTermImgOutput,
    TermImgProtocolInput,
-   TermImgProtocolOutput,
-   StructImgPositionProtocol
+   StructImgPositionProtocol,
+   BitMapArray
 } from "../types/types.ts";
 import { TerminalControl } from "./reader.ts";
-
+import { stdout } from "node:process";
 
 export class TermImageGraphics {
    private constructor() { }
@@ -53,7 +53,6 @@ export class TermImageGraphics {
             posY = w_rows - img_cellsHeigth - padding.bottom
             break
       }
-   
       return { x: Math.floor(posX + w_position_x)|0, y: Math.floor(posY + w_position_y) }
    }
    static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ): IMGSZ {
@@ -73,69 +72,50 @@ export class TermImageGraphics {
          img_cellsHeigth: Math.floor(newImgSize[1] / windowSize.w_cellPxHeight)
       }
    }
-   static async make({ wsz, buffer, position, forceAscii = false}: TankoTermImgInput): Promise<TankoTermImgOutput> {
-      const {data:imgBuffer, info: imgInfo} =  await sharp(buffer, { failOn: 'error', sequentialRead: false })
-         .toColorspace('srgb')
+
+   static async make(buffer: SharpInput, { wsz, position, forceAscii = false}: TankoTermImgInput): Promise<TankoTermImgOutput> {
+      let imgsrgb  = sharp(buffer, { failOn: 'error', sequentialRead: false }).toColorspace('srgb')
+      const metadata = await imgsrgb.metadata()
+      const $ = supportsTerminalGraphics.stdout
+      const scale: IMGSZ = this.scaleImg(metadata.width, metadata.height, wsz)
+      const imgPosition = this.calcPosition(position, scale, wsz)
+      const input: TermImgProtocolInput = {
+         wsz: wsz,
+         imgsz: scale,
+         position: imgPosition,
+      }
+      const output: TankoTermImgOutput = {
+         wsz: wsz,
+         imgsz: scale,
+         encodedImg: '',
+         position: imgPosition,
+      }
+
+      if ($.kitty && !forceAscii) {
+         const imgBuffer = await imgsrgb.raw().toBuffer()
+         const base64 = imgBuffer.toString('base64')
+         output.encodedImg = this.kitty(base64, input)
+      }
+      else if ($.sixel && !forceAscii) {
+         const imgBuffer = await imgsrgb
+         .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
          .raw()
-         .toBuffer({ resolveWithObject: true })
-      const imgFit: IMGSZ = this.scaleImg(imgInfo.width, imgInfo.height, wsz)
-      const imgPosition = this.calcPosition(position, imgFit, wsz)
-      const input: TermImgProtocolInput = {
-         wsz: wsz,
-         imgsz: imgFit,
-         position: imgPosition,
+         .toBuffer()
+         output.encodedImg  =  this.sixel(imgBuffer, input)
       }
-      const output: TankoTermImgOutput = {
-         wsz: wsz,
-         imgsz: imgFit,
-         buffer: imgBuffer,
-         position: imgPosition,
-         data: { 
-            id: -1,
-            encodedImg: ''
-         }
-      }
-
-      if (supportsTerminalGraphics.stdout.kitty && !forceAscii) {
-         output.data = kitty(imgBuffer, input)
-      }
-      else{
-         output.data = ascii(imgBuffer, input)
+      else {
+         const imgBuffer = await imgsrgb
+         .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
+         .raw()
+         .toBuffer()
+         output.encodedImg = this.ascii(imgBuffer, input)
       }
       return output
    }
-   static remaster(buffer: Buffer<ArrayBufferLike> | ArrayBuffer, position: StructImgPosition, imgsz: IMGSZ, wsz: WSZ, forceAscii = false): TankoTermImgOutput {
-      const imgFit: IMGSZ = this.scaleImg(imgsz.img_originalWidth, imgsz.img_originalHeight, wsz)
-      const imgPosition = this.calcPosition(position, imgFit, wsz)
-      const input: TermImgProtocolInput = {
-         wsz: wsz,
-         imgsz: imgFit,
-         position: imgPosition,
-      }
-      const output: TankoTermImgOutput = {
-         wsz: wsz,
-         imgsz: imgFit,
-         buffer: buffer,
-         position: imgPosition,
-         data: {
-            id: -1,
-            encodedImg: ''
-         }
-      }
-      if (supportsTerminalGraphics.stdout.kitty && !forceAscii) {
-         output.data = kitty(buffer, input)
-      }
-      else{
-         output.data = ascii(buffer, input)
-      }
-      return output
-   }
-}
-
-function kitty(buffer: Buffer<ArrayBufferLike> | ArrayBuffer , {imgsz, wsz}: TermImgProtocolInput): TermImgProtocolOutput {
-   const base64 = buffer.toString('base64')
-   const id = Math.floor((Math.random() * 1000) + 1)
-   let outputImg: string = ''
+   static kitty(base64: string, {imgsz, wsz}: TermImgProtocolInput) {
+      
+      const id = Math.floor((Math.random() * 1000) + 1)
+   let kittySequence: string = ''
 
    let format = `f=24,s=${imgsz.img_originalWidth},v=${imgsz.img_originalHeight}`
    let controlData = `a=T`
@@ -152,20 +132,18 @@ function kitty(buffer: Buffer<ArrayBufferLike> | ArrayBuffer , {imgsz, wsz}: Ter
       const isLast = (i + 4096) >= base64.length
       const mode = isLast ? 0 : 1
       if (i === 0) {
-         outputImg += (`\u001B_G${format},i=${id},q=2,${controlData},m=${mode};${chunk}\u001B\\`)
+         kittySequence += (`\u001B_G${format},i=${id},q=2,${controlData},m=${mode};${chunk}\u001B\\`)
       } else {
-         outputImg += (`\u001B_Gm=${mode},q=2;${chunk}\u001B\\`)
+         kittySequence += (`\u001B_Gm=${mode},q=2;${chunk}\u001B\\`)
       }
    }
-   return {
-      id: id,
-      encodedImg: outputImg,
-   }
+   return kittySequence
 }
-function ascii(buffer: Buffer<ArrayBufferLike> | ArrayBuffer, { imgsz, position }: TermImgProtocolInput): TermImgProtocolOutput {
+
+static ascii(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
    const pixelArr = new Uint8ClampedArray(buffer)
-   const pixelJump = ((imgsz.img_originalWidth / imgsz.img_cellsWidth) | 0) * 3
-   const rowjumps = imgsz.img_originalWidth * ((imgsz.img_originalHeight / imgsz.img_cellsHeigth) | 0) * 3
+   const pixelJump = ((imgsz.img_pixelWidth / imgsz.img_cellsWidth) | 0) * 3
+   const rowjumps = imgsz.img_pixelWidth * ((imgsz.img_pixelHeigth / imgsz.img_cellsHeigth) | 0) * 3
 
    const lines:string[] = new Array(imgsz.img_cellsHeigth)
    let pixelOffset = 0;
@@ -188,53 +166,66 @@ function ascii(buffer: Buffer<ArrayBufferLike> | ArrayBuffer, { imgsz, position 
             let grayScale = 232 + (((luminance*24)/256)|0)
             line+=`\x1B[48;5;${grayScale}m\x1B[38;5;${grayScale}m\u{2584}\x1B\x1B[39;49m`
          }
-         line
       }
       lines[y] = line
    }
-   return {
-      encodedImg: lines.join('\x1B[1E'),
-      id: -1
+   return  lines.join('\x1B[1E')
+}
+static sixel(buffer: Buffer, { imgsz }: TermImgProtocolInput) {
+   /*
+   https://en.wikipedia.org/wiki/Sixel
+   https://www.vt100.net/docs/vt3xx-gp/chapter14.html
+   https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
+   */
+   const pixelArr = new Uint8ClampedArray(buffer)
+   let imgWidth = imgsz.img_pixelWidth
+   let imgHeight = imgsz.img_pixelHeigth
+   let sixelImgEncoded=''
+   let grayScaleRegister = ''
+   for(let i =0; i<100;i++){
+      grayScaleRegister+=`#${i};2;${(i)};${i};${i};`
    }
+
+   for(let y = 0, i = 0; y < imgHeight; y+=6, i++){
+      const imageRowIndex = y * imgWidth * 3
+      for(let x =0; x< imgWidth; x++){
+         let pixelColumnOffset = imageRowIndex + (x * 3)
+         //let sixelInt = 0x3F
+         let lumen = 0
+         for(let sixelRow= 0; sixelRow < 6; sixelRow++){
+            const absolutePixelIndex = (imgWidth* sixelRow * 3 ) + pixelColumnOffset
+            //aproximation
+            let luminance = ( 
+               299 * pixelArr[absolutePixelIndex] +  //RED
+               587 * pixelArr[absolutePixelIndex+1] + //GREEN
+               114 * pixelArr[absolutePixelIndex+2]) //BLUE
+               >> 10
+            lumen+= (luminance*100) >> 8
+         }
+      sixelImgEncoded+= `#${(lumen/6)|0};~`
+      }
+      sixelImgEncoded+='-'
+   }
+   /*"Pan;Pad;Ph;Pv */
+   const raster = `"2;1;${imgWidth};${imgHeight}`
+   const scrollingModeEnabled = '\x1BP?80h'
+   const scrollingModeDisabled = '\x1BP?80l'
+   let sixelSequence = `${scrollingModeEnabled}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
+   return  sixelSequence
+}
 }
 
-// function sixel(buffer: Buffer<ArrayBufferLike> | ArrayBuffer, { imgsz }: TermImgProtocolInput) {
-//    /*
-//    ?reference
-//    https://www.vt100.net/docs/vt3xx-gp/chapter14.html
-//    */
-//    const buff = new Uint8ClampedArray(buffer)
-//    console.log(buff.length/3/320)
+// const wsz = await TerminalControl.getWindowDimension() as WSZ
+// const buffer = '/home/alexdev/Documents/js-projects/Tanko/images/example.jpg'
+// const img = await TermImageGraphics.make({buffer: buffer, wsz ,position: {
+//    x: 'center',
+//    y: 'top',
+//    padding: {
+//       top: 10
+//    }
+// },forceAscii:true})
+// process.stdout.write(img.data.encodedImg)
 
-//    return
-//    /*"Pan;Pad;Ph;Pv */
-//    const raster = `"2;1;${imgsz.img_originalWidth};${imgsz.img_originalHeight}`
-//    /*
-//      # 	Pc 	; 	Pu; 	Px; 	Py; 	Pz
-//      2/3 	** 	3/11 	** 	** 	** 	**
-//    */
-//    const color = `0;2;0;0;0`
-//    //DCS P1;P2;raster;q s..s ST
-//    let sequence = `\x1B0;0;${raster};#${color};q${buff}\x1B\\`
-//    process.stdout.write(sequence)
-// }
-
-
-/*
-const wsz = await TerminalControl.getWindowDimension() as WSZ
-const buffer = '/home/alexdev/Documents/js-projects/Tanko/images/example.jpg'
-const img = await TermImageGraphics.make({buffer: buffer, wsz ,position: {
-   x: 'center',
-   y: 'top',
-   padding: {
-      top: 10
-   }
-}})
-
-
-process.stdout.write(img.data.encodedImg)*/
-//const remake = TankoTerminalImg.remake(img.data.rawBuffer as Buffer, {x: 'center', y:'center'}, img.imgsz, wsz)
-//process.stdout.write(remake.data.encodedImg)
 
 
 

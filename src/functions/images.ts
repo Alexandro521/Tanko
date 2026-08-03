@@ -3,6 +3,8 @@ import { Configuration } from "./configuration.ts";
 import { Notify, NotifyType, type NotifyProps } from "./notify.ts";
 import { TankoFetch } from "./fetch.ts";
 import type { ChapterPage, LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
+import type { SharpInput } from "sharp";
+import supportsTerminalGraphics from "supports-terminal-graphics";
 
 export class ImageCache extends Map {
     private MAX_CACHE_SIZE = 64 * 1024
@@ -44,13 +46,13 @@ export class ImageCache extends Map {
         this.pointer = 0;
         this.byteLength = 0;
     }
-    push(key: string, value: TankoTermImgOutput) {
+    push(key: string, value: TankoTermImgOutput, size: number) {
         if (
             this.pointer >= this.fifo.length ||
-            this.byteLength + value.buffer.byteLength >= this.MAX_CACHE_SIZE
+            this.byteLength + size >= this.MAX_CACHE_SIZE
         ) this.pop()
         super.set(key, value);
-        this.byteLength += value.buffer.byteLength;
+        this.byteLength += size;
         this.fifo[this.pointer++] = key;
     }
     getStats() {
@@ -70,43 +72,68 @@ export class ImageLoader extends ImageCache {
     cacheHit(page: ChapterPage) {
         return this.has(page.src)
     }
-
     async loadImage(imgUrl: string, props: LoadImageProps) {
-        if (this.has(imgUrl) && props?.forceReload === false) {
+
+        if (this.has(imgUrl) && !props.forceReload) {
             const cache = <TankoTermImgOutput>this.get(imgUrl)
-            let cacheWsz = cache.wsz
-            let currentWsz = props.cotainerSize
+
+            let bakeWsz = cache.wsz
+            let newWsz = props.cotainerSize
+            
+            let keyList = Object.keys(bakeWsz)
             let index = 0
-            let keyList = Object.keys(cacheWsz)
             let hasDiff = false;
+
             while (!hasDiff && index < keyList.length) {
                 const keyName = keyList[index++] as keyof WSZ
-                hasDiff = (cacheWsz[keyName]) !== (currentWsz[keyName])
+                hasDiff = (bakeWsz[keyName]) !== (newWsz[keyName])
             }
-            if (props?.invalidateCache === true || hasDiff) {
-                let remasterImg = TermImageGraphics.remaster(cache.buffer, props.position, cache.imgsz, props.cotainerSize);
-                this.push(imgUrl, remasterImg)
-                return
+            if(!hasDiff) return
+            else if(supportsTerminalGraphics.stdout.kitty){
+                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize )
+                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)
+                const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.cotainerSize, position: imgPosition})
+                const output: TankoTermImgOutput = {
+                    encodedImg: kittyEncodedImg,
+                    imgsz: imgScale,
+                    position: imgPosition,
+                    wsz: props.cotainerSize
+                }
+                this.set(imgUrl, output)
             }
             else {
-                return
+                const key = `${imgUrl}_request`
+                const imgBuffer = this.get(key) as SharpInput
+                const newImg = TermImageGraphics.make(imgBuffer, {
+                        position: props.position,
+                        wsz: props.cotainerSize,
+                        forceAscii: props.forceAscii
+                    })
+                this.set(imgUrl, newImg)
             }
         }
-
+        
         let buffer: ArrayBuffer | undefined = undefined
         try {
             let isOk = false;
             let retrieves = 3
             let contentType: string | null = ''
-            while (!isOk && retrieves > 0) {
-                const res = await fetch(imgUrl)
-                contentType = res.headers.get('Content-Type');
-                if (!res.ok || contentType === null || !contentType?.startsWith('image')) {
-                    retrieves--;
-                    continue
-                }
-                buffer = await res.arrayBuffer();
+            const key = `${imgUrl}_request`
+
+            if(this.has(key) && !props.invalidateCache){
+                buffer = this.get(key)
                 isOk = true
+            }else{
+                    while (!isOk && retrieves > 0) {
+                        const res = await fetch(imgUrl)
+                        contentType = res.headers.get('Content-Type');
+                        if (!res.ok || contentType === null || !contentType?.startsWith('image')) {
+                            retrieves--;
+                        continue
+                    }
+                    buffer = await res.arrayBuffer();
+                    isOk = true
+                }
             }
             if (!isOk || !buffer) {
                 const confInstance = await Configuration.getInstance()
@@ -116,12 +143,14 @@ export class ImageLoader extends ImageCache {
                 else
                     throw new Error(err_messages.page_loading.msg)
             }
-            const imgObject = await TermImageGraphics.make({
-                buffer: buffer,
+            const imgObject = await TermImageGraphics.make(buffer, {
                 wsz: props.cotainerSize,
-                position: props.position
+                position: props.position,
+                forceAscii: props.forceAscii
             })
-            this.push(imgUrl, imgObject)
+
+            this.set(key, buffer)
+            this.push(imgUrl, imgObject, buffer.byteLength)
         } catch (e) {
             if (e instanceof Error)
                 Notify.pushError(e)

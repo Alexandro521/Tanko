@@ -3,6 +3,7 @@ import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
+import type { SharpInput } from "sharp"
 
 
 export interface ChapterPage  {
@@ -168,11 +169,6 @@ export interface IMGSZ {
     img_ratio: number,
 }
 
-export interface TermImgProtocolOutput{
-    id: number,
-    encodedImg: string | Buffer<ArrayBufferLike>
-}
-
 export interface StructImgPosition{
     x: 'center' | 'left' | 'right' 
     y: 'center' | 'top' | 'bottom',
@@ -190,27 +186,30 @@ export interface StructImgPositionProtocol{
 type TermImgProtocolName = 'kitty' | 'ascii'
 
 export interface TermImgProtocolInput{
-    id?: number,
     position: StructImgPositionProtocol,
     imgsz: IMGSZ,
     wsz: WSZ,
 }
+
 export interface TankoTermImgInput{
-    buffer: Buffer | ArrayBuffer | string,
     wsz: WSZ,
     position: StructImgPosition,
     forceAscii?: boolean
 }
+
+export type BitMapArray = ArrayBufferLike 
+export type ImgBuffer = Buffer | Buffer<ArrayBufferLike >
 export interface TankoTermImgOutput{
-    data: TermImgProtocolOutput,
-    imgsz: IMGSZ,
-    buffer: Buffer<ArrayBufferLike> | ArrayBuffer
     position: StructImgPositionProtocol,
+    encodedImg: string,
+    base64?:string,
+    imgsz: IMGSZ,
     wsz: WSZ
 }
 export interface LoadImageProps {
     cotainerSize: WSZ,
     position: StructImgPosition,
     invalidateCache?: boolean,
-    forceReload?: boolean 
+    forceReload?: boolean,
+    forceAscii?: boolean
 }

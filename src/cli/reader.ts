@@ -15,6 +15,7 @@ import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
 import type { Chapter, LoadImageProps, MangaInfo, Translations } from "../types/types.ts"
 import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
+import supportsTerminalGraphics from "supports-terminal-graphics"
 
 const LOADER = ora()
 const CONFIGURATION = await Configuration.getInstance()
@@ -59,7 +60,12 @@ export async function terminalReader(
       RENDER_WSZ.colums = stdout.columns
       RENDER_WSZ.rows = stdout.rows
       if(TerminalControl.isRaw){
-        await render()
+        const $ = supportsTerminalGraphics.stdout
+        if(!$.kitty && !$.iterm2){
+          await render(true, false)
+        }else{
+          await render()
+        }
       }
     }
 
@@ -258,7 +264,7 @@ export async function terminalReader(
 
         if (isFirstOrLast === 0 || force) {
           const newPages = await chapterCtl.loadChapter()
-          chapterCtl.historySave(mangaInfo.title, mangaInfo.src);
+          chapterCtl.historySave(mangaInfo.title, mangaInfo.src, mangaProvider.name);
           pagesCtl.setPages(newPages ?? [])
         }
         if (LOADER.isSpinning)
@@ -311,7 +317,12 @@ export async function terminalReader(
       }
       else if (keyName === 'f') {
         FULLSCREEN_MODE = !FULLSCREEN_MODE
-        await render()
+        const $ = supportsTerminalGraphics.stdout
+        if(!$.kitty && !$.iterm2){
+          await render(false, false)
+        }else{
+          await render()
+        }
         return
       }
       else if (keyName === 'f12') {
@@ -326,10 +337,11 @@ export async function terminalReader(
         if(keyctrl){
           pagesCtl.reset()
           await chapterLoader(undefined, true)
-          return
+        }else if (keyshift){
+          await render(false, true)
+        }else {
+          await render(true, true)
         }
-        await render(true, true)
-        return
       }
       else if (keyName === 'c') {
         process.stdout.write(ansiEsc.clearViewport)

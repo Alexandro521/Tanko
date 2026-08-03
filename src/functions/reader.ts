@@ -1,10 +1,9 @@
-import type { ChapterPage, Chapter, MangaProvider, Translations, ChapterLanguage, WSZ, TermImgProtocolName, TankoTermImgOutput, LoadImageProps } from "../types/types.js";
+import type { ChapterPage, Chapter, MangaProvider, Translations, ChapterLanguage, WSZ, TermImgProtocolName, TankoTermImgOutput, LoadImageProps, ServerName } from "../types/types.js";
 import { Configuration } from "./configuration.ts";
 import { ImageLoader } from "./images.ts"
 import { History } from "./history.ts";
 import { Notify } from "./notify.ts";
 import ansi from 'ansi-escapes'
-let CONFIGURATION = await Configuration.getInstance()
 
 export class PagesControl {
     private pages!: ChapterPage[];
@@ -53,7 +52,7 @@ export class PagesControl {
             const image = this.imageLoader.get(page.src) as TankoTermImgOutput
             const pos = image.position
             process.stdout.write(ansi.cursorTo(pos.x, pos.y))
-            process.stdout.write(ansi.cursorShow + image.data.encodedImg + ansi.cursorHide)
+            process.stdout.write(ansi.cursorShow + image.encodedImg + ansi.cursorHide)
         }
     }
     getPages() {
@@ -247,14 +246,14 @@ export class ChapterControl {
          */
         return this.index === 0 ? -1 : this.index === this.chapters.length  -1 ? 1 : 0
     }
-    historySave(title: string, src: string) {
+    historySave(title: string, src: string, serverName: ServerName) {
         const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang)
         History.save({
             chapters_length: this.chapters.length,
             chapterSrc: chapter.id,
             last_index: this.index,
             last_lang: this.lang,
-            server: CONFIGURATION.configuration.server.name,
+            server: serverName,
             last_title: chapter.title,
             mangaSrc: src,
             mangaTitle: title,
