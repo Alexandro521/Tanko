@@ -199,15 +199,16 @@ export async function terminalReader(
 
     const renderFooter = ()=>{
       const SHORTCUTS = [
-      ['⥄', 'Navigation'],
-      ['F', 'FullScreen'],
+      ['⥄', 'Move'],
+      ['P', 'Previous'],
+      ['N', 'Next'],
       ['C', 'Options'],
-      ['N', 'Next Chapter'],
-      ['R', 'reload Page'],
-      ['^R', 'reload Chapter'],
-      ['P', 'Previous Chapter'],
-      ['Esc/Q', 'exit'],
-      ['F12', 'Debug Mode'],
+      ['F', 'Max/Min'],
+      ['R', 'Reload page'],
+      ['\u{21E7}R', 'Redraw page'],
+      ['^R', 'Reload chapter'],
+      ['F12', 'Debug on/off'],
+      ['Esc/Q', 'Exit'],
     ]
       let str = ''
       let strlength = 0
