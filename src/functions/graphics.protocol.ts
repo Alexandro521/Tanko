@@ -11,9 +11,7 @@ import type {
    StructImgPositionProtocol,
    BitMapArray
 } from "../types/types.ts";
-import { TerminalControl } from "./reader.ts";
-import { stdout } from "node:process";
-
+import ansi from "ansi-escapes";
 export class TermImageGraphics {
    private constructor() { }
 
@@ -57,15 +55,16 @@ export class TermImageGraphics {
    }
    static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ): IMGSZ {
       //?https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/object-fit
-
-      const ratio = [imgWidth / imgHeight, windowSize.w_width / windowSize.w_height]
+      const imgRatio = imgWidth / imgHeight
+      
       const scaleFactor = Math.min(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
+
       const newImgSize = [Math.floor(imgWidth * scaleFactor), Math.floor(imgHeight * scaleFactor)]
 
       return {
          img_originalWidth: imgWidth,
          img_originalHeight: imgHeight,
-         img_ratio: ratio[0],
+         img_ratio: imgRatio,
          img_pixelWidth: newImgSize[0],
          img_pixelHeigth: newImgSize[1],
          img_cellsWidth: Math.floor(newImgSize[0] / windowSize.w_cellPxWidth),
@@ -96,6 +95,11 @@ export class TermImageGraphics {
          const base64 = imgBuffer.toString('base64')
          output.encodedImg = this.kitty(base64, input)
       }
+      else if ($.iterm2 && !forceAscii) {
+         const imgBuffer = await imgsrgb.toBuffer()
+         const base64 = imgBuffer.toString('base64')
+         output.encodedImg = this.iterm2(base64, input)
+      }
       else if ($.sixel && !forceAscii) {
          const imgBuffer = await imgsrgb
          .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
@@ -112,121 +116,110 @@ export class TermImageGraphics {
       }
       return output
    }
-   static kitty(base64: string, {imgsz, wsz}: TermImgProtocolInput) {
-      
+   static kitty(base64: string, { imgsz, wsz, position }: TermImgProtocolInput) {
       const id = Math.floor((Math.random() * 1000) + 1)
-   let kittySequence: string = ''
-
-   let format = `f=24,s=${imgsz.img_originalWidth},v=${imgsz.img_originalHeight}`
-   let controlData = `a=T`
-   
-   if (imgsz.img_ratio < wsz.w_ratio) {
-      controlData += `,r=${imgsz.img_cellsHeigth}`
-   } else if (imgsz.img_ratio > wsz.w_ratio) {
-      controlData += `,c=${imgsz.img_cellsWidth}`
-   } else {
-      controlData += `,r=${imgsz.img_cellsHeigth},c=${imgsz.img_cellsWidth}`
-   }
-   for (let i = 0; i < base64.length; i += 4096) {
-      const chunk = base64.slice(i, i + 4096);
-      const isLast = (i + 4096) >= base64.length
-      const mode = isLast ? 0 : 1
-      if (i === 0) {
-         kittySequence += (`\u001B_G${format},i=${id},q=2,${controlData},m=${mode};${chunk}\u001B\\`)
+      let kittySequence: string = ansi.cursorTo(position.x, position.y)
+      let format = `f=24,s=${imgsz.img_originalWidth},v=${imgsz.img_originalHeight}`
+      let controlData = `a=T`
+     
+      if (imgsz.img_ratio < wsz.w_ratio) {
+         controlData += `,r=${imgsz.img_cellsHeigth}`
+      } else if (imgsz.img_ratio > wsz.w_ratio) {
+         controlData += `,c=${imgsz.img_cellsWidth}`
       } else {
-         kittySequence += (`\u001B_Gm=${mode},q=2;${chunk}\u001B\\`)
+         controlData += `,r=${imgsz.img_cellsHeigth},c=${imgsz.img_cellsWidth}`
       }
-   }
-   return kittySequence
-}
-
-static ascii(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
-   const pixelArr = new Uint8ClampedArray(buffer)
-   const pixelJump = ((imgsz.img_pixelWidth / imgsz.img_cellsWidth) | 0) * 3
-   const rowjumps = imgsz.img_pixelWidth * ((imgsz.img_pixelHeigth / imgsz.img_cellsHeigth) | 0) * 3
-
-   const lines:string[] = new Array(imgsz.img_cellsHeigth)
-   let pixelOffset = 0;
-
-   for(let y = 0; y < imgsz.img_cellsHeigth; pixelOffset = rowjumps*y,y++){
-      let line = ''
-      line+=`\x1B[${position.y + y +1};0f\x1B[${position.x}C`
-      for(let x = 0; x < imgsz.img_cellsWidth; x++, pixelOffset+= pixelJump){
-         let index = pixelOffset | 0
-
-         let R = pixelArr[index]
-         let G = pixelArr[index+1]
-         let B = pixelArr[index+2]
-
-         //@ts-ignore
-         if(supportsColor.stdout.has16m){
-            line+= `\x1B[48;2;${R};${G};${B}m\x1B[38;2;${R};${G};${B}m\u{2584}\x1B[39;49m`
-         }else{
-            let luminance =( 0.299 * R + 0.587 * G + 0.114 * B)|0
-            let grayScale = 232 + (((luminance*24)/256)|0)
-            line+=`\x1B[48;5;${grayScale}m\x1B[38;5;${grayScale}m\u{2584}\x1B\x1B[39;49m`
+      for (let i = 0; i < base64.length; i += 4096) {
+         const chunk = base64.slice(i, i + 4096);
+         const isLast = (i + 4096) >= base64.length
+         const mode = isLast ? 0 : 1
+         if (i === 0) {
+            kittySequence += (`\u001B_G${format},q=2,${controlData},m=${mode};${chunk}\u001B\\`)
+         } else {
+            kittySequence += (`\u001B_Gm=${mode},q=2;${chunk}\u001B\\`)
          }
       }
-      lines[y] = line
+      return kittySequence
    }
-   return  lines.join('\x1B[1E')
-}
-static sixel(buffer: Buffer, { imgsz }: TermImgProtocolInput) {
-   /*
-   https://en.wikipedia.org/wiki/Sixel
-   https://www.vt100.net/docs/vt3xx-gp/chapter14.html
-   https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
-   */
-   const pixelArr = new Uint8ClampedArray(buffer)
-   let imgWidth = imgsz.img_pixelWidth
-   let imgHeight = imgsz.img_pixelHeigth
-   let sixelImgEncoded=''
-   let grayScaleRegister = ''
-   for(let i =0; i<100;i++){
-      grayScaleRegister+=`#${i};2;${(i)};${i};${i};`
-   }
+   static ascii(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
+      const pixelArr = new Uint8ClampedArray(buffer)
+      const pixelJump = ((imgsz.img_pixelWidth / imgsz.img_cellsWidth) | 0) * 3
+      const rowjumps = imgsz.img_pixelWidth * ((imgsz.img_pixelHeigth / imgsz.img_cellsHeigth) | 0) * 3
 
-   for(let y = 0, i = 0; y < imgHeight; y+=6, i++){
-      const imageRowIndex = y * imgWidth * 3
-      for(let x =0; x< imgWidth; x++){
-         let pixelColumnOffset = imageRowIndex + (x * 3)
-         //let sixelInt = 0x3F
-         let lumen = 0
-         for(let sixelRow= 0; sixelRow < 6; sixelRow++){
-            const absolutePixelIndex = (imgWidth* sixelRow * 3 ) + pixelColumnOffset
-            //aproximation
-            let luminance = ( 
-               299 * pixelArr[absolutePixelIndex] +  //RED
-               587 * pixelArr[absolutePixelIndex+1] + //GREEN
-               114 * pixelArr[absolutePixelIndex+2]) //BLUE
-               >> 10
-            lumen+= (luminance*100) >> 8
+      const lines: string[] = new Array(imgsz.img_cellsHeigth)
+      let pixelOffset = 0;
+
+      for (let y = 0; y < imgsz.img_cellsHeigth; pixelOffset = rowjumps * y, y++) {
+         let line = ''
+         line += `\x1B[${position.y + y + 1};0f\x1B[${position.x}C`
+         for (let x = 0; x < imgsz.img_cellsWidth; x++, pixelOffset += pixelJump) {
+            let index = pixelOffset | 0
+
+            let R = pixelArr[index]
+            let G = pixelArr[index + 1]
+            let B = pixelArr[index + 2]
+
+            //@ts-ignore
+            if (supportsColor.stdout.has16m) {
+               line += `\x1B[48;2;${R};${G};${B}m\x1B[38;2;${R};${G};${B}m\u{2584}\x1B[39;49m`
+            } else {
+               let luminance = (0.299 * R + 0.587 * G + 0.114 * B) | 0
+               let grayScale = 232 + (((luminance * 24) / 256) | 0)
+               line += `\x1B[48;5;${grayScale}m\x1B[38;5;${grayScale}m\u{2584}\x1B\x1B[39;49m`
+            }
          }
-      sixelImgEncoded+= `#${(lumen/6)|0};~`
+         lines[y] = line
       }
-      sixelImgEncoded+='-'
+      return lines.join('\x1B[1E')
    }
-   /*"Pan;Pad;Ph;Pv */
-   const raster = `"2;1;${imgWidth};${imgHeight}`
-   const scrollingModeEnabled = '\x1BP?80h'
-   const scrollingModeDisabled = '\x1BP?80l'
-   let sixelSequence = `${scrollingModeEnabled}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
-   return  sixelSequence
+   static sixel(buffer: Buffer, { imgsz }: TermImgProtocolInput) {
+      /*
+      https://en.wikipedia.org/wiki/Sixel
+      https://www.vt100.net/docs/vt3xx-gp/chapter14.html
+      https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
+      */
+      const pixelArr = new Uint8ClampedArray(buffer)
+      let imgWidth = imgsz.img_pixelWidth
+      let imgHeight = imgsz.img_pixelHeigth
+      let sixelImgEncoded = ''
+      let grayScaleRegister = ''
+      for (let i = 0; i < 100; i++) {
+         grayScaleRegister += `#${i};2;${(i)};${i};${i};`
+      }
+
+      for (let y = 0, i = 0; y < imgHeight; y += 6, i++) {
+         const imageRowIndex = y * imgWidth * 3
+         for (let x = 0; x < imgWidth; x++) {
+            let pixelColumnOffset = imageRowIndex + (x * 3)
+            //let sixelInt = 0x3F
+            let lumen = 0
+            for (let sixelRow = 0; sixelRow < 6; sixelRow++) {
+               const absolutePixelIndex = (imgWidth * sixelRow * 3) + pixelColumnOffset
+               //aproximation
+               let luminance = (
+                  299 * pixelArr[absolutePixelIndex] +  //RED
+                  587 * pixelArr[absolutePixelIndex + 1] + //GREEN
+                  114 * pixelArr[absolutePixelIndex + 2]) //BLUE
+                  >> 10
+               lumen += (luminance * 100) >> 8
+            }
+            sixelImgEncoded += `#${(lumen / 6) | 0};~`
+         }
+         sixelImgEncoded += '-'
+      }
+      /*"Pan;Pad;Ph;Pv */
+      const raster = `"2;1;${imgWidth};${imgHeight}`
+      const scrollingModeEnabled = '\x1BP?80h'
+      const scrollingModeDisabled = '\x1BP?80l'
+      let sixelSequence = `${scrollingModeEnabled}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
+      return sixelSequence
+   }
+   static iterm2(base64: string, { imgsz, position }: TermImgProtocolInput) {
+      const dimensions = `width=${imgsz.img_pixelWidth}px;height=${imgsz.img_pixelHeigth}px;preserveAspectRatio=1`
+      let startSequence = `${ansi.cursorTo(position.x, position.y)}\x1B]1337;File=${dimensions};inline=1:${base64}\x1B\\`
+      return startSequence
+   }
 }
-}
-
-// const wsz = await TerminalControl.getWindowDimension() as WSZ
-// const buffer = '/home/alexdev/Documents/js-projects/Tanko/images/example.jpg'
-// const img = await TermImageGraphics.make({buffer: buffer, wsz ,position: {
-//    x: 'center',
-//    y: 'top',
-//    padding: {
-//       top: 10
-//    }
-// },forceAscii:true})
-// process.stdout.write(img.data.encodedImg)
-
-
 
 
 
