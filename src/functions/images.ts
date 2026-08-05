@@ -1,7 +1,6 @@
 import { TermImageGraphics } from "./graphics.protocol.ts";
 import { Configuration } from "./configuration.ts";
 import { Notify, NotifyType, type NotifyProps } from "./notify.ts";
-import { TankoFetch } from "./fetch.ts";
 import type { ChapterPage, LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
 import type { SharpInput } from "sharp";
 import supportsTerminalGraphics from "supports-terminal-graphics";
