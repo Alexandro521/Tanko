@@ -113,6 +113,7 @@ export async function terminalReader(
         invalidateCache,
         forceReload,
         forceAscii: false,
+        fit: 'contain',
         position: {
           x: 'center',
           y: 'center',

@@ -89,7 +89,7 @@ export class ImageLoader extends ImageCache {
             }
             if(!hasDiff) return
             else if(supportsTerminalGraphics.stdout.kitty){
-                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize )
+                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize, props.fit)
                 const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)
                 const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.cotainerSize, position: imgPosition})
                 const output: TankoTermImgOutput = {
@@ -106,7 +106,8 @@ export class ImageLoader extends ImageCache {
                 const newImg = TermImageGraphics.make(imgBuffer, {
                         position: props.position,
                         wsz: props.cotainerSize,
-                        forceAscii: props.forceAscii
+                        forceAscii: props.forceAscii,
+                        imageFit: props.fit
                     })
                 this.set(imgUrl, newImg)
             }
@@ -145,7 +146,8 @@ export class ImageLoader extends ImageCache {
             const imgObject = await TermImageGraphics.make(buffer, {
                 wsz: props.cotainerSize,
                 position: props.position,
-                forceAscii: props.forceAscii
+                forceAscii: props.forceAscii,
+                imageFit: props.fit
             })
 
             this.set(key, buffer)

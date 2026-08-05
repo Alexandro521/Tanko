@@ -191,10 +191,12 @@ export interface TermImgProtocolInput{
     wsz: WSZ,
 }
 
+export type ObjectFit = 'cover' | 'contain'
 export interface TankoTermImgInput{
     wsz: WSZ,
     position: StructImgPosition,
-    forceAscii?: boolean
+    forceAscii?: boolean,
+    imageFit?: ObjectFit,
 }
 
 export type BitMapArray = ArrayBufferLike 
@@ -211,5 +213,6 @@ export interface LoadImageProps {
     position: StructImgPosition,
     invalidateCache?: boolean,
     forceReload?: boolean,
-    forceAscii?: boolean
+    forceAscii?: boolean,
+    fit: ObjectFit
 }

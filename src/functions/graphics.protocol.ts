@@ -9,9 +9,10 @@ import type {
    TankoTermImgOutput,
    TermImgProtocolInput,
    StructImgPositionProtocol,
-   BitMapArray
+   ObjectFit
 } from "../types/types.ts";
 import ansi from "ansi-escapes";
+
 export class TermImageGraphics {
    private constructor() { }
 
@@ -53,13 +54,19 @@ export class TermImageGraphics {
       }
       return { x: Math.floor(posX + w_position_x)|0, y: Math.floor(posY + w_position_y) }
    }
-   static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ): IMGSZ {
+   static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ, fit: ObjectFit): IMGSZ {
       //?https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/object-fit
-      const imgRatio = imgWidth / imgHeight
-      
-      const scaleFactor = Math.min(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
 
+      const imgRatio = imgWidth / imgHeight
+      let scaleFactor = 1
+      if(fit === 'contain'){
+         scaleFactor = Math.min(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
+      }else if(fit === 'cover'){
+         scaleFactor = Math.max(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
+      }
       const newImgSize = [Math.floor(imgWidth * scaleFactor), Math.floor(imgHeight * scaleFactor)]
+
+
 
       return {
          img_originalWidth: imgWidth,
@@ -72,11 +79,11 @@ export class TermImageGraphics {
       }
    }
 
-   static async make(buffer: SharpInput, { wsz, position, forceAscii = false}: TankoTermImgInput): Promise<TankoTermImgOutput> {
+   static async make(buffer: SharpInput, { wsz, position, forceAscii = false, imageFit = 'contain'}: TankoTermImgInput): Promise<TankoTermImgOutput> {
       let imgsrgb  = sharp(buffer, { failOn: 'error', sequentialRead: false }).toColorspace('srgb')
       const metadata = await imgsrgb.metadata()
       const $ = supportsTerminalGraphics.stdout
-      const scale: IMGSZ = this.scaleImg(metadata.width, metadata.height, wsz)
+      const scale: IMGSZ = this.scaleImg(metadata.width, metadata.height, wsz, imageFit)
       const imgPosition = this.calcPosition(position, scale, wsz)
       const input: TermImgProtocolInput = {
          wsz: wsz,
@@ -96,7 +103,12 @@ export class TermImageGraphics {
          output.encodedImg = this.kitty(base64, input)
       }
       else if ($.iterm2 && !forceAscii) {
-         const imgBuffer = await imgsrgb.toBuffer()
+
+         const imgBuffer =
+         metadata.format === 'webp' ? 
+         await imgsrgb.jpeg().toBuffer():
+         imgsrgb.toBuffer()
+         
          const base64 = imgBuffer.toString('base64')
          output.encodedImg = this.iterm2(base64, input)
       }
@@ -121,7 +133,6 @@ export class TermImageGraphics {
       let kittySequence: string = ansi.cursorTo(position.x, position.y)
       let format = `f=24,s=${imgsz.img_originalWidth},v=${imgsz.img_originalHeight}`
       let controlData = `a=T`
-     
       if (imgsz.img_ratio < wsz.w_ratio) {
          controlData += `,r=${imgsz.img_cellsHeigth}`
       } else if (imgsz.img_ratio > wsz.w_ratio) {
@@ -220,6 +231,3 @@ export class TermImageGraphics {
       return startSequence
    }
 }
-
-
-
