@@ -68,7 +68,7 @@ export async function terminalReader(
         }
       }
     }
-
+    
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
@@ -112,18 +112,21 @@ export async function terminalReader(
         cotainerSize: imageContainer,
         invalidateCache,
         forceReload,
+        forceAscii: false,
         position: {
           x: 'center',
           y: 'center',
         }
       }
       const x = centerX(loading_states.default_loading.length, stdout.columns)
-      const y = (imgPosition.y + (imageContainer.w_rows >> 1) )
+      const y = (imgPosition.y + (imageContainer.w_rows >> 1))
+      
+      if(LOADER.isSpinning)
+        LOADER.stop()
+      
       LOADER.prefixText = ansiEsc.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
-
-      if(!LOADER.isSpinning)
-        LOADER.start(loading_states.default_loading)
-
+      LOADER.start(loading_states.default_loading)
+      
       await pagesCtl.loadPage(imageLoaderAttr)
 
       if(LOADER.isSpinning)
@@ -205,7 +208,7 @@ export async function terminalReader(
       ['C', 'Options'],
       ['F', 'Max/Min'],
       ['R', 'Reload page'],
-      ['\u{21E7}R', 'Redraw page'],
+      ['Shift+R', 'Redraw page'],
       ['^R', 'Reload chapter'],
       ['F12', 'Debug on/off'],
       ['Esc/Q', 'Exit'],
