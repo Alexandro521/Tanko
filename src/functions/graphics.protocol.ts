@@ -183,7 +183,7 @@ export class TermImageGraphics {
       }
       return lines.join('\x1B[1E')
    }
-   static sixel(buffer: Buffer, { imgsz }: TermImgProtocolInput) {
+   static sixel(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
       /*
       https://en.wikipedia.org/wiki/Sixel
       https://www.vt100.net/docs/vt3xx-gp/chapter14.html
@@ -222,7 +222,7 @@ export class TermImageGraphics {
       const raster = `"2;1;${imgWidth};${imgHeight}`
       const scrollingModeEnabled = '\x1BP?80h'
       const scrollingModeDisabled = '\x1BP?80l'
-      let sixelSequence = `${scrollingModeEnabled}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
+      let sixelSequence = `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
       return sixelSequence
    }
    static iterm2(base64: string, { imgsz, position }: TermImgProtocolInput) {
