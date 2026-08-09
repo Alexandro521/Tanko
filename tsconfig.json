@@ -10,16 +10,26 @@
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "removeComments": true,
-        "sourceMap": true,
+        "sourceMap": false,
         "declaration": false,
-        "verbatimModuleSyntax": true
+        "verbatimModuleSyntax": true,
+        "noUnusedParameters": true,
+        "rewriteRelativeImportExtensions": true,
+        "allowImportingTsExtensions": true,
+        "allowJs": false,
+        "diagnostics": true,
+        "disableSizeLimit": true,
+        "strictFunctionTypes": true,
+        "strictNullChecks": true,
+        "strictBuiltinIteratorReturn": true,
+        "strictBindCallApply": true,
+        "pretty": true
     },
-
     "include": [
         "src/**/*"
     ],
     "exclude": [
-        "node_modules",
+        "node_modules/",
         "**/*.test.ts"
     ]
 }

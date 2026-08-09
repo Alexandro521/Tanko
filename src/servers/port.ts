@@ -22,6 +22,6 @@ export const mangaServerRegister: ServerRegister =
   {
     name: "mangadex",
     need_browser: false,
-    client: (e: Page) => new MangaDex(),
+    client: (_: Page) => new MangaDex(),
   }
 ]

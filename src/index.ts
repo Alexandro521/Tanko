@@ -2,15 +2,24 @@
 import fs from 'fs'
 import fsp from 'fs/promises'
 import ansi from 'ansi-escapes'
-import ansiEscapes from 'ansi-escapes'
 import { History } from "./functions/history.js";
 import { main } from "./cli/menu.js";
-import { BASE_DIR, BROWSER_STORAGE_PATH, DATA_DEFAULT_DIR, DOWNLOADS_DEFAULT_DIR, FIRST_INIT_MESSAGE, HISTORY_PATH, WELCOME_MESSAGE } from './const.js'
+import {
+  BASE_DIR,
+  BROWSER_STORAGE_PATH,
+  DATA_DEFAULT_DIR,
+  DOWNLOADS_DEFAULT_DIR,
+  FIRST_INIT_MESSAGE,
+  HISTORY_PATH,
+  WELCOME_MESSAGE
+} from './const.js'
 import { Configuration } from './functions/configuration.js';
 import { Notify, NotifyType } from './functions/notify.js';
 import { versionVerify } from './scripts.js';
+import { TerminalControl } from './functions/reader.js';
+import { stdout } from 'process';
 
-console.log(ansiEscapes.clearTerminal)
+await TerminalControl.getWindowDimension()
 
 if(!fs.existsSync(BASE_DIR)) {
   await fsp.mkdir(BASE_DIR, {recursive: true})
@@ -27,13 +36,11 @@ if (!fs.existsSync(HISTORY_PATH)) {
 if (!fs.existsSync(BROWSER_STORAGE_PATH)) {
   await fsp.mkdir(BROWSER_STORAGE_PATH, {recursive: true})
 }
-
-
-
-console.log(ansi.clearViewport);
-console.log(WELCOME_MESSAGE);
 const notify = Notify.getInstace()
 const confInstance = await Configuration.getInstance()
+await versionVerify()
+await confInstance.login()
+await History.load()
 if(confInstance.configuration.isFirstRun) {
   notify.push({
     title: 'Welcome!',
@@ -42,11 +49,7 @@ if(confInstance.configuration.isFirstRun) {
   })
   confInstance.configuration.isFirstRun = false
 }
-await versionVerify()
-await confInstance.login()
-await History.load()
 
+stdout.write(ansi.clearViewport);
+stdout.write(WELCOME_MESSAGE);
 await main(confInstance)
-await confInstance.closeBrowser();
-await confInstance.writeConfigFile()
-process.exit(0)

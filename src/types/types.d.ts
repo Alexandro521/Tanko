@@ -3,6 +3,7 @@ import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
+import type { SharpInput } from "sharp"
 
 
 export interface ChapterPage  {
@@ -142,4 +143,76 @@ export interface DownloadPageProps {
 export interface  ImgBuffer {
     data: Buffer<ArrayBufferLike>;
     info: sharp.OutputInfo;
+}
+
+//?Terminal Interfaces
+//window size
+export interface WSZ{
+    w_height: number,
+    w_width: number,
+    w_colums: number,
+    w_rows: number,
+    w_cellPxWidth: number,
+    w_cellPxHeight: number,
+    w_ratio: number,
+    w_position_x: number,
+    w_position_y: number
+}
+
+export interface IMGSZ {
+    img_originalWidth: number,
+    img_originalHeight: number,
+    img_pixelWidth: number,
+    img_pixelHeigth: number,
+    img_cellsHeigth: number,
+    img_cellsWidth: number,
+    img_ratio: number,
+}
+
+export interface StructImgPosition{
+    x: 'center' | 'left' | 'right' 
+    y: 'center' | 'top' | 'bottom',
+    padding?:{
+        top?: number
+        bottom?: number
+        left?: number
+        right?: number
+    }
+}
+export interface StructImgPositionProtocol{
+    x: number,
+    y: number
+}
+type TermImgProtocolName = 'kitty' | 'ascii'
+
+export interface TermImgProtocolInput{
+    position: StructImgPositionProtocol,
+    imgsz: IMGSZ,
+    wsz: WSZ,
+}
+
+export type ObjectFit = 'cover' | 'contain'
+export interface TankoTermImgInput{
+    wsz: WSZ,
+    position: StructImgPosition,
+    forceAscii?: boolean,
+    imageFit?: ObjectFit,
+}
+
+export type BitMapArray = ArrayBufferLike 
+export type ImgBuffer = Buffer | Buffer<ArrayBufferLike >
+export interface TankoTermImgOutput{
+    position: StructImgPositionProtocol,
+    encodedImg: string,
+    base64?:string,
+    imgsz: IMGSZ,
+    wsz: WSZ
+}
+export interface LoadImageProps {
+    cotainerSize: WSZ,
+    position: StructImgPosition,
+    invalidateCache?: boolean,
+    forceReload?: boolean,
+    forceAscii?: boolean,
+    fit: ObjectFit
 }

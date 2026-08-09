@@ -1,11 +1,12 @@
-import sharp from "sharp";
-import terminalImage from "terminal-image";
-import { Configuration } from "./configuration.js";
-import type { ChapterPage } from "../types/types.js";
-import { Notify, NotifyType, type NotifyProps } from "./notify.js";
+import { TermImageGraphics } from "./graphics.protocol.ts";
+import { Configuration } from "./configuration.ts";
+import { Notify, NotifyType, type NotifyProps } from "./notify.ts";
+import type { ChapterPage, LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
+import type { SharpInput } from "sharp";
+import supportsTerminalGraphics from "supports-terminal-graphics";
 
 export class ImageCache extends Map {
-    private MAX_CACHE_SIZE = 64 * 1024 //64 MB
+    private MAX_CACHE_SIZE = 64 * 1024
     private byteLength = 0;
     private pointer = 0;
     private fifo!: string[];
@@ -44,82 +45,88 @@ export class ImageCache extends Map {
         this.pointer = 0;
         this.byteLength = 0;
     }
-    push(key: string, buffer: Buffer) {
+    push(key: string, value: TankoTermImgOutput, size: number) {
         if (
             this.pointer >= this.fifo.length ||
-            this.byteLength + buffer.byteLength >= this.MAX_CACHE_SIZE
+            this.byteLength + size >= this.MAX_CACHE_SIZE
         ) this.pop()
-        super.set(key, buffer);
-        this.byteLength += buffer.byteLength;
+        super.set(key, value);
+        this.byteLength += size;
         this.fifo[this.pointer++] = key;
     }
-    get stats() {
+    getStats() {
         return {
             size: this.byteLength,
             length: this.pointer,
         }
     }
-
 }
 
 export class ImageLoader extends ImageCache {
+    AbortCtl!: AbortController
     constructor() {
         super()
+        this.AbortCtl = new AbortController()
     }
-    private error(err: any) {
-        const notify = Notify.getInstace()
-        if (err instanceof Error) {
-            const props: NotifyProps = {
-                type: NotifyType.error,
-                message: 'from Image Loader: ' + err.message,
-                title: err.name,
-            }
-            notify.push(props)
-        }
+    cacheHit(page: ChapterPage) {
+        const key =  `${page.src}_request` 
+        return this.has(page.src) || this.has(key)
     }
-    async loadImage(page: ChapterPage) {
-        let buffer: Buffer | ArrayBuffer | undefined = undefined
-        if (super.has(page.src))
-            buffer = <Buffer>super.get(page.src)
-        else {
-            try {
-                let isOk = false;
-                let retrieves = 3
-                while (!isOk && retrieves > 0) {
-                    const res = await fetch(page.src)
-                    const contentType = res.headers.get('Content-Type');
-                    if (!res.ok) {
-                        retrieves--;
-                        continue
-                    }
-                    buffer = await res.arrayBuffer();
-                    if (contentType === 'image/webp') {
-                        buffer = await sharp (buffer).jpeg().toBuffer()
-                    } else {
-                        buffer = Buffer.from(buffer)
-                    }
-                    super.push(page.src, buffer);
-                    isOk = true
+    async loadImage(imgUrl: string, props: LoadImageProps) {
+        if (this.has(imgUrl) && !props.forceReload) {
+            const cache = <TankoTermImgOutput>this.get(imgUrl)
+            let bakeWsz = cache.wsz
+            let newWsz = props.cotainerSize
+            
+            let keyList = Object.keys(bakeWsz)
+            let index = 0
+            let hasDiff = false;
+            
+            while (!hasDiff && index < keyList.length) {
+                const keyName = keyList[index++] as keyof WSZ
+                hasDiff = (bakeWsz[keyName]) !== (newWsz[keyName])
+            }
+            if(!hasDiff) return
+            else if(supportsTerminalGraphics.stdout.kitty){
+                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize, props.fit)
+                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)
+                const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.cotainerSize, position: imgPosition})
+                const output: TankoTermImgOutput = {
+                    encodedImg: kittyEncodedImg,
+                    imgsz: imgScale,
+                    position: imgPosition,
+                    wsz: props.cotainerSize
                 }
-                if (!isOk || !buffer) {
-                    const confInstance = await Configuration.getInstance()
-                    const {err_messages} = await confInstance.getLanguageInterface()
-                    throw new Error(err_messages.page_loading.msg)
-                }
-
-            } catch (e) {
-                this.error(e)
+                this.set(imgUrl, output)
+            }
+            else {
+                const key = `${imgUrl}_request`
+                const imgBuffer = this.get(key) as SharpInput
+                const newImg = TermImageGraphics.make(imgBuffer, {
+                        position: props.position,
+                        wsz: props.cotainerSize,
+                        forceAscii: props.forceAscii,
+                        imageFit: props.fit
+                    })
+                this.set(imgUrl, newImg)
             }
         }
-        //const metadata = await sharp(buffer).metadata()
+        try {
+            const key = `${imgUrl}_request`
+            const  buffer: ArrayBuffer | undefined = this.get(key)
+            if(!buffer) throw new Error('invalid image buffer')
+            const imgObject = await TermImageGraphics.make(buffer, {
+                wsz: props.cotainerSize,
+                position: props.position,
+                forceAscii: props.forceAscii,
+                imageFit: props.fit
+            })
 
-        const encodedString = await terminalImage.buffer(buffer as Uint8Array, {
-            preserveAspectRatio: true,
-            width: '100%',
-            height: '100%',
-            preferNativeRender: true
-        })
-        return encodedString
+            this.set(key, buffer)
+            this.push(imgUrl, imgObject, buffer.byteLength)
+        } catch (e) {
+            if (e instanceof Error)
+                Notify.pushError(e)
+        }
     }
 }
-

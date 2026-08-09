@@ -131,7 +131,7 @@ export class Notify extends EventEmitter{
         const box = this.getf()
         if(!box) return
         const quitText = chalk.bgGray(' ^Q ') + 'quit ' + `${this.stackIndex > 1 ?['⏺', this.stackIndex, 'Left'].join(' ') : ''}`
-        //before clear from the cursor pos to the end screen
+
         process.stdout.write('\x1B[0J'+ box?.strBox)
         process.stdout.write(
             ansi.cursorSavePosition + '\r' +
@@ -150,7 +150,7 @@ export class Notify extends EventEmitter{
         if (err instanceof Error) {
             const props: NotifyProps = {
                 type: NotifyType.error,
-                message: 'from Image Loader: ' + err.message,
+                message: err.message,
                 title: err.name,
             }
             notify.push(props)

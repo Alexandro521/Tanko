@@ -94,7 +94,7 @@ export class LeerCapitulo implements MangaProvider {
         const res = await this.axios.get<string>('');
         const $ = cheerio.load( res.data);
         const Populars: MangaInfo[] = []
-        $('div.update-list div div > .hot-manga').each((index, e) => {
+        $('div.update-list div div > .hot-manga').each((__, e) => {
             const titleNode = $(e).find('div.caption a h3.manga-title')
             const src = $(titleNode.parent()).attr('href') ?? 'null';
             
