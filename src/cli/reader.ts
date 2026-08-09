@@ -1,7 +1,7 @@
 import ora from "ora"
-import boxen from "boxen"
+import boxen, { type Options } from "boxen"
 import ansiEsc from "ansi-escapes"
-import { stdout } from "node:process"
+import { memoryUsage, stdout } from "node:process"
 import type { Key } from "node:readline"
 import { downloadSection } from "./menu.ts"
 import chalk, { Chalk, type ColorName } from "chalk"
@@ -13,7 +13,7 @@ import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
 import { SignalsCodes, ConfigurationEvents } from "../types/enum.ts"
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
-import type { Chapter, LoadImageProps, MangaInfo, Translations } from "../types/types.ts"
+import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
 import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 
@@ -43,6 +43,7 @@ export async function terminalReader(
   return new Promise<void>(async (resolve) => {
     let DEBUG_MODE = false
     let FULLSCREEN_MODE = false
+    let IMGFITMODE:ObjectFit = 'contain' 
     let TOP_PADDING = 3
     let BOTTOM_PADDING = 1
     let RENDER_WSZ = {
@@ -113,7 +114,7 @@ export async function terminalReader(
         invalidateCache,
         forceReload,
         forceAscii: false,
-        fit: 'contain',
+        fit: IMGFITMODE,
         position: {
           x: 'center',
           y: 'center',
@@ -126,7 +127,8 @@ export async function terminalReader(
         LOADER.stop()
       
       LOADER.prefixText = ansiEsc.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
-      LOADER.start(loading_states.default_loading)
+      if(!DEBUG_MODE)
+        LOADER.start(loading_states.default_loading)
       
       await pagesCtl.loadPage(imageLoaderAttr)
 
@@ -143,9 +145,19 @@ export async function terminalReader(
       const cacheHit= pagesCtl.imageLoader.cacheHit(pages[index])
       const cacheStats = pagesCtl.imageLoader.getStats()
       const wsz = TerminalControl.wsz
+      const forl = chapterCtl.isFirstOrLast()
+      const forlStr = (forl < 0)  ? 'last' : (forl > 0) ? 'first' : 'none'
+      const {
+        rss,
+        heapTotal, 
+        heapUsed,
+        external,
+        arrayBuffers
+      } = memoryUsage()
+
       const rows = [
         `cache hit:${cacheHit}:${cacheHit ? 'green' : 'red'}`,
-        `is last or first:${chapterCtl.isFirstOrLast()}:blue`,
+        `Is it the first or the last? :${forlStr}:blue`,
         `cache alloc size:${cacheStats.size} MB:yellow`,
         `cache length:${pagesCtl.imageLoader.size}:green`,
         `chapters length:${chapters.length}:gray`,
@@ -158,28 +170,58 @@ export async function terminalReader(
         `window cell width:${wsz.w_cellPxWidth}:blue`,
         `window cell height:${wsz.w_cellPxHeight}:blue`,
         `window ratio:${wsz.w_ratio}:blue`,
-        `shared memory:${(process.resourceUsage()).sharedMemorySize}:yellow`,
       ]
-
+      const memoryUse = [
+        `Rss:${(rss/1024/1024).toFixed(2)}:MB`,
+        `Heap Total:${(heapTotal/1024/1024).toFixed(2)}:MB`,
+        `Heap Used:${(heapUsed/1024/1024).toFixed(2)}:MB`,
+        `External:${(external/1024/1024).toFixed(2)}:MB`,
+        `Array buffers:${(arrayBuffers/1024/1024).toFixed(2)}:MB`,
+      ]
       const str = rows.map((e)=>{
         const s = e.split(':')
         const key =  chalk.yellow(s[0])
         const value = chalk[s[2] as ColorName](s[1])
         return `${key}:${value}`
       }).join('\n')
-
-      const box = boxen(str, {
+      const memoryUsedStr = memoryUse.map((e)=>{
+        const s = e.split(':')
+        const key =  chalk.yellowBright(s[0])
+        const value = chalk.blueBright(s[1])
+        return `${key}:${value} ${chalk.gray(s[2])}`
+      }).join('\n')
+      const boxOptions:Options = {
         borderStyle: 'single',
-        title: 'Debug Information',
         borderColor: 'yellow',
         textAlignment: 'left',
         titleAlignment: 'center',
+        padding: { left: 1, right: 1 },
         width: process.stdout.columns -4,
+      }
+      const box = boxen(str, {
+        ...boxOptions,
+        title: 'Debug Information',
         margin: {top: 1},
-        padding: { left: 1, right: 1 }
+      }) 
+      const box2 = boxen(memoryUsedStr, {
+        ...boxOptions,
+        borderStyle: {
+          topLeft: '├',
+          top: '─',
+          topRight: '┤',
+          right: '│',
+          bottomRight: '┘',
+          bottom: '─',
+          bottomLeft: '└',
+          left: '│',
+        },
+        title: 'Memory Usage',
+        margin: {top: 0},
       })
-      RENDER_WSZ.rows = (stdout.rows - rows.length -3)
-      process.stdout.write(box)
+
+      RENDER_WSZ.rows = (stdout.rows - (rows.length + memoryUse.length) -4)
+      process.stdout.write(box + '\r')
+      process.stdout.write(box2)
     }
 
     const renderHeader = ()=>{
@@ -208,6 +250,7 @@ export async function terminalReader(
       ['N', 'Next'],
       ['C', 'Options'],
       ['F', 'Max/Min'],
+      ['M', 'Toggle fit'],
       ['R', 'Reload page'],
       ['Shift+R', 'Redraw page'],
       ['^R', 'Reload chapter'],
@@ -243,7 +286,7 @@ export async function terminalReader(
         renderHeader()
         if (DEBUG_MODE) debugModeRendeer()
         renderFooter()
-      }
+    }
       await pageRender(invalidateCache, forceReload)
     }
 
@@ -347,6 +390,10 @@ export async function terminalReader(
         }else {
           await render(true, true)
         }
+      }
+      else if(keyName === 'm'){
+        IMGFITMODE = IMGFITMODE === 'contain' ? 'cover' : 'contain'
+        await render(false, true)
       }
       else if (keyName === 'c') {
         process.stdout.write(ansiEsc.clearViewport)
