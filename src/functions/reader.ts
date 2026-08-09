@@ -10,45 +10,128 @@ import type {
   LoadImageProps,
   ServerName,
 } from "../types/types.js";
-import { Configuration } from "./configuration.ts";
 import { ImageLoader } from "./images.ts";
 import { History } from "./history.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
+import { RequestPool, type RequestStruct } from "./request.ts";
+import { centerX } from "../utils.ts";
+
 
 export class PagesControl {
   private pages!: ChapterPage[];
   private currenPage!: ChapterPage;
   private readCheckList!: boolean[];
   private pageIndex = 0;
-  imageLoader = new ImageLoader();
+  private requestPool!:RequestPool
+  public imageLoader!:ImageLoader
   constructor(pages: ChapterPage[]) {
+    this.imageLoader = new ImageLoader();
     this.pages = pages;
     this.currenPage = pages[0];
     this.readCheckList = new Array(pages.length).fill(false);
+    this.requestPool = new RequestPool()
+
+    this.requestPool.setResponseChecker((response, reject)=>{
+      if (response.ok) {
+        const contentType = response.headers.get('Content-Type')
+        if (!contentType || !contentType.startsWith('image')){
+          const reason = `Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`
+          reject(reason)
+        }
+      }else{
+        reject(`Invalid HTTP response. Status: ${response.status} ${response.statusText}`)
+      }
+    })
+
+    this.requestPool.on('resolve', async (e: {url: string, rid: number})=>{
+      const key =  `${e.url}_request`
+      const res = this.requestPool.read(e.url, false)
+      if(res instanceof Response){  
+        const buffer = await res.arrayBuffer()
+        this.imageLoader.set(key, buffer)
+      }
+    })
+
+  }
+  preLoader(limit = 5){
+    const srsc = []
+    let i = 0;
+    while(i < this.pages.length && srsc.length < limit){
+      const pageSrc = this.pages[i].src
+      const key =  `${pageSrc}_request`
+      const isRead = this.readCheckList[i]
+      if(!isRead && !this.requestPool.has(pageSrc) && !this.imageLoader.has(key)){
+        srsc.push(pageSrc)
+      }
+      i++
+    }
+    for(const src of srsc){
+        this.requestPool.push(src)
+    }
   }
   nextPage() {
-    if (this.pageIndex < this.pages.length - 1) this.pageIndex++;
+    if (this.pageIndex < this.pages.length - 1) {
+      this.pageIndex++;
+    }
     this.currenPage = this.pages[this.pageIndex];
   }
   backPage() {
-    if (this.pageIndex > 0) this.pageIndex--;
+    if (this.pageIndex > 0) {
+      this.pageIndex--;
+    }
     this.currenPage = this.pages[this.pageIndex];
   }
   reset() {
     this.pageIndex = 0;
     this.currenPage = this.pages[0];
     this.imageLoader.free();
+    this.requestPool.free()
   }
   cacheHit(page: ChapterPage) {
     return this.imageLoader.cacheHit(page);
   }
+  //@ts-ignore
   async loadPage(props: LoadImageProps) {
     try {
-      await this.imageLoader.loadImage(this.currenPage.src, props);
+      const imgUrl = this.currenPage.src
+      const imageLoaderKey = `${imgUrl}_request`
+      const hasImageBuffer = this.imageLoader.has(imageLoaderKey)
+      let hasRequest = this.requestPool.has(imgUrl)
+      const { invalidateCache } = props
+
+      if(!(hasRequest && hasImageBuffer) || invalidateCache){
+        this.requestPool.push(imgUrl)
+        hasRequest =  this.requestPool.has(imgUrl)
+      }
+
+      if ((hasRequest && !hasImageBuffer) || invalidateCache) {
+        const promiseStatus = await this.requestPool.waitFor(imgUrl)
+        let request = this.requestPool.get(imgUrl) as RequestStruct
+        if (!promiseStatus) {
+          for(let retrieve = 0; retrieve < 3; retrieve++){
+            this.requestPool.push(imgUrl)
+            await this.requestPool.waitFor(imgUrl)
+            request = this.requestPool.get(imgUrl) as RequestStruct
+            if(request.status === 'resolve') break
+          }
+          if(request.status !== 'resolve'){
+            throw new Error(`--Page ${this.pageIndex +1}--\n${request.messageError} - 3 retrieves`)
+          }
+        }
+        const response = this.requestPool.read(imgUrl, true)
+        if(response){
+          const arrayBuffer = await response.arrayBuffer()
+          this.imageLoader.set(imageLoaderKey, arrayBuffer)
+        } else{
+          throw new Error(`Invalid HTTP response`)
+        }
+      }
+      await this.imageLoader.loadImage(imgUrl, props);
       if (!this.readCheckList[this.pageIndex]) {
         this.readCheckList[this.pageIndex] = true;
       }
+      this.preLoader(5)
     } catch (e) {
       if (e instanceof Error) Notify.pushError(e);
     }
@@ -62,6 +145,16 @@ export class PagesControl {
       process.stdout.write(
         ansi.cursorShow + image.encodedImg + ansi.cursorHide,
       );
+    }
+    else {
+      const noti = Notify.getInstace()
+      const box = noti.getf()
+      if(box){
+        const position = centerX(box.width, process.stdout.columns)
+        box.strBox.split('\n').forEach(line=>{
+            process.stdout.write(ansi.cursorForward(position) + line + '\n')
+        })
+      }
     }
   }
   getPages() {
