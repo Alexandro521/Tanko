@@ -69,20 +69,19 @@ export class ImageLoader extends ImageCache {
         this.AbortCtl = new AbortController()
     }
     cacheHit(page: ChapterPage) {
-        return this.has(page.src)
+        const key =  `${page.src}_request` 
+        return this.has(page.src) || this.has(key)
     }
     async loadImage(imgUrl: string, props: LoadImageProps) {
-
         if (this.has(imgUrl) && !props.forceReload) {
             const cache = <TankoTermImgOutput>this.get(imgUrl)
-
             let bakeWsz = cache.wsz
             let newWsz = props.cotainerSize
             
             let keyList = Object.keys(bakeWsz)
             let index = 0
             let hasDiff = false;
-
+            
             while (!hasDiff && index < keyList.length) {
                 const keyName = keyList[index++] as keyof WSZ
                 hasDiff = (bakeWsz[keyName]) !== (newWsz[keyName])
@@ -112,37 +111,10 @@ export class ImageLoader extends ImageCache {
                 this.set(imgUrl, newImg)
             }
         }
-        
-        let buffer: ArrayBuffer | undefined = undefined
         try {
-            let isOk = false;
-            let retrieves = 3
-            let contentType: string | null = ''
             const key = `${imgUrl}_request`
-
-            if(this.has(key) && !props.invalidateCache){
-                buffer = this.get(key)
-                isOk = true
-            }else{
-                    while (!isOk && retrieves > 0) {
-                        const res = await fetch(imgUrl)
-                        contentType = res.headers.get('Content-Type');
-                        if (!res.ok || contentType === null || !contentType?.startsWith('image')) {
-                            retrieves--;
-                        continue
-                    }
-                    buffer = await res.arrayBuffer();
-                    isOk = true
-                }
-            }
-            if (!isOk || !buffer) {
-                const confInstance = await Configuration.getInstance()
-                const { err_messages } = await confInstance.getLanguageInterface()
-                if (contentType === null || contentType?.startsWith('image'))
-                    throw new Error(`Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`)
-                else
-                    throw new Error(err_messages.page_loading.msg)
-            }
+            const  buffer: ArrayBuffer | undefined = this.get(key)
+            if(!buffer) throw new Error('invalid image buffer')
             const imgObject = await TermImageGraphics.make(buffer, {
                 wsz: props.cotainerSize,
                 position: props.position,
