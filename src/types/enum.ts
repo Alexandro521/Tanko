@@ -7,7 +7,8 @@ export enum ConfigurationOptions {
     save = 33,
     restoreDefault = 24,
     exit = 0,
-    accout = 9
+    accout = 9,
+    reader=12
 }
 
 export enum SignalsCodes {
