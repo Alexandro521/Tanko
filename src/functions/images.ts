@@ -14,8 +14,8 @@ export class ImageCache extends Map {
     constructor() {
         super();
         Configuration.getInstance().then(conf => {
-            this.MAX_CACHE_SIZE = conf.settings.cacheImageMaxByteLength;
-            this.fifo = new Array(conf.settings.cacheImagePagesLength)
+            this.MAX_CACHE_SIZE = conf.settings.image_maxCacheByteLength;
+            this.fifo = new Array(conf.settings.image_maxCacheLength)
         })
             .catch(err => {
                 const notify = Notify.getInstace()
