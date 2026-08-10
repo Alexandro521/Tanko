@@ -39,18 +39,6 @@ export enum DownloadFormat {
     cbz = 'cbz'
 }
 
-export enum ConfigurationEvents {
-    updateServer = 'updateserver',
-    updateLanguage = 'updateLang',
-    loadConfiguration = 'loadConf',
-    updateGlobal = 'updateGlobal',
-    storeConfFile = 'storeFile',
-    failedLoad = 'failLoading',
-    browserClose = 'browserClose',
-    browserLoaded = 'browserOpen',
-    login = 'login'
-}
-
 //? [ANILIST]
 /** Media list watching/reading status enum. */
 export enum MediaListStatus {
