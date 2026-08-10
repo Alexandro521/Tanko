@@ -3,11 +3,12 @@ import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enu
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
-import type {Chapter, ChapterLanguage, TrackerNames } from "../types/types.js";
+import type {Chapter, ChapterLanguage, TrackerNames, Settings} from "../types/types.js";
 import type { Key } from "node:readline";
 import { Notify, NotifyType } from "../functions/notify.js";
 import ansi from 'ansi-escapes'
 import prompts from "@alex_521/prompts";
+import supportsTerminalGraphics from "supports-terminal-graphics";
 const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
 let {configuration, main_sections, chapter_access_options} = await instance.getLanguageInterface()
@@ -118,6 +119,10 @@ const OptionsFactory = () => {
         title: configuration.options.restore, 
         value: ConfigurationOptions.restoreDefault,
     },
+    cfg_reader: {
+        title: 'reader',
+        value: ConfigurationOptions.reader
+    },
     accout_see: {
         title: 'see profile',
         value: SignalsCodes.see_profile
@@ -186,6 +191,7 @@ export const configurationPrompt = () => {
     const choices = [
         optionsFactory.cfg_server,
         optionsFactory.cfg_language,
+        optionsFactory.cfg_reader,
         optionsFactory.cfg_accouts,
         optionsFactory.exit
     ]
@@ -291,4 +297,158 @@ export const accoutOptionsPrompt = (trackerName: TrackerNames, userName: string)
         $.exit
     ]
     return SectionPrompt(trackerName, choices, userName , 0, 'select')
+}
+export const readerConfigurationPrompt = ()=>{
+    const graphicsSupport = supportsTerminalGraphics.stdout
+    const graphicsProtocolsDescriptions = {
+        'kitty': 'A modern, high-performance protocol that transfers image data via base64 escape sequences, supporting true color, animations, and advanced layering.',
+        'iterm2': 'An inline image protocol introduced by iTerm2 that uses base64-encoded escape sequences to display images directly within the terminal window.',
+        'sixel': 'A legacy bitmap graphics format originally developed by DEC that encodes images as patterns of six-pixel-high vertical blocks, supported by many terminal emulators.',
+        'ascii': 'A universal fallback method that approximates visual data by translating image pixels into standard text characters of varying densities and colors.',
+    }
+
+    const avalibleProtocols = Object.keys(graphicsSupport).filter((k)=> {
+        const key = k as keyof typeof graphicsSupport
+        return graphicsSupport[key] === true
+    })
+    .map((e): Choice =>{
+        return {
+            title: e,
+            description: graphicsProtocolsDescriptions[e as keyof typeof graphicsProtocolsDescriptions],
+            value: e,
+        }
+    })
+    avalibleProtocols.push({
+        title: 'ascii',
+        value: 'ascii',
+        description: graphicsProtocolsDescriptions.ascii,
+        },
+        {
+            title: 'any',
+            value: 'any',
+            description: 'default option',
+        })
+    type  PromptObj = PromptObject<'value'> 
+    const prompt_graphicProtocol: PromptObj = {
+        type: 'select',
+        name: 'value',
+        message: 'force image protocol',
+        choices: avalibleProtocols
+    }
+    const prompt_forceAscii: PromptObj = {
+        type: 'toggle',
+        name: 'value',
+        message: 'Force ascii mode'
+    }
+    const prompt_enableImgPreloading: PromptObj = {
+        type: 'toggle',
+        name: 'value',
+        message: 'Preload pages'
+    }
+    const prompt_imgPreloadingPolicy: PromptObj = {
+        type: 'select',
+        name: 'value',
+        message: 'pre-load policy',
+        choices: [
+            {
+                title: 'around',
+                value: 'around'
+            },
+            {
+                title: 'default',
+                value: 'default'
+            },
+            {
+                title: 'forward',
+                value: 'forward'
+            }
+        ]
+    }
+    const prompt_imgFit: PromptObj = {
+        type: 'select',
+        name: 'value',
+        message: 'default image adjustment',
+        choices: [
+            {
+                title: 'contain',
+                value: 'contain'
+            }, {
+                title: 'cover',
+                value: 'cover'
+            }
+        ]
+    }
+    const prompt_maxImagePreloading: PromptObj = {
+        type: 'number',
+        name: 'value',
+        message: 'maximum preloaded pages',
+        max: 24
+    }
+    const prompt_maxRenderWidth: PromptObj = {
+        type: 'number',
+        name: 'value',
+        message: 'maximum image width',
+        max: 8196
+    }
+    const setting = Object.fromEntries (
+        Object.keys(instance.settings).map((key) => [key, key])
+    ) as {[key in keyof Settings]: keyof Settings }
+    const currentSettings = instance.settings
+    const choices: Choice[] = [
+        {
+            title: prompt_graphicProtocol.message as string,
+            description: currentSettings.reader_forceImgProtocol,
+            value: {
+                target: setting.reader_forceImgProtocol,
+                prompt: prompt_graphicProtocol
+            }
+        },
+        {
+            title: prompt_forceAscii.message as string,
+            description: currentSettings.reader_forceAscii ? 'enabled': 'disabled',
+            value: {
+                target: setting.reader_forceAscii,
+                prompt: prompt_forceAscii
+            }
+        }, {
+            title: prompt_enableImgPreloading.message as string,
+            description: currentSettings.reader_enableImgPreloading ? 'enabled': 'disabled',
+            value: {
+                target: setting.reader_enableImgPreloading,
+                prompt: prompt_enableImgPreloading
+            }
+        }, {
+            title: prompt_imgPreloadingPolicy.message as string,
+            description: currentSettings.reader_imgPreloadingPolicy,
+            value: {
+                target: setting.reader_imgPreloadingPolicy,
+                prompt: prompt_imgPreloadingPolicy
+            }
+        }, {
+            title: prompt_imgFit.message as string,
+            description: currentSettings.reader_imgFit,
+            value: {
+                target: setting.reader_imgFit,
+                prompt: prompt_imgFit
+            }
+        }, {
+            title: prompt_maxImagePreloading.message as string,
+            description: String(currentSettings.reader_maxImagePreloading),
+            value: {
+                target: setting.reader_maxImagePreloading,
+                prompt: prompt_maxImagePreloading
+            }
+        }, {
+            title: prompt_maxRenderWidth.message as string,
+            description: String(currentSettings.reader_maxImgWidth),
+            value: {
+                target: setting.reader_maxImgWidth,
+                prompt: prompt_maxRenderWidth
+            }
+        }, {
+            title: chapter_access_options.exit.title,
+            value: SignalsCodes.exit
+        }
+    ]
+    return SectionPrompt('Reader', choices, '', 0, 'select')
 }
