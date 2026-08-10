@@ -1,4 +1,4 @@
-import prompts, { type Choice } from "@alex_521/prompts";
+import prompts, { type Choice, type PromptObject } from "@alex_521/prompts";
 import esc from "ansi-escapes";
 import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
@@ -8,10 +8,11 @@ import {
   accoutPrompt,
   configurationPrompt,
   languagePrompt,
+  readerConfigurationPrompt,
   serverPrompt,
 } from "./prompts.js";
 import { ConfigurationOptions, SignalsCodes } from "../types/enum.js"; 
-import type {TrackerProps } from "../types/types.js";
+import type {Settings, TrackerProps } from "../types/types.js";
 
 export async function configurationTui() {
   const configuration = await Configuration.getInstance();
@@ -39,15 +40,17 @@ export async function configurationTui() {
         }
         break
       case ConfigurationOptions.accout:
-        await accoutConf()
+        await sessionConfigurationTui()
         break
       case ConfigurationOptions.restoreDefault:
         whileStatus = false
         break
+      case ConfigurationOptions.reader:
+        await readerConfigurationTui()
+        break
     }
   }
 }
-
 async function providerConfigurationTui() {
   const configInstance = await Configuration.getInstance()
   const langObj = await configInstance.getLanguageInterface()
@@ -64,7 +67,7 @@ async function providerConfigurationTui() {
     await configInstance.conf_provider.setServer(server.target)
   }
 }
-async function accoutConf() {
+async function sessionConfigurationTui() {
 const confInstance = await Configuration.getInstance();
   let whileStatus = true
   while(whileStatus){
@@ -94,5 +97,28 @@ const confInstance = await Configuration.getInstance();
     }
   }
 }
+async function readerConfigurationTui(){
+  const confInstance = await Configuration.getInstance()
+  while(true){
+    const prompt = await prompts(readerConfigurationPrompt())
+    const target = prompt?.target as SignalsCodes | {     
+      target: keyof Settings,
+      prompt: PromptObject<'value'>
+    } | undefined
+    if(target && typeof target === 'object'){
+      const settingKey = target.target
+      type ValueOf = keyof Settings
+      const subPrompt = await prompts(target.prompt)
+      if ((subPrompt.value || target.prompt.type === 'toggle') && subPrompt.value !== SignalsCodes.exit) {
+        const value = subPrompt.value as ValueOf
+        (confInstance.settings[settingKey] as ValueOf) = value
+        confInstance.emit('atomicupdate', settingKey)
+      }
+    } 
+    else 
+      break
+  }
+}
 
 async function downloads() {}
+
