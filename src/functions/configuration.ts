@@ -48,6 +48,14 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         provider: mangaServerRegister[1], // mangadex
         downloader_path: DOWNLOADS_DEFAULT_DIR
         //customBrowserHandlePath: 'NULL',
+        ,
+        reader_forceAscii: false,
+        reader_forceImgProtocol: "any",
+        reader_maxImagePreloading: 5,
+        reader_enableImgPreloading: true,
+        reader_imgPreloadingPolicy: "around",
+        reader_imgFit: "contain",
+        reader_maxImgWidth: 8096
     }
 
     private  constructor() {
@@ -86,6 +94,13 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
                     image_maxCacheByteLength: Number(settings?.image_maxCacheByteLength) ?? self.image_maxCacheByteLength,
                     image_maxCacheLength:  settings?.image_maxCacheLength ?? self.image_maxCacheLength,
                     tanko_isFirstRun: settings?.tanko_isFirstRun ?? self.tanko_isFirstRun,
+                    reader_forceAscii: settings?.reader_forceAscii ?? self.reader_forceAscii,
+                    reader_forceImgProtocol: settings?.reader_forceImgProtocol ?? self.reader_forceImgProtocol,
+                    reader_maxImagePreloading: settings?.reader_maxImagePreloading ?? self.reader_maxImagePreloading,
+                    reader_enableImgPreloading: settings?.reader_enableImgPreloading ?? self.reader_enableImgPreloading,
+                    reader_imgPreloadingPolicy: settings?.reader_imgPreloadingPolicy ?? self.reader_imgPreloadingPolicy,
+                    reader_imgFit: settings?.reader_imgFit ?? self.reader_imgFit,
+                    reader_maxImgWidth: settings?.reader_maxImgWidth ?? self.reader_maxImgWidth
                 }
             }
             await this.setLanguage(this.settings.languageISO)

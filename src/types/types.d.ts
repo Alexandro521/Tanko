@@ -126,16 +126,16 @@ export interface Settings {
     image_maxCacheByteLength: number,
     image_maxCacheLength: number,
     /* Terminal Reader */
-    /*reader_forceAscii: boolean
+    reader_forceAscii: boolean
     reader_forceImgProtocol: TermImgProtocolName | 'any'
     reader_maxImagePreloading: number
     reader_enableImgPreloading: boolean
     reader_imgPreloadingPolicy: ImgPreloadingPolicy
     reader_imgFit: 'contain' | 'cover'
-    reader_maxImgWidth: number*/
+    reader_maxImgWidth: number
 }
 
-type ImgPreloadingPolicy = 'around' | 'default' | 'forward' | 'backward'
+type ImgPreloadingPolicy = 'around' | 'default' | 'forward'
 
 export interface ProviderConfInterface {
     name: ServerName,
