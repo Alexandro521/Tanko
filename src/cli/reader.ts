@@ -10,7 +10,7 @@ import { MediaListStatus } from "../types/enum.ts"
 import prompts, { type Choice } from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
 import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
-import { SignalsCodes, ConfigurationEvents } from "../types/enum.ts"
+import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
 import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
@@ -21,17 +21,17 @@ const LOADER = ora()
 const CONFIGURATION = await Configuration.getInstance()
 const localTracker = LocalTracker.getInstance()
 
-let trackerAniList = CONFIGURATION.getTracker('anilist')
+let trackerAniList = CONFIGURATION.conf_session.getTracker('anilist')
 let { err_messages, loading_states, reader } = await CONFIGURATION.getLanguageInterface()
 
-CONFIGURATION.on(ConfigurationEvents.updateLanguage, (lang) => {
+CONFIGURATION.on('updatelanguage', (lang) => {
   err_messages = lang.err_messages
   loading_states = lang.loading_states
   reader = lang.reader
 })
 
-CONFIGURATION.on(ConfigurationEvents.login, () => {
-  trackerAniList = CONFIGURATION.getTracker('anilist')
+CONFIGURATION.on('login', (trackerName) => {
+  trackerAniList = CONFIGURATION.conf_session.getTracker(trackerName)
 })
 
 export async function terminalReader(
@@ -54,7 +54,7 @@ export async function terminalReader(
     Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
     
     const pagesCtl = new PagesControl([]);
-    const mangaProvider = CONFIGURATION.getServer()
+    const mangaProvider = CONFIGURATION.conf_provider.providerInstance
     const chapterCtl = new ChapterControl(chapters, startIndex, lang, mangaProvider);
     
     const SIGWINCH_HANDLER = async () => {
@@ -343,8 +343,8 @@ export async function terminalReader(
         process.stdout.write(ansiEsc.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle);
         if (key.ctrl && keyName === 'c') {
-          await CONFIGURATION.closeBrowser()
-          await CONFIGURATION.writeConfigFile()
+          await CONFIGURATION.conf_browser.close()
+          await CONFIGURATION.store()
           process.exit(0)
         }
         resolve();

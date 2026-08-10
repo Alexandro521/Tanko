@@ -1,5 +1,5 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
-import { SignalsCodes, ConfigurationOptions, DownloadFormat, ConfigurationEvents } from "../types/enum.js";
+import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enum.js";
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
@@ -12,16 +12,16 @@ const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
 let {configuration, main_sections, chapter_access_options} = await instance.getLanguageInterface()
 
-instance.on(ConfigurationEvents.updateLanguage, async (nLang) => {
-    const lang = nLang
+instance.on('updatelanguage', async (langInterface) => {
+    const lang = langInterface
     configuration = lang.configuration
     main_sections = lang.main_sections
     chapter_access_options = lang.chapter_access_options
 })
 
 export const clearScreen = () => {
-  console.log(ansi.clearViewport);
-  console.log(WELCOME_MESSAGE);
+    console.log(ansi.clearViewport);
+    console.log(WELCOME_MESSAGE);
 };
 function onRender(){
     notify.render()
@@ -269,7 +269,7 @@ export const downloadFormatOptions = () => {
     return SectionPrompt('Select Format', choices, '', 0, 'autocomplete')
 }
 export const accoutPrompt = () => {
-    const accouts = instance.getLoginData()
+    const accouts = instance.conf_session.getLoginData()
     const $ = OptionsFactory()
     const choices = Object.entries(accouts).map(([name, data]): Choice =>{
         const userInfo = data.data?.Viewer ?? {name: 'error', id: -1}
