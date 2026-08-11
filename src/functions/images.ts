@@ -73,6 +73,7 @@ export class ImageLoader extends ImageCache {
         return this.has(page.src) || this.has(key)
     }
     async loadImage(imgUrl: string, props: LoadImageProps) {
+        const settings = (await Configuration.getInstance()).settings
         if (this.has(imgUrl) && !props.forceReload) {
             const cache = <TankoTermImgOutput>this.get(imgUrl)
             let bakeWsz = cache.wsz
@@ -88,8 +89,8 @@ export class ImageLoader extends ImageCache {
             }
             if(!hasDiff) return
             else if(supportsTerminalGraphics.stdout.kitty){
-                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize, props.fit)
-                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)
+                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize, props.fit, props.maxWidth)
+                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)    
                 const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.cotainerSize, position: imgPosition})
                 const output: TankoTermImgOutput = {
                     encodedImg: kittyEncodedImg,
@@ -105,8 +106,10 @@ export class ImageLoader extends ImageCache {
                 const newImg = TermImageGraphics.make(imgBuffer, {
                         position: props.position,
                         wsz: props.cotainerSize,
-                        forceAscii: props.forceAscii,
-                        imageFit: props.fit
+                        forceAscii: settings.reader_forceAscii,
+                        imageFit: props.fit,
+                        forceProtocol: settings.reader_forceImgProtocol,
+                        maxImgWidth: props.maxWidth
                     })
                 this.set(imgUrl, newImg)
             }
@@ -118,8 +121,10 @@ export class ImageLoader extends ImageCache {
             const imgObject = await TermImageGraphics.make(buffer, {
                 wsz: props.cotainerSize,
                 position: props.position,
-                forceAscii: props.forceAscii,
-                imageFit: props.fit
+                forceAscii: settings.reader_forceAscii,
+                imageFit: props.fit,
+                forceProtocol: settings.reader_forceImgProtocol,
+                maxImgWidth: props.maxWidth
             })
 
             this.set(key, buffer)
