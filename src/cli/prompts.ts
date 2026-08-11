@@ -4,11 +4,12 @@ import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
 import type {Chapter, ChapterLanguage, TrackerNames, Settings} from "../types/types.js";
-import type { Key } from "node:readline";
-import { Notify, NotifyType } from "../functions/notify.js";
+import { type Key } from "node:readline";
+import { Notify } from "../functions/notify.js";
 import ansi from 'ansi-escapes'
 import prompts from "@alex_521/prompts";
 import supportsTerminalGraphics from "supports-terminal-graphics";
+
 const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
 let {configuration, main_sections, chapter_access_options} = await instance.getLanguageInterface()
@@ -120,8 +121,12 @@ const OptionsFactory = () => {
         value: ConfigurationOptions.restoreDefault,
     },
     cfg_reader: {
-        title: 'reader',
+        title: 'Reader',
         value: ConfigurationOptions.reader
+    },
+    cfg_history: {
+        title: 'History',
+        value: ConfigurationOptions.history
     },
     accout_see: {
         title: 'see profile',
@@ -187,13 +192,14 @@ export const historySectionPrompt = (ch: Choice[], index: number)=>{
     return SectionPrompt(main_sections.history.title, ch, `mangas: ${ch.length}`, index)
 }
 export const configurationPrompt = () => {
-    const optionsFactory = OptionsFactory()
+    const $ = OptionsFactory()
     const choices = [
-        optionsFactory.cfg_server,
-        optionsFactory.cfg_language,
-        optionsFactory.cfg_reader,
-        optionsFactory.cfg_accouts,
-        optionsFactory.exit
+        $.cfg_server,
+        $.cfg_language,
+        $.cfg_reader,
+        $.cfg_history,
+        $.cfg_accouts,
+        $.exit
     ]
     return SectionPrompt(main_sections.config.title, choices, '',0, 'select')
 }
@@ -324,8 +330,8 @@ export const readerConfigurationPrompt = ()=>{
         description: graphicsProtocolsDescriptions.ascii,
         },
         {
-            title: 'any',
-            value: 'any',
+            title: 'default',
+            value: 'default',
             description: 'default option',
         })
     type  PromptObj = PromptObject<'value'> 
@@ -348,18 +354,21 @@ export const readerConfigurationPrompt = ()=>{
     const prompt_imgPreloadingPolicy: PromptObj = {
         type: 'select',
         name: 'value',
-        message: 'pre-load policy',
+        message: 'Preloading strategy',
         choices: [
             {
-                title: 'around',
+                title: 'Around',
+                description: 'Preload the pages surrounding the current page',
                 value: 'around'
             },
             {
-                title: 'default',
-                value: 'default'
+                title: 'Fill',
+                description: 'Preload any page that has not yet loaded',
+                value: 'fill'
             },
             {
-                title: 'forward',
+                title: 'Forward',
+                description: 'Preload only the page that is ahead of the current page.',
                 value: 'forward'
             }
         ]
@@ -367,13 +376,15 @@ export const readerConfigurationPrompt = ()=>{
     const prompt_imgFit: PromptObj = {
         type: 'select',
         name: 'value',
-        message: 'default image adjustment',
+        message: 'Default image fit',
         choices: [
             {
-                title: 'contain',
+                title: 'Contain',
+                description: 'Scale the image to the screen size while maintaining its aspect ratio, default option',
                 value: 'contain'
             }, {
-                title: 'cover',
+                title: 'Cover',
+                description: 'Scale the image to the available width, ideal for reading manhwas',
                 value: 'cover'
             }
         ]
@@ -381,13 +392,14 @@ export const readerConfigurationPrompt = ()=>{
     const prompt_maxImagePreloading: PromptObj = {
         type: 'number',
         name: 'value',
-        message: 'maximum preloaded pages',
+        message: 'Maximum preloaded pages',
         max: 24
     }
     const prompt_maxRenderWidth: PromptObj = {
         type: 'number',
         name: 'value',
-        message: 'maximum image width',
+        message: 'Maximum image render width',
+        hint: 'When an image is scaled, its width will not exceed this value; this only applies in Cover rendering mode.',
         max: 8196
     }
     const setting = Object.fromEntries (
@@ -419,9 +431,9 @@ export const readerConfigurationPrompt = ()=>{
             }
         }, {
             title: prompt_imgPreloadingPolicy.message as string,
-            description: currentSettings.reader_imgPreloadingPolicy,
+            description: currentSettings.reader_imgPreloadingStrategy,
             value: {
-                target: setting.reader_imgPreloadingPolicy,
+                target: setting.reader_imgPreloadingStrategy,
                 prompt: prompt_imgPreloadingPolicy
             }
         }, {
@@ -451,4 +463,47 @@ export const readerConfigurationPrompt = ()=>{
         }
     ]
     return SectionPrompt('Reader', choices, '', 0, 'select')
+}
+export interface ConfigurationSettingPrompt {
+    target: keyof Settings
+    prompt: PromptObject<'value'>
+}
+
+export const historyConfigurationPrompt = ()=>{
+    const history_filter: PromptObject = {
+        type: 'toggle',
+        name: 'value',
+        message: 'filter by provider'
+    }
+    const history_size: PromptObject = {
+        type: 'number',
+        name: 'value',
+        min: 32,
+        max: 4096,
+        message: 'max history size'
+    }
+
+    const choices: Choice[] = [
+        {
+            title: history_filter.message as string,
+            description: instance.settings.history_filterByProvider ? 'enabled' : 'disabled',
+            value:  {
+                target: 'history_filterByProvider',
+                prompt: history_filter
+            } as ConfigurationSettingPrompt
+        },
+        {
+            title: history_size.message as string,
+            description: instance.settings.history_maxSize.toString(),
+            value:  {
+                target: 'history_maxSize',
+                prompt: history_size
+            } as ConfigurationSettingPrompt
+        },
+        {
+            title: chapter_access_options.exit.title,
+            value: SignalsCodes.exit
+        }
+    ]
+    return SectionPrompt('History', choices, '', 0, 'select')
 }
