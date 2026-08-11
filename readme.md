@@ -9,7 +9,7 @@
 Tanko is a CLI tool for reading and downloading manga directly from your terminal.
 
 ![yomu preview](https://i.imgur.com/wftXbEC.png)
-![yomu preview](https://i.imgur.com/Gu2sYF2.png)
+![yomu preview](https://i.imgur.com/E7hiBhG.jpeg)
 
 ## 1. Install Tanko
 
