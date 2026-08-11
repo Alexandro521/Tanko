@@ -3,6 +3,7 @@ export enum ConfigurationOptions {
     Search = 29,
     language =31,
     downloads = 35,
+    history= 23,
     downloadPath = 65,
     save = 33,
     restoreDefault = 24,
