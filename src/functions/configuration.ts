@@ -50,10 +50,10 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         //customBrowserHandlePath: 'NULL',
         ,
         reader_forceAscii: false,
-        reader_forceImgProtocol: "any",
+        reader_forceImgProtocol: 'default',
         reader_maxImagePreloading: 5,
         reader_enableImgPreloading: true,
-        reader_imgPreloadingPolicy: "around",
+        reader_imgPreloadingStrategy: "around",
         reader_imgFit: "contain",
         reader_maxImgWidth: 8096
     }
@@ -98,7 +98,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
                     reader_forceImgProtocol: settings?.reader_forceImgProtocol ?? self.reader_forceImgProtocol,
                     reader_maxImagePreloading: settings?.reader_maxImagePreloading ?? self.reader_maxImagePreloading,
                     reader_enableImgPreloading: settings?.reader_enableImgPreloading ?? self.reader_enableImgPreloading,
-                    reader_imgPreloadingPolicy: settings?.reader_imgPreloadingPolicy ?? self.reader_imgPreloadingPolicy,
+                    reader_imgPreloadingStrategy: settings?.reader_imgPreloadingStrategy ?? self.reader_imgPreloadingStrategy,
                     reader_imgFit: settings?.reader_imgFit ?? self.reader_imgFit,
                     reader_maxImgWidth: settings?.reader_maxImgWidth ?? self.reader_maxImgWidth
                 }
