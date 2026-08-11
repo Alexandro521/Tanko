@@ -127,15 +127,15 @@ export interface Settings {
     image_maxCacheLength: number,
     /* Terminal Reader */
     reader_forceAscii: boolean
-    reader_forceImgProtocol: TermImgProtocolName | 'any'
+    reader_forceImgProtocol: TermImgProtocolName
     reader_maxImagePreloading: number
     reader_enableImgPreloading: boolean
-    reader_imgPreloadingPolicy: ImgPreloadingPolicy
+    reader_imgPreloadingStrategy: ImgPreloadingStrategy
     reader_imgFit: 'contain' | 'cover'
     reader_maxImgWidth: number
 }
 
-type ImgPreloadingPolicy = 'around' | 'default' | 'forward'
+type ImgPreloadingStrategy = 'around' | 'fill' | 'forward'
 
 export interface ProviderConfInterface {
     name: ServerName,
@@ -200,7 +200,7 @@ export interface StructImgPositionProtocol{
     x: number,
     y: number
 }
-type TermImgProtocolName = 'kitty' | 'ascii' | 'iterm2' | 'sixel'
+type TermImgProtocolName = 'kitty' | 'ascii' | 'iterm2' | 'sixel' | 'default'
 
 export interface TermImgProtocolInput{
     position: StructImgPositionProtocol,
@@ -212,8 +212,10 @@ export type ObjectFit = 'cover' | 'contain'
 export interface TankoTermImgInput{
     wsz: WSZ,
     position: StructImgPosition,
+    forceProtocol: TermImgProtocolName
     forceAscii?: boolean,
     imageFit?: ObjectFit,
+    maxImgWidth: number
 }
 
 export type BitMapArray = ArrayBufferLike 
@@ -230,6 +232,9 @@ export interface LoadImageProps {
     position: StructImgPosition,
     invalidateCache?: boolean,
     forceReload?: boolean,
-    forceAscii?: boolean,
+    maxImagePreloading: number
+    enableImgPreloading: boolean
+    imgPreloadingStrategy: ImgPreloadingStrategy
     fit: ObjectFit
+    maxWidth: number,
 }
