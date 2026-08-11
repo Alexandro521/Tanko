@@ -14,11 +14,11 @@ export type ServerRegister = Client[]
 
 export const mangaServerRegister: ServerRegister =
   [ 
-  {
+  /* {
     name: "leercapitulo",
     need_browser: true,
     client: (e: Page) => new LeerCapitulo(e),
-  },
+  },*/
   {
     name: "mangadex",
     need_browser: false,
