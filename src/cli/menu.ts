@@ -224,10 +224,12 @@ async function loadMangaChapter(
   }
 }
 
-async function history(server: MangaProvider) {
+async function history(provider: MangaProvider) {
   try {
-
-    const history = History.parseMap();
+    const conf = await Configuration.getInstance()
+    const history = 
+    conf.settings.history_filterByProvider ?  History.parseMap().filter(e=> e.server === provider.name):History.parseMap()
+    
     if (history.length < 1) {
       await prompts(voidPrompt(err_messages.void_Section.msg));
       return;
@@ -259,14 +261,14 @@ async function history(server: MangaProvider) {
         continue;
       }
       //dynamic server change
-      if(mangaTarget.server !== server.name) {
+      if(mangaTarget.server !== provider.name) {
         loading.start(`changing server to: ${mangaTarget.server}`)
         const confInstance = await Configuration.getInstance()
         if(loading.isSpinning) loading.stop()
-        server = await confInstance.conf_provider.setProviderByName(mangaTarget.server) ?? server
+        provider = await confInstance.conf_provider.setProviderByName(mangaTarget.server) ?? provider
       }
       loading.start(loading_states.loading_chapters);
-      const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
+      const chapterList = await provider.getChapterList(mangaTarget.mangaSrc);
       if (loading.isSpinning) loading.stop();
       if(!chapterList) continue;
       switch (options.target) {
@@ -280,14 +282,14 @@ async function history(server: MangaProvider) {
           );
           break;
         case SignalsCodes.get_chapters_list:
-          await loadMangaChapter(server, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
+          await loadMangaChapter(provider, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
           break;
         case SignalsCodes.download_chapter:
           await downloadSection(   {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
-            server,
+            provider,
           )
           break;
         default:
