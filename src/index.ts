@@ -18,9 +18,11 @@ import { Notify, NotifyType } from './functions/notify.js';
 import { versionVerify } from './scripts.js';
 import { TerminalControl } from './functions/reader.js';
 import { stdout } from 'process';
-
+import ora from 'ora';
+const loader = ora()
 await TerminalControl.getWindowDimension()
 
+loader.start('starting...')
 if(!fs.existsSync(BASE_DIR)) {
   await fsp.mkdir(BASE_DIR, {recursive: true})
 }
@@ -39,17 +41,41 @@ if (!fs.existsSync(BROWSER_STORAGE_PATH)) {
 const notify = Notify.getInstace()
 const confInstance = await Configuration.getInstance()
 await versionVerify()
-await confInstance.login()
 await History.load()
-if(confInstance.configuration.isFirstRun) {
+
+confInstance.on('browserinit', async ()=>{
+  if(loader.isSpinning) loader.stop()
+    const lang = await confInstance.getLanguageInterface()
+  loader.start(lang.loading_states.browser_init)
+})
+confInstance.on('browserload', ()=>{
+  loader.stop()
+})
+confInstance.on('browserclosing', async ()=>{
+  const lang = await confInstance.getLanguageInterface()
+  if(loader.isSpinning) loader.stop
+  loader.start(lang.loading_states.browser_close)
+})
+confInstance.on('browserclose', ()=>{
+  loader.stop()
+})
+confInstance.on('error', (e)=>{
+  loader.stop()
+  Notify.pushError(e)
+})
+
+if(confInstance.settings.tanko_isFirstRun) {
   notify.push({
     title: 'Welcome!',
     type: NotifyType.message,
     message: FIRST_INIT_MESSAGE
   })
-  confInstance.configuration.isFirstRun = false
+  confInstance.settings.tanko_isFirstRun = false
 }
 
+loader.stop()
 stdout.write(ansi.clearViewport);
 stdout.write(WELCOME_MESSAGE);
 await main(confInstance)
+await confInstance.conf_browser.close()
+await confInstance.store()

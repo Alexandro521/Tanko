@@ -3,11 +3,13 @@ export enum ConfigurationOptions {
     Search = 29,
     language =31,
     downloads = 35,
+    history= 23,
     downloadPath = 65,
     save = 33,
     restoreDefault = 24,
     exit = 0,
-    accout = 9
+    accout = 9,
+    reader=12
 }
 
 export enum SignalsCodes {
@@ -37,18 +39,6 @@ export enum DownloadFormat {
     img = 'jpeg',
     zip = 'zip',
     cbz = 'cbz'
-}
-
-export enum ConfigurationEvents {
-    updateServer = 'updateserver',
-    updateLanguage = 'updateLang',
-    loadConfiguration = 'loadConf',
-    updateGlobal = 'updateGlobal',
-    storeConfFile = 'storeFile',
-    failedLoad = 'failLoading',
-    browserClose = 'browserClose',
-    browserLoaded = 'browserOpen',
-    login = 'login'
 }
 
 //? [ANILIST]

@@ -107,20 +107,37 @@ export declare class TrackerIntegration {
     getId(mangaInfo: MangaInfo):Promise<number | undefined>
 }
 
-export interface ConfigurationInterface {
-    isFirstRun: Boolean,
-    langKey: AvalibleLangs,
-    deepSearch: boolean,
-    historyServerFilter: boolean,
-    server: ServerConfInterface,
-    cacheImageMaxByteLength: number,
-    favoriteChapterLang: Translations | 'any',
-    historyMaxSize: number,
-    downloads_path : string,
-    trackers: TrackerInterface,
-    cacheImagePagesLength: number,
+export interface Settings {
+    /* Application */
+    tanko_isFirstRun: Boolean,
+    /* Search */
+    search_deepSearch: boolean,
+    /* Manga Provider */
+    provider: ProviderConfInterface,
+    /* Language */
+    languageISO: AvalibleLangs,
+    preferedLanguageISO: Translations | 'any',
+    /* Read History */
+    history_filterByProvider: boolean,
+    history_maxSize: number,
+    /* Downloader */
+    downloader_path : string,
+    /* Image Loader */ 
+    image_maxCacheByteLength: number,
+    image_maxCacheLength: number,
+    /* Terminal Reader */
+    reader_forceAscii: boolean
+    reader_forceImgProtocol: TermImgProtocolName
+    reader_maxImagePreloading: number
+    reader_enableImgPreloading: boolean
+    reader_imgPreloadingStrategy: ImgPreloadingStrategy
+    reader_imgFit: 'contain' | 'cover'
+    reader_maxImgWidth: number
 }
-export interface ServerConfInterface {
+
+type ImgPreloadingStrategy = 'around' | 'fill' | 'forward'
+
+export interface ProviderConfInterface {
     name: ServerName,
     need_browser: boolean
 }
@@ -183,7 +200,7 @@ export interface StructImgPositionProtocol{
     x: number,
     y: number
 }
-type TermImgProtocolName = 'kitty' | 'ascii'
+type TermImgProtocolName = 'kitty' | 'ascii' | 'iterm2' | 'sixel' | 'default'
 
 export interface TermImgProtocolInput{
     position: StructImgPositionProtocol,
@@ -195,8 +212,10 @@ export type ObjectFit = 'cover' | 'contain'
 export interface TankoTermImgInput{
     wsz: WSZ,
     position: StructImgPosition,
+    forceProtocol: TermImgProtocolName
     forceAscii?: boolean,
     imageFit?: ObjectFit,
+    maxImgWidth: number
 }
 
 export type BitMapArray = ArrayBufferLike 
@@ -213,6 +232,9 @@ export interface LoadImageProps {
     position: StructImgPosition,
     invalidateCache?: boolean,
     forceReload?: boolean,
-    forceAscii?: boolean,
+    maxImagePreloading: number
+    enableImgPreloading: boolean
+    imgPreloadingStrategy: ImgPreloadingStrategy
     fit: ObjectFit
+    maxWidth: number,
 }

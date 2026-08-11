@@ -9,7 +9,8 @@ import type {
    TankoTermImgOutput,
    TermImgProtocolInput,
    StructImgPositionProtocol,
-   ObjectFit
+   ObjectFit,
+   TermImgProtocolName
 } from "../types/types.ts";
 import ansi from "ansi-escapes";
 
@@ -32,7 +33,11 @@ export class TermImageGraphics {
    
       switch (position.x) {
          case 'center':
-            posX = (w_colums - img_cellsWidth) >> 1
+            if(img_cellsWidth >= w_colums){
+               posX = 0
+            }else{
+               posX = (w_colums - img_cellsWidth) >> 1
+            }
             break
          case 'left':
             posX += padding.left
@@ -43,18 +48,22 @@ export class TermImageGraphics {
       }
       switch (position.y) {
          case 'center':
-            posY = (w_rows/2 - img_cellsHeigth/2)
+            if(img_cellsHeigth > w_rows){
+               posY = 0
+            }else{
+               posY = (w_rows/2 - img_cellsHeigth/2)
+            }
             break
          case 'top':
-            posY += padding.top
+               posY += padding.top
             break
          case 'bottom':
             posY = w_rows - img_cellsHeigth - padding.bottom
             break
       }
-      return { x: Math.floor(posX + w_position_x)|0, y: Math.floor(posY + w_position_y) }
+      return { x: Math.floor(posX + w_position_x), y: Math.floor(posY + w_position_y) }
    }
-   static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ, fit: ObjectFit): IMGSZ {
+   static scaleImg(imgWidth: number, imgHeight: number, windowSize: WSZ, fit: ObjectFit, maxWidth: number): IMGSZ {
       //?https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/object-fit
 
       const imgRatio = imgWidth / imgHeight
@@ -62,28 +71,39 @@ export class TermImageGraphics {
       if(fit === 'contain'){
          scaleFactor = Math.min(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
       }else if(fit === 'cover'){
-         scaleFactor = Math.max(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
+         if (imgWidth > maxWidth) {
+            scaleFactor = Math.max(maxWidth / imgWidth, windowSize.w_height / imgHeight )
+         }else {
+            scaleFactor = Math.max(windowSize.w_width / imgWidth, windowSize.w_height / imgHeight)
+         }
       }
-      const newImgSize = [Math.floor(imgWidth * scaleFactor), Math.floor(imgHeight * scaleFactor)]
-
-
-
+      let [width, height] = [Math.floor(imgWidth * scaleFactor), Math.floor(imgHeight * scaleFactor)]
+      
       return {
          img_originalWidth: imgWidth,
          img_originalHeight: imgHeight,
          img_ratio: imgRatio,
-         img_pixelWidth: newImgSize[0],
-         img_pixelHeigth: newImgSize[1],
-         img_cellsWidth: Math.floor(newImgSize[0] / windowSize.w_cellPxWidth),
-         img_cellsHeigth: Math.floor(newImgSize[1] / windowSize.w_cellPxHeight)
+         img_pixelWidth: width,
+         img_pixelHeigth: height,
+         img_cellsWidth: Math.floor(width / windowSize.w_cellPxWidth),
+         img_cellsHeigth: Math.floor(height/ windowSize.w_cellPxHeight)
       }
    }
 
-   static async make(buffer: SharpInput, { wsz, position, forceAscii = false, imageFit = 'contain'}: TankoTermImgInput): Promise<TankoTermImgOutput> {
+   static async make(
+      buffer: SharpInput, 
+      { 
+         wsz,
+         position, 
+         forceAscii = false, 
+         imageFit = 'contain',
+         forceProtocol = 'default',
+         maxImgWidth
+      }: TankoTermImgInput): Promise<TankoTermImgOutput> {
       let imgsrgb  = sharp(buffer, { failOn: 'error', sequentialRead: false }).toColorspace('srgb')
       const metadata = await imgsrgb.metadata()
       const $ = supportsTerminalGraphics.stdout
-      const scale: IMGSZ = this.scaleImg(metadata.width, metadata.height, wsz, imageFit)
+      const scale: IMGSZ = this.scaleImg(metadata.width, metadata.height, wsz, imageFit, maxImgWidth)
       const imgPosition = this.calcPosition(position, scale, wsz)
       const input: TermImgProtocolInput = {
          wsz: wsz,
@@ -97,37 +117,50 @@ export class TermImageGraphics {
          position: imgPosition,
       }
 
-      if ($.kitty && !forceAscii) {
-         const imgBuffer = await imgsrgb.raw().toBuffer()
-         const base64 = imgBuffer.toString('base64')
-         output.encodedImg = this.kitty(base64, input)
+      let protocol: TermImgProtocolName = 'default'
+      if(forceProtocol !== 'default' && $[forceProtocol as keyof typeof $] || forceProtocol === 'ascii'){
+         protocol = forceProtocol;
+      }else {
+         protocol = ( $.kitty ? 'kitty' : ( $.iterm2 ? 'iterm2' : ($ .sixel ? 'sixel' : 'ascii')))
       }
-      else if ($.iterm2 && !forceAscii) {
+      if(forceAscii) protocol = 'ascii'
 
-         const imgBuffer =
-         metadata.format === 'webp' ? 
-         await imgsrgb.jpeg().toBuffer():
-         imgsrgb.toBuffer()
-         
-         const base64 = imgBuffer.toString('base64')
-         output.encodedImg = this.iterm2(base64, input)
-      }
-      else if ($.sixel && !forceAscii) {
-         const imgBuffer = await imgsrgb
-         .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
-         .raw()
-         .toBuffer()
-         output.encodedImg  =  this.sixel(imgBuffer, input)
-      }
-      else {
-         const imgBuffer = await imgsrgb
-         .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
-         .raw()
-         .toBuffer()
-         output.encodedImg = this.ascii(imgBuffer, input)
+      switch(protocol){
+         case 'kitty':{
+            const imgBuffer = await imgsrgb.raw().toBuffer()
+            const base64 = imgBuffer.toString('base64')
+            output.encodedImg = this.kitty(base64, input)
+            break
+         }
+         case 'iterm2':{
+            const imgBuffer =
+            metadata.format === 'webp' ?
+                  await imgsrgb.jpeg().toBuffer() :
+                  imgsrgb.toBuffer()
+            const base64 = imgBuffer.toString('base64')
+            output.encodedImg = this.iterm2(base64, input)
+            break
+         }
+         case 'sixel': {
+            const imgBuffer = await imgsrgb
+            .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
+            .raw()
+            .toBuffer()
+            output.encodedImg  =  this.sixel(imgBuffer, input)
+            break
+         }
+         case 'ascii': {
+            const imgBuffer = await imgsrgb
+            .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
+            .raw()
+            .toBuffer()
+            output.encodedImg = this.ascii(imgBuffer, input)
+            break
+         }
       }
       return output
    }
+
    static kitty(base64: string, { imgsz, wsz, position }: TermImgProtocolInput) {
       const id = Math.floor((Math.random() * 1000) + 1)
       let kittySequence: string = ansi.cursorTo(position.x, position.y)

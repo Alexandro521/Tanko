@@ -10,7 +10,7 @@ import type {
   MangaProvider,
   Translations,
 } from "../types/types.js";
-import { DownloadFormat, SignalsCodes, ConfigurationEvents} from "../types/enum.js";
+import { DownloadFormat, SignalsCodes} from "../types/enum.js";
 import {
   askChapterLang,
   basicChapterOptions,
@@ -26,7 +26,7 @@ import {
   searchResultPrompt,
   voidPrompt,
 } from "./prompts.js";
-import { configurationUI } from "./configuration.js";
+import { configurationTui } from "./configuration.js";
 import { Configuration } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
 import { getTimeSkip } from "../utils.js";
@@ -56,12 +56,12 @@ function pushError(e: any) {
 }
 
 export async function main(confInstance: Configuration) {
-  let SERVER = confInstance.getServer()
+  let SERVER = confInstance.conf_provider.provider
   lang = await confInstance.getLanguageInterface()
   loading_states = lang.loading_states
   err_messages = lang.err_messages
-  confInstance.on(ConfigurationEvents.updateServer, (e)=> SERVER = e)
-  confInstance.on(ConfigurationEvents.updateLanguage, (e)=> {
+  confInstance.on('updateprovider', (e)=> SERVER = e)
+  confInstance.on('updatelanguage', (e)=> {
     lang = e
     err_messages = lang.err_messages;
     loading_states = lang.loading_states;
@@ -81,13 +81,14 @@ export async function main(confInstance: Configuration) {
           await populars(SERVER);
           break;
         case SignalsCodes.configuration_section:
-          await configurationUI();
+          await configurationTui();
           break;
         case SignalsCodes.lasted_section:
           await lastedSection(SERVER);
           break;
         case SignalsCodes.exit:
-          await confInstance.closeBrowser();
+          await confInstance.store()
+          await confInstance.conf_browser.close();
           process.exit(0);
       }
     }
@@ -223,10 +224,12 @@ async function loadMangaChapter(
   }
 }
 
-async function history(server: MangaProvider) {
+async function history(provider: MangaProvider) {
   try {
-
-    const history = History.parseMap();
+    const conf = await Configuration.getInstance()
+    const history = 
+    conf.settings.history_filterByProvider ?  History.parseMap().filter(e=> e.server === provider.name):History.parseMap()
+    
     if (history.length < 1) {
       await prompts(voidPrompt(err_messages.void_Section.msg));
       return;
@@ -258,14 +261,14 @@ async function history(server: MangaProvider) {
         continue;
       }
       //dynamic server change
-      if(mangaTarget.server !== server.name) {
+      if(mangaTarget.server !== provider.name) {
         loading.start(`changing server to: ${mangaTarget.server}`)
         const confInstance = await Configuration.getInstance()
         if(loading.isSpinning) loading.stop()
-        server = await confInstance.setServerByName(mangaTarget.server) ?? server
+        provider = await confInstance.conf_provider.setProviderByName(mangaTarget.server) ?? provider
       }
       loading.start(loading_states.loading_chapters);
-      const chapterList = await server.getChapterList(mangaTarget.mangaSrc);
+      const chapterList = await provider.getChapterList(mangaTarget.mangaSrc);
       if (loading.isSpinning) loading.stop();
       if(!chapterList) continue;
       switch (options.target) {
@@ -279,14 +282,14 @@ async function history(server: MangaProvider) {
           );
           break;
         case SignalsCodes.get_chapters_list:
-          await loadMangaChapter(server, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
+          await loadMangaChapter(provider, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
           break;
         case SignalsCodes.download_chapter:
           await downloadSection(   {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
-            server,
+            provider,
           )
           break;
         default:
