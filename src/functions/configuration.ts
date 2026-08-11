@@ -104,7 +104,9 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
                 }
             }
             await this.setLanguage(this.settings.languageISO)
-            await this.conf_provider.setProviderByName(this.settings.provider.name)
+            let providerName = this.settings.provider.name
+            const hasProvider = mangaServerRegister.values().some((e)=> e.name === providerName)
+            await this.conf_provider.setProviderByName(hasProvider ? providerName : mangaServerRegister[0].name)
             await this.conf_session.login('anilist')
             this.emit('load', this.settings)
         } catch (e) {
