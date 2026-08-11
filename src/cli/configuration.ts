@@ -7,9 +7,11 @@ import {
   accoutOptionsPrompt,
   accoutPrompt,
   configurationPrompt,
+  historyConfigurationPrompt,
   languagePrompt,
   readerConfigurationPrompt,
   serverPrompt,
+  type ConfigurationSettingPrompt,
 } from "./prompts.js";
 import { ConfigurationOptions, SignalsCodes } from "../types/enum.js"; 
 import type {Settings, TrackerProps } from "../types/types.js";
@@ -47,6 +49,9 @@ export async function configurationTui() {
         break
       case ConfigurationOptions.reader:
         await readerConfigurationTui()
+        break
+      case ConfigurationOptions.history:
+        await historyConfigurationTui()
         break
     }
   }
@@ -116,6 +121,21 @@ async function readerConfigurationTui(){
       }
     } 
     else 
+      break
+  }
+}
+async function historyConfigurationTui(){
+  const confInstance = await Configuration.getInstance()
+  while(true){
+    const prompt = await prompts(historyConfigurationPrompt())
+    const target = prompt?.target as ConfigurationSettingPrompt | SignalsCodes.exit | undefined
+    if(typeof target === 'object'){
+      const settingPrompt = await prompts(target.prompt)
+      if(typeof settingPrompt.value !== 'undefined' ){
+        (confInstance.settings[target.target] as any) = settingPrompt.value
+        confInstance.emit('atomicupdate', target.target)
+      }
+    }else 
       break
   }
 }
