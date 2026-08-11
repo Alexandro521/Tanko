@@ -243,7 +243,7 @@ export class AniList implements TrackerIntegration{
     async getId(mangaInfo: MangaInfo) {
         const searchQuery = Queries.querySearch(mangaInfo.title, MediaSort.PopularityDesc);
         const res  = <SearchResponse>await this.request(searchQuery)
-        if(res.Page){
+        if(res?.Page){
             const first = res.Page.media?.[0]
             return first.id
         }else {
