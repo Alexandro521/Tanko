@@ -42,7 +42,7 @@ export class LeerCapitulo implements MangaProvider {
             const anchor = $(node).find('a.xanh')
             const chapter = extractChapterNumber(anchor.attr('title') ?? '')
             chapters.push({
-                chapter: chapter ?? i,
+                number: chapter ?? i,
                 translation_count: 1,
                 translations: {
                     "es-la": { 

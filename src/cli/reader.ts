@@ -75,7 +75,7 @@ export async function terminalReader(
         const chapterInfo = chapterCtl.getChapterInfo()
         const localTrackerProps: LocalTrackerProps = {
           chapterCount: chapters.length,
-          chapterIndex: chapterInfo.chapter,
+          chapterIndex: chapterInfo.number,
           mangaId: mangaInfo.src
         }
         if (!(await localTracker.exists(localTrackerProps))) {
@@ -86,8 +86,8 @@ export async function terminalReader(
         if (trackerAniList.isAuth && !hasBeenRead && ANILIST_ID) {
           await trackerAniList.instance.track({
             mediaId: ANILIST_ID,
-            lastRead: chapterInfo.chapter,
-            progress: chapterInfo.chapter,
+            lastRead: chapterInfo.number,
+            progress: chapterInfo.number,
             status: MediaListStatus.Current,
           })
           chapterCtl.hasBeenTracked = true

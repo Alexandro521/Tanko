@@ -43,10 +43,10 @@ export function getTimeSkip(time: number) {
 export function sortChapterList(chapters: Chapter[], sort: 'asc' | 'desc' = 'desc'): Chapter[] {
   const handle: (a:Chapter,b:Chapter)=>number = sort === 'desc' ? 
   (a, b) => {
-    return b.chapter - a.chapter
+    return b.number - a.number
   } :
   (a, b) => {
-    return a.chapter - b.chapter
+    return a.number - b.number
   }
   const chapterListSort = chapters.sort(handle) 
   return chapterListSort
