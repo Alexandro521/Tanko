@@ -83,7 +83,7 @@ export async function terminalReader(
         }
         const hasBeenRead = await localTracker.markAsRead(localTrackerProps)
 
-        if (trackerAniList.isAuth && !hasBeenRead && ANILIST_ID) {
+        if (trackerAniList.isAuth && !hasBeenRead && typeof ANILIST_ID === 'number') {
           await trackerAniList.instance.track({
             mediaId: ANILIST_ID,
             lastRead: chapterInfo.number,
