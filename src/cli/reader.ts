@@ -348,8 +348,10 @@ export async function terminalReader(
         if (key.ctrl && keyName === 'c') {
           await CONFIGURATION.conf_browser.close()
           await CONFIGURATION.store()
+          pagesCtl.reset()
           process.exit(0)
         }
+        pagesCtl.reset()
         resolve();
       } 
       else if (keyName === 'left' || keyName === 'right') {
