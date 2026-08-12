@@ -22,7 +22,7 @@ export  class LocalTracker {
         if (!fs.existsSync(this.workdir)) {
             const res = fs.mkdirSync(this.workdir, { recursive: true })
             if (!res) {
-                throw new Error('The .tracker directory failed to be created.')
+                throw new Error('The ".tracker" directory failed to be created.')
             }
         }
     }
