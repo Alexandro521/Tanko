@@ -352,6 +352,7 @@ export async function terminalReader(
           pagesCtl.reset()
           process.exit(0)
         }
+        process.stdout.write(ansiEsc.clearScreen)
         pagesCtl.reset()
         resolve();
       } 
