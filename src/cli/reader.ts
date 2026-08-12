@@ -9,7 +9,7 @@ import { Notify } from "../functions/notify.ts"
 import { MediaListStatus } from "../types/enum.ts"
 import prompts, { type Choice } from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
-import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
+import { centerX, debounce, virtualWindow, slice, extractTitleByLang} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
@@ -73,9 +73,10 @@ export async function terminalReader(
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
+        const chaptersCount = Math.max(chapters[0].number, chapters[chapters.length -1].number, chapters.length)
         const localTrackerProps: LocalTrackerProps = {
-          chapterCount: chapters.length,
-          chapterIndex: chapterInfo.chapter,
+          chapterCount: chaptersCount,
+          chapterIndex: chapterInfo.number,
           mangaId: mangaInfo.src
         }
         if (!(await localTracker.exists(localTrackerProps))) {
@@ -83,11 +84,11 @@ export async function terminalReader(
         }
         const hasBeenRead = await localTracker.markAsRead(localTrackerProps)
 
-        if (trackerAniList.isAuth && !hasBeenRead && ANILIST_ID) {
+        if (trackerAniList.isAuth && !hasBeenRead && typeof ANILIST_ID === 'number') {
           await trackerAniList.instance.track({
             mediaId: ANILIST_ID,
-            lastRead: chapterInfo.chapter,
-            progress: chapterInfo.chapter,
+            lastRead: chapterInfo.number,
+            progress: chapterInfo.number,
             status: MediaListStatus.Current,
           })
           chapterCtl.hasBeenTracked = true
@@ -348,8 +349,11 @@ export async function terminalReader(
         if (key.ctrl && keyName === 'c') {
           await CONFIGURATION.conf_browser.close()
           await CONFIGURATION.store()
+          pagesCtl.reset()
           process.exit(0)
         }
+        process.stdout.write(ansiEsc.clearScreen)
+        pagesCtl.reset()
         resolve();
       } 
       else if (keyName === 'left' || keyName === 'right') {
@@ -421,10 +425,11 @@ export async function terminalReader(
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
           const languageTarget = chapterCtl.getLang()
+
           const choices: Choice[] = chapters.map((e, index): Choice => {
-            const target = chapterCtl.extractChapterSrcByLang(e, languageTarget)
+            const title = extractTitleByLang(e, languageTarget)
             const props = {
-              title: target.title,
+              title: title,
               value: String(index)
             }
             return props

@@ -1,4 +1,4 @@
-import type { Chapter, WSZ } from "./types/types.js";
+import type { Chapter, Translations, WSZ } from "./types/types.js";
 import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";
@@ -43,10 +43,10 @@ export function getTimeSkip(time: number) {
 export function sortChapterList(chapters: Chapter[], sort: 'asc' | 'desc' = 'desc'): Chapter[] {
   const handle: (a:Chapter,b:Chapter)=>number = sort === 'desc' ? 
   (a, b) => {
-    return b.chapter - a.chapter
+    return b.number - a.number
   } :
   (a, b) => {
-    return a.chapter - b.chapter
+    return a.number - b.number
   }
   const chapterListSort = chapters.sort(handle) 
   return chapterListSort
@@ -60,6 +60,20 @@ export function extractChapterNumber(str: string){
     }
   }
   return undefined
+}
+export function extractTitleByLang(chapter: Chapter, targetLangIso: Translations) {
+  let targetTitle = ''
+  const avaliblesTranslations = Object.keys(chapter.translations)
+  const hasThisLang = avaliblesTranslations.some((langIso) => langIso === targetLangIso)
+  if (hasThisLang) {
+    targetTitle = chapter.translations[targetLangIso]?.title as string
+  } else {
+    targetTitle =
+      chapter.translations?.en?.title ??
+      //@ts-ignore
+      (chapter.translations[avaliblesTranslations[0]]).title
+  }
+  return targetTitle
 }
 
 export async function makeDir(root: string, ...paths: string[]) {

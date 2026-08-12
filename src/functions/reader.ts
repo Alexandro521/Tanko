@@ -57,44 +57,33 @@ export class PagesControl {
   }
   preLoader(limit = 5, estrategy: ImgPreloadingStrategy){
     const srsc: string[] = []
+
     switch(estrategy){
       case 'around':{
         const pageIndex = this.pageIndex
         for(let i = 1; i <= limit; i++){
-          const leftIndex = Math.max(pageIndex - i, 0)
-          const rightIndex  = Math.min(pageIndex + i, this.PagesLength -1)
-          const srcPageLeft = this.pages[leftIndex].src
-          const srcPageRight = this.pages[rightIndex].src
-          if(!this.readCheckList[leftIndex] && !this.requestPool.has(srcPageLeft)){
-            srsc.push(srcPageLeft)
-          }else {
-            const request = this.requestPool.get(srcPageLeft)
-            if(request && request.status === 'reject'){
-              srsc.push(srcPageLeft)
-            }
-          }
-          if(!this.readCheckList[rightIndex] && !this.requestPool.has(srcPageRight)){
-            srsc.push(srcPageRight)
-          }else {
-            const request = this.requestPool.get(srcPageRight)
-            if(request && request.status === 'reject'){
-              srsc.push(srcPageRight)
-            }
-          }
 
+          const srcPageLeft = this.pages[ Math.max(pageIndex - i, 0) ].src
+          const srcPageRight = this.pages[ Math.min(pageIndex + i, this.PagesLength -1) ].src
+
+          const imageLoaderKeyLeft = `${srcPageLeft}_request`
+          const imageLoaderKeyRight = `${srcPageRight}_request`
+
+          if(!this.requestPool.has(srcPageLeft)  && !this.imageLoader.has(imageLoaderKeyLeft))
+          {
+            srsc.push(srcPageLeft)
+          }
+          if(!this.requestPool.has(srcPageRight)  && !this.imageLoader.has(imageLoaderKeyRight)){
+            srsc.push(srcPageRight)
+          }
         }
       }
       case 'forward':{
         for(let i = 1; i <= limit; i++){
-          const index = (this.pageIndex + i, this.PagesLength -1)
-          const srcPage = this.pages[index].src
-          if(!this.readCheckList[index] && !this.requestPool.has(srcPage)){
+          const srcPage = this.pages[(this.pageIndex + i, this.PagesLength -1)].src
+          const imageLoaderKey = `${srcPage}_request`
+          if(!this.requestPool.has(srcPage)  && !this.imageLoader.has(imageLoaderKey)){
             srsc.push(srcPage)
-          }else {
-            const request = this.requestPool.get(srcPage)
-            if(request && request.status === 'reject'){
-              srsc.push(srcPage)
-            }
           }
         }
       }
@@ -102,7 +91,7 @@ export class PagesControl {
         let i = 0;
         while(i < this.pages.length && srsc.length < limit){
           const pageSrc = this.pages[i].src
-          const key =  `${pageSrc}_request`
+          const key = `${pageSrc}_request`
           const isRead = this.readCheckList[i]
           if(!isRead && !this.requestPool.has(pageSrc) && !this.imageLoader.has(key)){
             srsc.push(pageSrc)

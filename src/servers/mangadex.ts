@@ -110,7 +110,7 @@ export class MangaDex implements MangaProvider {
     
             const chapterInfo: Chapter_ = {
                 translation_count: 1,
-                chapter: Number(chapterData.attributes.chapter),
+                number: Number(chapterData.attributes.chapter),
                 index: chapterNumber,
                 translations: {},
             }

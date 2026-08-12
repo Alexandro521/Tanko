@@ -18,7 +18,7 @@ type Translations =
 'bn'
 
 export interface Chapter {
-    chapter: number
+    number: number
     translation_count: number
     volume?:number
     translations: {
