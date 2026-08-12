@@ -29,7 +29,7 @@ import {
 import { configurationTui } from "./configuration.js";
 import { Configuration } from "../functions/configuration.js";
 import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
-import { getTimeSkip } from "../utils.js";
+import { extractTitleByLang, getTimeSkip } from "../utils.js";
 import { Notify, NotifyType } from "../functions/notify.js";
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.js";
 import chalk from "chalk";
@@ -171,7 +171,7 @@ async function loadMangaChapter(
       trackData = await localTracker.getStats(localTrackerProps)
 
       const choices: Choice[] = chapterList.map((e, i) => {
-        let title = Object.values(e.translations)[0].title
+        let title = extractTitleByLang(e, lang.meta.lang as Translations)
         if(trackData.readingMap.has(e.number)){
           title +=' ⏺ '+ chalk.dim(chalk.green('Read'))
         }
@@ -419,7 +419,7 @@ async function lastedSection(server: MangaProvider) {
 
         const lastChapterList = chapterList.map(
           (chapter, index): Choice => {
-            let title = Object.values(chapter.translations)[0].title
+            let title = extractTitleByLang(chapter, (lang.meta.lang as Translations))
             if (markRead.readingMap.has(chapter.number)) {
               title += ' ⏺ '+ chalk.dim(chalk.green('Read'))
             }
@@ -455,18 +455,18 @@ async function lastedSection(server: MangaProvider) {
           `${loading_states.default_loading} ${chapterTarget.title} : ${chapterTarget.title}`,
         );
         const mangaInfo = await server.getMangaInfo(targetManga.src);
-        let lang;
+        let chapterLang: Translations | null;
         loading.stop();
         if (!mangaInfo) continue;
         const index = Number(chapterIndex.target);
         const chapter = chapterList[index];
-        if ((lang = await askChapterLang(chapter)) === null) {
+        if ((chapterLang = await askChapterLang(chapter)) === null) {
           continue;
         }
         if (chapterOptions.target === SignalsCodes.read_chapter)
-          await terminalReader(mangaInfo,chapterList, index, lang);
+          await terminalReader(mangaInfo,chapterList, index, chapterLang);
         else if (chapterOptions.target === SignalsCodes.download_chapter){
-          await downloadSection(mangaInfo,chapterList, index, lang, server)
+          await downloadSection(mangaInfo,chapterList, index, chapterLang, server)
           continue;
         }
         else if (chapterOptions.target === SignalsCodes.exit) {

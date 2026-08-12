@@ -1,4 +1,4 @@
-import type { Chapter, WSZ } from "./types/types.js";
+import type { Chapter, Translations, WSZ } from "./types/types.js";
 import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";
@@ -60,6 +60,20 @@ export function extractChapterNumber(str: string){
     }
   }
   return undefined
+}
+export function extractTitleByLang(chapter: Chapter, targetLangIso: Translations) {
+  let targetTitle = ''
+  const avaliblesTranslations = Object.keys(chapter.translations)
+  const hasThisLang = avaliblesTranslations.some((langIso) => langIso === targetLangIso)
+  if (hasThisLang) {
+    targetTitle = chapter.translations[targetLangIso]?.title as string
+  } else {
+    targetTitle =
+      chapter.translations?.en?.title ??
+      //@ts-ignore
+      (chapter.translations[avaliblesTranslations[0]]).title
+  }
+  return targetTitle
 }
 
 export async function makeDir(root: string, ...paths: string[]) {

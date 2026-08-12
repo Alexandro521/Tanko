@@ -9,7 +9,7 @@ import { Notify } from "../functions/notify.ts"
 import { MediaListStatus } from "../types/enum.ts"
 import prompts, { type Choice } from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
-import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
+import { centerX, debounce, virtualWindow, slice, extractTitleByLang} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
@@ -425,10 +425,11 @@ export async function terminalReader(
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
           const languageTarget = chapterCtl.getLang()
+
           const choices: Choice[] = chapters.map((e, index): Choice => {
-            const target = chapterCtl.extractChapterSrcByLang(e, languageTarget)
+            const title = extractTitleByLang(e, languageTarget)
             const props = {
-              title: target.title,
+              title: title,
               value: String(index)
             }
             return props
