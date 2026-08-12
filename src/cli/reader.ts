@@ -73,8 +73,9 @@ export async function terminalReader(
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
+        const chaptersCount = Math.max(chapters[0].number, chapters[chapters.length -1].number, chapters.length)
         const localTrackerProps: LocalTrackerProps = {
-          chapterCount: chapters.length,
+          chapterCount: chaptersCount,
           chapterIndex: chapterInfo.number,
           mangaId: mangaInfo.src
         }
