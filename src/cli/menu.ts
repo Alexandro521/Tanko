@@ -150,8 +150,9 @@ async function loadMangaChapter(
       return;
     } else if(loading.isSpinning) loading.stop();
 
+    const chaptersCount = Math.max(chapterList[0].number, chapterList[chapterList.length -1].number, chapterList.length)
     const localTrackerProps: LocalTrackerProps = {
-      chapterCount: chapterList.length,
+      chapterCount: chaptersCount,
       chapterIndex: 0,
       mangaId: mangaInfo.src
     }
@@ -171,7 +172,7 @@ async function loadMangaChapter(
 
       const choices: Choice[] = chapterList.map((e, i) => {
         let title = Object.values(e.translations)[0].title
-        if(trackData.readingMap.has(e.chapter)){
+        if(trackData.readingMap.has(e.number)){
           title +=' ⏺ '+ chalk.dim(chalk.green('Read'))
         }
         return {
@@ -399,8 +400,9 @@ async function lastedSection(server: MangaProvider) {
       memoryChoicePositionLastMangas = Number(mangaIndex.target);
       const targetManga = mangaList[Number(mangaIndex.target)];
       const chapterList = await server.getChapterList(targetManga.src)
+      const chaptersCount = Math.max(chapterList[0].number, chapterList[chapterList.length -1].number, chapterList.length)
       const localTrackerProps: LocalTrackerProps = {
-        chapterCount: chapterList.length,
+        chapterCount: chaptersCount,
         chapterIndex: 0,
         mangaId: targetManga.src
       }
@@ -418,7 +420,7 @@ async function lastedSection(server: MangaProvider) {
         const lastChapterList = chapterList.map(
           (chapter, index): Choice => {
             let title = Object.values(chapter.translations)[0].title
-            if (markRead.readingMap.has(chapter.chapter)) {
+            if (markRead.readingMap.has(chapter.number)) {
               title += ' ⏺ '+ chalk.dim(chalk.green('Read'))
             }
             return { 
