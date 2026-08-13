@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.2.1",
+        "lang_version": "1.3",
         "lang": "es"
     },
     "main_sections": {
@@ -69,19 +69,145 @@
     },
     "configuration": {
         "options": {
-            "lang-ui": "Idioma de interfaz",
+            "lang_ui": "Idioma de interfaz",
             "save": "Guardar",
             "client": "Clientes",
             "downloads": "Descargas",
             "search": "Búsqueda",
             "restore": "Restablecer configuración",
-            "accouts": "Cuentas"
+            "accouts": "Cuentas",
+            "reader": "Lector",
+            "history": "Historial de Lectura"
         },
-        "lang-ui": {
-            "es": "Español",
-            "en": "Inglés",
-            "fr": "Francés"
+        "lang_iso": {
+          "es": "Español",
+          "en": "Inglés",
+          "fr": "Francés",
+          "es-la": "Latino",
+          "zh": "chino simplificado",
+          "pt-br": "portugués brasileño",
+          "ja-ro": "Japonés romanizado",
+          "ko-ro": "Coreano romanizado",
+          "zh-ro": "Chino romanizado",
+          "de": "Alemán",
+          "it": "Italiano",
+          "pt": "Portugués",
+          "ru": "Ruso",
+          "ar": "Árabe",
+          "ja": "Japonés",
+          "ko": "Coreano",
+          "zh-tw": "Chino tradicional",
+          "hi": "Hindi",
+          "nl": "Neerlandés",
+          "tr": "Turco",
+          "pl": "Polaco",
+          "sv": "Sueco",
+          "vi": "Vietnamita",
+          "th": "Tailandés",
+          "id": "Indonesio",
+          "el": "Griego",
+          "he": "Hebreo",
+          "uk": "Ucraniano",
+          "cs": "Checo",
+          "ro": "Rumano",
+          "hu": "Húngaro",
+          "da": "Danés",
+          "fi": "Finlandés",
+          "no": "Noruego",
+          "bg": "Búlgaro",
+          "ca": "Catalán",
+          "hr": "Croata",
+          "sr": "Serbio",
+          "sk": "Eslovaco",
+          "sl": "Esloveno",
+          "lt": "Lituano",
+          "lv": "Letón",
+          "et": "Estonio",
+          "fa": "Persa",
+          "ur": "Urdu",
+          "bn": "Bengalí",
+          "ta": "Tamil",
+          "te": "Telugu",
+          "ml": "Malayalam",
+          "sw": "Suajili",
+          "tl": "Tagalo"
         },
+        "reader": {
+          "graphic_protocol": "Protocolo de imagen",
+          "force_ascii": "Forzar renderizado ascii",
+          "page_preloading": "Precargar paginas",
+          "page_preloading_strategy": "Estrategia de precarga",
+          "page_fit": "Ajuste de resolucion de pagina",
+          "page_max_preloading": "Numero de paginas a precargar",
+          "page_render_max_width": "Ancho maximo de pagina",
+          "read": "Leido",
+          "progress": "Progreso"
+          
+        },
+        "img_protocols": {
+          "kitty": {
+            "name": "Kitty",
+            "description": "Un protocolo moderno y de alto rendimiento que transfiere datos de imagen mediante secuencias de escape base64, compatible con color real, animaciones y superposición avanzada de capas."
+          },
+          "sixel": {
+            "name": "Sixel",
+            "description": "Un formato gráfico de mapa de bits antiguo, desarrollado originalmente por DEC, que codifica imágenes como patrones de bloques verticales de seis píxeles de altura, compatible con muchos emuladores de terminal."
+          },
+          "iterm2": {
+            "name": "Iterm2",
+            "description": "Un protocolo de imagen en línea introducido por iTerm2 que utiliza secuencias de escape codificadas en base64 para mostrar imágenes directamente dentro de la ventana del terminal."
+          },
+          "ascii": {
+            "name": "Ascii",
+            "description": "A universal fallback method that approximates visual data by translating image pixels into standard text characters of varying densities and colors."
+          }
+        },
+        "page_preloading_strategy": {
+          "around": {
+            "title": "Around",
+            "description": "Precarga las páginas que rodean la página actual en un rando prederterminado"
+          },
+          "fill": {
+            "title": "Fill",
+            "description": "Similar a rellenar huecos vacios este metodo tratara de precargar caulquier imagen que aun no este en los buffer de cache"
+          },
+          "forward": {
+            "title": "Forward",
+            "description": "Precarga solo la un numero determinado de pagina que este por delante de la pagina actual"
+          }
+        },
+        "page_fit": {
+          "contain": {
+            "title": "Contain",
+            "description": "Ajusta la imagen al tamaño de la pantalla manteniendo su relación de aspecto (opción predeterminada)"
+          },
+          "fit": {
+            "title": "Contain",
+            "description": "Ajusta la imagen al ancho maximo de la pantalla (ideal para leer manhwas)"
+          }
+        },
+        "downloads": {
+          "format_select": "Formato de descarga",
+          "complete": "Descarga completada"
+        },
+        "accouts": {
+          "login": "Auntenticarse",
+          "logout": "Cerrar sesion",
+          "profile": "Ver perfil",
+          "follow_link": "Abre este enlace en tu navegador para iniciar sesión en",
+          "click_on": "Haz clic en este enlace para iniciar sesión en",
+          "paste": "Pegue el token",
+          "auth_cancel": "Autenticación cancelada",
+          "auth_successful": "Autenticación exitosa.",
+          "auth_failed": "Error de autenticación",
+          "auth_attempts": "Se han producido demasiados intentos fallidos. Por favor, verifique su token.",
+          "welcome": "Bienvenido/a a tanko"
+        },
+        "history": {
+          "history_filter": "Filtar historial",
+          "history_size": "Tamaño del historial"
+        },
+        
         "unsaved_changes": "Tienes cambios sin guardar. ¿Deseas guardarlos antes de salir?",
         "need_browser": "¿Requiere navegador?",
         "yes": "Sí",
@@ -91,8 +217,12 @@
         "select_lang_title": "Seleccionar idioma"
     },
     "reader": {
-        "prev_page": "Página anterior",
-        "next_page": "Página siguiente",
+        "navigation": "Navegar",
+        "reload_page": "Recargar pagina",
+        "reload_chapter": "Recargar capitulo",
+        "fit": "Ajustar",
+        "fullscreen": "Maximisar",
+        "debug": "Ver depurador",
         "exit": "Salir",
         "prev_ch": "Capítulo anterior",
         "next_ch": "Capítulo siguiente",

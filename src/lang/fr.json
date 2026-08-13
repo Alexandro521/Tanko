@@ -1,32 +1,32 @@
 {
     "meta": {
-        "lang_version": "1.0.1",
+        "lang_version": "1.1",
         "lang": "fr"
     },
     "main_sections": {
         "main": {
             "title": "Menu",
-            "alt": "Menu principal"
+            "alt": "Menu principal" 
         },
-        "search": {
+        "search" : {
             "title": "Rechercher",
             "alt": "Résultats"
         },
         "recent": {
-            "title": "Les plus récents",
+            "title": "Plus récents",
             "alt": "Récents"
         },
         "popular": {
-            "title": "Populaire",
-            "alt": "populaire"
+            "title": "Populaires",
+            "alt": "Populaires"
         },
         "history": {
             "title": "Historique",
             "alt": "Historique"
         },
         "config": {
-            "title": "Paramètres",
-            "alt": "Paramètres"
+            "title": "Configuration",
+            "alt": "Configuration"
         },
         "exit": {
             "title": "Quitter",
@@ -36,19 +36,19 @@
     "chapter_access_options": {
         "read": {
             "title": "Lire le chapitre",
-            "desc": "Le terminal Kitty est recommandé pour cette opération"
+            "desc": "Le terminal kitty est recommandé pour cette opération"
         },
         "download": {
             "title": "Télécharger le chapitre",
             "desc": "Format PDF"
         },
         "resume_read": {
-            "title": "Continuer la lecture",
+            "title" : "Reprendre la lecture",
             "desc": ""
         },
         "suscribe": {
             "title": "Ajouter aux favoris",
-            "desc": ""
+            "desc" : ""
         },
         "get_chapters": {
             "title": "Voir la liste des chapitres",
@@ -69,21 +69,147 @@
     },
     "configuration": {
         "options": {
-            "lang-ui": "Langue de l’interface",
+            "lang_ui": "Langue de l'interface",
             "save": "Enregistrer",
             "client": "Clients",
             "downloads": "Téléchargements",
-            "search": "Rechercher",
-            "restore": "Réinitialiser les paramètres",
-            "accouts": "comptes"
+            "search": "Recherche",
+            "restore": "Rétablir la configuration",
+            "accouts": "Comptes",
+            "reader": "Lecteur",
+            "history": "Historique"
         },
-        "lang-ui": {
-            "es": "Espagnol",
-            "en": "Anglais",
-            "fr": "Français"
+        "lang_iso": {
+          "es": "Espagnol",
+          "en": "Anglais",
+          "fr": "Français",
+          "es-la": "Espagnol (Amérique latine)",
+          "zh": "Chinois simplifié",
+          "pt-br": "Portugais brésilien",
+          "ja-ro": "Japonais romanisé",
+          "ko-ro": "Coréen romanisé",
+          "zh-ro": "Chinois romanisé",
+          "de": "Allemand",
+          "it": "Italien",
+          "pt": "Portugais",
+          "ru": "Russe",
+          "ar": "Arabe",
+          "ja": "Japonais",
+          "ko": "Coréen",
+          "zh-tw": "Chinois traditionnel",
+          "hi": "Hindi",
+          "nl": "Néerlandais",
+          "tr": "Turc",
+          "pl": "Polonais",
+          "sv": "Suédois",
+          "vi": "Vietnamien",
+          "th": "Thaï",
+          "id": "Indonésien",
+          "el": "Grec",
+          "he": "Hébreu",
+          "uk": "Ukrainien",
+          "cs": "Tchèque",
+          "ro": "Roumain",
+          "hu": "Hongrois",
+          "da": "Danois",
+          "fi": "Finlandais",
+          "no": "Norvégien",
+          "bg": "Bulgare",
+          "ca": "Catalan",
+          "hr": "Croate",
+          "sr": "Serbe",
+          "sk": "Slovaque",
+          "sl": "Slovène",
+          "lt": "Lituanien",
+          "lv": "Letton",
+          "et": "Estonien",
+          "fa": "Persan",
+          "ur": "Ourdou",
+          "bn": "Bengali",
+          "ta": "Tamoul",
+          "te": "Telugu",
+          "ml": "Malayalam",
+          "sw": "Swahili",
+          "tl": "Tagalog"
         },
+        "reader": {
+          "graphic_protocol": "Protocole d'image",
+          "force_ascii": "Forcer le rendu ascii",
+          "page_preloading": "Précharger les pages",
+          "page_preloading_strategy": "Stratégie de préchargement",
+          "page_fit": "Ajustement de la résolution de page",
+          "page_max_preloading": "Nombre de pages à précharger",
+          "page_render_max_width": "Largeur maximale de la page",
+          "read": "Lu",
+          "progress": "Progression"
+          
+        },
+        "img_protocols": {
+          "kitty": {
+            "name": "Kitty",
+            "description": "Un protocole moderne et performant qui transfère les données d'image à l'aide de séquences d'échappement base64, prenant en charge les couleurs vraies, les animations et la superposition avancée de calques."
+          },
+          "sixel": {
+            "name": "Sixel",
+            "description": "Un ancien format graphique bitmap, développé à l'origine par DEC, qui code les images sous forme de motifs de blocs verticaux de six pixels de haut, compatible avec de nombreux émulateurs de terminal."
+          },
+          "iterm2": {
+            "name": "Iterm2",
+            "description": "Un protocole d'image en ligne introduit par iTerm2 qui utilise des séquences d'échappement codées en base64 pour afficher des images directement dans la fenêtre du terminal."
+          },
+          "ascii": {
+            "name": "Ascii",
+            "description": "A universal fallback method that approximates visual data by translating image pixels into standard text characters of varying densities and colors."
+          }
+        },
+        "page_preloading_strategy": {
+          "around": {
+            "title": "Around",
+            "description": "Précharge les pages entourant la page actuelle dans une plage prédéterminée"
+          },
+          "fill": {
+            "title": "Fill",
+            "description": "Semblable au remplissage des espaces vides, cette méthode tentera de précharger toute image qui n'est pas encore dans les tampons de cache"
+          },
+          "forward": {
+            "title": "Forward",
+            "description": "Précharge uniquement un nombre défini de pages en avance sur la page actuelle"
+          }
+        },
+        "page_fit": {
+          "contain": {
+            "title": "Contain",
+            "description": "Ajuste l'image à la taille de l'écran tout en conservant son rapport hauteur/largeur (option par défaut)"
+          },
+          "fit": {
+            "title": "Fit",
+            "description": "Ajuste l'image à la largeur maximale de l'écran (idéal pour lire des manhwas)"
+          }
+        },
+        "downloads": {
+          "format_select": "Format de téléchargement",
+          "complete": "Téléchargement terminé"
+        },
+        "accouts": {
+          "login": "S'authentifier",
+          "logout": "Se déconnecter",
+          "profile": "Voir le profil",
+          "follow_link": "Ouvrez ce lien dans votre navigateur pour vous connecter à",
+          "click_on": "Cliquez sur ce lien pour vous connecter à",
+          "paste": "Collez le jeton",
+          "auth_cancel": "Authentification annulée",
+          "auth_successful": "Authentification réussie.",
+          "auth_failed": "Erreur d'authentification",
+          "auth_attempts": "Trop de tentatives échouées. Veuillez vérifier votre jeton.",
+          "welcome": "Bienvenue sur tanko"
+        },
+        "history": {
+          "history_filter": "Filtrer l'historique",
+          "history_size": "Taille de l'historique"
+        },
+        
         "unsaved_changes": "Vous avez des modifications non enregistrées. Voulez-vous les enregistrer avant de quitter ?",
-        "need_browser": "Un navigateur est-il nécessaire ?",
+        "need_browser": "Nécessite un navigateur ?",
         "yes": "Oui",
         "no": "Non",
         "server_title": "Serveur",
@@ -91,8 +217,12 @@
         "select_lang_title": "Sélectionner la langue"
     },
     "reader": {
-        "prev_page": "Page précédente",
-        "next_page": "Page suivante",
+        "navigation": "Naviguer",
+        "reload_page": "Recharger la page",
+        "reload_chapter": "Recharger le chapitre",
+        "fit": "Ajuster",
+        "fullscreen": "Maximiser",
+        "debug": "Voir le débogueur",
         "exit": "Quitter",
         "prev_ch": "Chapitre précédent",
         "next_ch": "Chapitre suivant",
@@ -101,9 +231,9 @@
     "loading_states": {
         "loading_chapters": "chargement des chapitres",
         "loading_chapter": "chargement du chapitre",
-        "default_loading": "chargement",
+        "default_loading": "chargement en cours",
         "searching": "recherche en cours",
-        "browser_init": "initialisation du navigateur",
+        "browser_init": "démarrage du navigateur",
         "browser_close": "fermeture du navigateur",
         "downloading_pages": "téléchargement des pages",
         "downloading_chapter": "téléchargement du chapitre",
@@ -115,39 +245,39 @@
     },
     "err_messages": {
         "network": {
-            "msg": "Aucune connexion Internet !",
-            "hint": "Vérifiez que vous êtes connecté à un réseau"
+            "msg": "vous n'avez pas de connexion internet !",
+            "hint": "vérifiez que vous êtes connecté à un réseau"
         },
         "fetching": {
-            "msg": "Une erreur est survenue lors de la récupération des données",
-            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+            "msg": "Une erreur s'est produite lors de la récupération des données",
+            "hint": "si l'erreur persiste, vous pouvez la signaler sur"
         },
         "pdf_make": {
-            "msg": "Une erreur est survenue lors de la création du PDF",
-            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+            "msg": "Une erreur s'est produite lors de la création du PDF",
+            "hint": "si l'erreur persiste, vous pouvez la signaler sur"
         },
         "client_switch": {
-            "msg": "Une erreur est survenue lors du changement de client",
-            "hint": "Si l’erreur persiste, vous pouvez la signaler à"
+            "msg": "Une erreur s'est produite lors du changement de client",
+            "hint": "si l'erreur persiste, vous pouvez la signaler sur"
         },
         "corrupt_conf_file": {
-            "msg": "Le fichier de configuration a un format invalide",
-            "hint": "Essayez de réinitialiser les paramètres à leur état par défaut"
+            "msg": "Le fichier de configuration a un format incorrect",
+            "hint": "essayez de restaurer la configuration à son état par défaut"
         },
         "corrupt_history_file": {
-            "msg": "Le fichier d’historique est corrompu !",
-            "hint": "Solution : paramètres -> historique -> vérifier l’intégrité"
+            "msg": "Le fichier d'historique est corrompu !",
+            "hint": "Solution : configuration -> historique -> vérifier l'intégrité"
         },
         "page_loading": {
-            "msg": "Une erreur est survenue lors du chargement de la page",
-            "hint": "Vérifiez que vous êtes connecté à un réseau"
+            "msg": "Une erreur s'est produite lors du chargement de la page",
+            "hint": "vérifiez que vous êtes connecté à un réseau"
         },
         "chapter_loading": {
-            "msg": "Une erreur est survenue lors du chargement du chapitre",
-            "hint": "Vérifiez que vous êtes connecté à un réseau"
-        },
+            "msg": "Une erreur s'est produite lors du chargement du chapitre",
+            "hint": "vérifiez que vous êtes connecté à un réseau"
+        },       
         "no_results": {
-            "msg": "Aucun résultat trouvé",
+            "msg": "Aucun résultat",
             "hint": ""
         },
         "void_Section": {
