@@ -9,8 +9,9 @@ import fs from 'fs'
 import { DATA_DEFAULT_DIR } from '../const.js'
 import path from 'node:path'
 import { Notify, NotifyType } from '../functions/notify.js'
-import { MediaListStatus, MediaSort } from '../types/enum.js'
+import { MediaSort } from '../types/enum.js'
 import type { LoginData, MangaInfo, TrackerIntegration, TrackerNames, TrackProps} from '../types/types.js'
+import { Configuration } from '../functions/configuration.ts'
 
 interface SearchResponse {
     Page: {
@@ -124,6 +125,9 @@ export class AniList implements TrackerIntegration{
     }
     async loginTui() {
         let logMessage = ''
+        const langInterface = await (await Configuration.getInstance()).getLanguageInterface()
+        const lang = langInterface.configuration.accouts
+
         let [width, height] = [Math.min(stdout.columns, 80), Math.min(stdout.rows - 2, 5)]
         const chalkf = (txt: string) => chalk.underline(chalk.italic(chalk.blue(txt)))
         const authUrl = "https://anilist.co/api/v2/oauth/authorize?client_id=44346&response_type=token"
@@ -131,13 +135,12 @@ export class AniList implements TrackerIntegration{
 
         if (supportsHyperlinks.stdout) {
             logMessage =
-                chalk.white('Open this link in your browser to log in to AniList → ') +
+                chalk.white(`${lang.click_on} Anilist → `) +
                 ansi.link(chalkf('click me!'), authUrl)
         } else {
             width = Math.max(width, authUrl.length + 4)
             logMessage =
-                chalk.white('Click this link to log in to AniList\n') +
-                chalkf(authUrl) + '\n\n'
+                chalk.white(`${lang.follow_link} Anilist\n`) + chalkf(authUrl) + '\n\n'
         }
         const box = boxen(
             logMessage,
@@ -156,13 +159,13 @@ export class AniList implements TrackerIntegration{
         while (attempts > 0) {
             const prompt = await prompts<'token'>({
                 type: 'invisible',
-                message: chalk.blackBright('Paste the Token'),
+                message: chalk.blackBright(lang.paste),
                 name: 'token'
             })
 
             if (!prompt.token) {
                 NOTIFY.push({
-                    message: 'Authentication cancelled.',
+                    message: lang.auth_cancel,
                     type: NotifyType.warning,
                     title: 'Notify'
                 })
@@ -172,20 +175,20 @@ export class AniList implements TrackerIntegration{
             const userData = await this.auth() as LoginData | undefined
             if (userData) {
                 NOTIFY.push({
-                    message: `Welcome to Tanko ${chalk.magenta(userData.Viewer.name)}!`,
-                    title: chalk.blueBright('Successful authentication.'),
+                    message: `${lang.welcome} ${chalk.magenta(userData.Viewer.name)}!`,
+                    title: chalk.blueBright(lang.auth_successful),
                     type: NotifyType.event
                 })
                 await fsPromise.writeFile(AniList.tokenpath, prompt.token)
                 break
             } else {
                 this.token = undefined
-                console.log(chalk.redBright('Authentication failed'))
+                console.log(chalk.redBright(lang.auth_failed))
                 if (--attempts <= 0) {
                     NOTIFY.push({
                         type: NotifyType.warning,
-                        title: chalk.yellowBright('Authentication failed'),
-                        message: chalk.yellowBright(`Too many failed attempts, please verify your token.`)
+                        title: chalk.yellowBright(lang.auth_failed),
+                        message: chalk.yellowBright(lang.auth_attempts)
                     })
                 }
             }
