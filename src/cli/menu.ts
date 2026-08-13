@@ -28,7 +28,7 @@ import {
 } from "./prompts.js";
 import { configurationTui } from "./configuration.js";
 import { Configuration } from "../functions/configuration.js";
-import type { ErrorMessages, LangInterface, LoadingStates } from "../types/lang.js";
+import type { LangIso, LanguageInterface } from "../functions/lang.ts";
 import { extractTitleByLang, getTimeSkip } from "../utils.js";
 import { Notify, NotifyType } from "../functions/notify.js";
 import { LocalTracker, type LocalTrackerProps } from "../trackers/local.js";
@@ -37,9 +37,9 @@ import chalk from "chalk";
 
 const loading = ora();
 const localTracker = LocalTracker.getInstance()
-let err_messages: ErrorMessages,
-loading_states: LoadingStates,
-lang: LangInterface
+let err_messages: LanguageInterface['err_messages'],
+loading_states: LanguageInterface['loading_states'],
+lang: LanguageInterface
 
 const notifyInstance = Notify.getInstace()
 
@@ -189,7 +189,7 @@ async function loadMangaChapter(
       }
       indexOfLastChoice = Number(chapterIndex.target);
       const targetChapter = chapterList[Number(chapterIndex.target)];
-      let targetLang;
+      let targetLang: LangIso;
       if ((targetLang = await askChapterLang(targetChapter)) === null) {
         continue;
       }
@@ -497,7 +497,8 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     }
     downloaderInstace.on('download_page', (e) => {
       pagesCount++;
-      loading.text = `downloading page #${e + 1} [${pagesCount}/${pagesUrls.length}]`
+      
+      loading.text = `${loading_states.downloading_pages} #${e + 1} [${pagesCount}/${pagesUrls.length}]`
     })
     downloaderInstace.on('done', () => {
       loading.stop()
