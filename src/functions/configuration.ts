@@ -1,12 +1,11 @@
 import { mangaServerRegister, type Client } from "../servers/port.js";
-import type { AvalibleLangs, LangInterface } from "../types/lang.js";
 import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
 import ora from "ora";
 import { type Browser, type BrowserContext, firefox, chromium , type Page } from "playwright";
 import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.js";
-import { LANGUAGE_REGISTER } from "./lang.js";
+import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.js";
 import EventEmitter from "events";
 import { Notify, NotifyType } from "./notify.js";
 import { AniList } from "../trackers/anilist.js";
@@ -15,7 +14,7 @@ const LOAD_SPIN = ora()
 
 type ConfigurationEvents = {
     'updateprovider': [provider: MangaProvider]
-    'updatelanguage': [language: LangInterface]
+    'updatelanguage': [language: LanguageInterface]
     'load': [settings: Settings]
     'updateglobal': [settings: Settings]
     'store': [settings: Settings, path: string]
@@ -31,7 +30,7 @@ type ConfigurationEvents = {
 
 export class Configuration extends EventEmitter<ConfigurationEvents> {
     private static confInstance: Configuration
-    conf_language!: LangInterface
+    conf_language!: LanguageInterface
     conf_provider!: ProviderConfiguration
     conf_browser!:  BrowserConfiguration
     conf_session!: SessionConfiguration
@@ -72,7 +71,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         }
         return this.confInstance
     }
-    async setLanguage(newLang: AvalibleLangs) {
+    async setLanguage(newLang: AvalibleLanguageInterface) {
         this.conf_language = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
         this.conf_provider.langInterface = this.conf_language
         this.emit('updatelanguage', this.conf_language)
@@ -146,8 +145,8 @@ class ProviderConfiguration {
     settings!: ProviderConfInterface
     provider!: MangaProvider
     parent!: Configuration
-    langInterface!:LangInterface
-    constructor(parent: Configuration, browser: BrowserConfiguration, langInterface: LangInterface){
+    langInterface!:LanguageInterface
+    constructor(parent: Configuration, browser: BrowserConfiguration, langInterface: LanguageInterface){
         this.browser = browser 
         this.settings = mangaServerRegister[0]
         this.langInterface =  langInterface
