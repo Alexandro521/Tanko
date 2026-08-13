@@ -11,11 +11,59 @@ export interface ChapterPage  {
     page_index: string
 }
 
-type Translations = 
-'ru' | 'fr' | 'ro' | 'hu' | 'th' | 'zh'|
-'ko' | 'kk' | 'pt' | 'tr' | 'ja' | 'cb'|
-"es" | 'es-la' | 'pt-br' | 'en' | 'vi' |
-'bn'
+type Translations =
+  | "es"
+  | "en"
+  | "fr"
+  | "es-la"
+  | "zh"
+  | "pt-br"
+  | "ja-ro"
+  | "ko-ro"
+  | "zh-ro"
+  | "de"
+  | "it"
+  | "pt"
+  | "ru"
+  | "ar"
+  | "ja"
+  | "ko"
+  | "zh-tw"
+  | "hi"
+  | "nl"
+  | "tr"
+  | "pl"
+  | "sv"
+  | "vi"
+  | "th"
+  | "id"
+  | "el"
+  | "he"
+  | "uk"
+  | "cs"
+  | "ro"
+  | "hu"
+  | "da"
+  | "fi"
+  | "no"
+  | "bg"
+  | "ca"
+  | "hr"
+  | "sr"
+  | "sk"
+  | "sl"
+  | "lt"
+  | "lv"
+  | "et"
+  | "fa"
+  | "ur"
+  | "bn"
+  | "ta"
+  | "te"
+  | "ml"
+  | "sw"
+  | "tl";
+
 
 export interface Chapter {
     number: number

@@ -3,12 +3,13 @@ import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enu
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
-import type {Chapter, ChapterLanguage, TrackerNames, Settings} from "../types/types.js";
+import type {Chapter, ChapterLanguage, TrackerNames, Settings, Translations} from "../types/types.js";
 import { type Key } from "node:readline";
 import { Notify } from "../functions/notify.js";
 import ansi from 'ansi-escapes'
 import prompts from "@alex_521/prompts";
 import supportsTerminalGraphics from "supports-terminal-graphics";
+import { LANGUAGE_REGISTER, type LangIso } from "../functions/lang.ts";
 
 const instance =  await Configuration.getInstance()
 const notify = Notify.getInstace()
@@ -35,10 +36,19 @@ function onKeyPress (this: any, key: Key): void{
     }
 }
 export async function askChapterLang(chapter: Chapter) {
-    const avalibleLanguages = Object.values(chapter.translations); //as ChapterLangStruct[]
-    let lang = avalibleLanguages[0].lang; //as default value
+    const avalibleTranslations = Object.keys(chapter.translations); //as ChapterLangStruct[]
+    let lang = null
+    const choices = avalibleTranslations.map((key): Choice => {
+        const literalString = configuration.lang_iso[key as LangIso] ?? key
+        return {
+            title: literalString,
+            value: key
+        }
+    })
+    const sectionPrompt = SectionPrompt(configuration.select_lang_title, choices, '', 0, 'select')
+    
     if (chapter.translation_count > 1) {
-        const targetLang = await prompts(chapterLangChoices(avalibleLanguages));
+        const targetLang = await prompts(sectionPrompt);
         if (!targetLang?.target) return null;
         lang = targetLang.target;
     }
@@ -105,7 +115,7 @@ const OptionsFactory = () => {
         value: ConfigurationOptions.Search,
     },
     cfg_language: {
-        title: configuration.options["lang-ui"], 
+        title: configuration.options.lang_ui, 
         value: ConfigurationOptions.language,
     },
     cfg_download: {
@@ -121,19 +131,19 @@ const OptionsFactory = () => {
         value: ConfigurationOptions.restoreDefault,
     },
     cfg_reader: {
-        title: 'Reader',
+        title: configuration.options.reader,
         value: ConfigurationOptions.reader
     },
     cfg_history: {
-        title: 'History',
+        title: configuration.options.history,
         value: ConfigurationOptions.history
     },
     accout_see: {
-        title: 'see profile',
+        title: configuration.accouts.profile,
         value: SignalsCodes.see_profile
     },
     accout_logout: {
-        title: 'Logout',
+        title: configuration.accouts.logout,
         value: SignalsCodes.logout_accout
     }
 }
@@ -207,17 +217,21 @@ export const serverPrompt = (hint:string, ch: Choice[]) => {
     return SectionPrompt(configuration.server_title, ch, `current: ${hint}`,0, 'select')
 }
 export const languagePrompt = (hint: string = 'es', index: number) => {
-
-    const langChoice: Choice[] =   Object.entries(configuration["lang-ui"]).map((lang, index): Choice => {
+    const avalibleLanguages = Object.keys(LANGUAGE_REGISTER)
+   // const currentLang = instance.getLanguageInterface()
+    const isoDictionary = configuration.lang_iso
+    const langChoice: Choice[] = avalibleLanguages.map((iso, index): Choice =>{
+        const isoStr = iso as keyof typeof isoDictionary
+        const literalIso = isoDictionary[isoStr]
         return {
-            title: lang[1],
+            title: literalIso,
             value: {
                 index: String(index),
-                lang: lang[0]
+                lang: iso
             }
         }
     })
-    return SectionPrompt(configuration.options["lang-ui"], langChoice, `current: ${hint}`, index, 'select')
+    return SectionPrompt(configuration.options["lang_ui"], langChoice, `current: ${hint}`, index, 'select')
 }
 export const basicChapterOptions = ()=>{
     const $ = OptionsFactory() 
@@ -261,15 +275,6 @@ export const terminalReaderChapterOptions = ()=>{
 export const chapterListPrompt = (title: string,startIndex:number, choices: Choice[], customText='') => {
     return SectionPrompt(title, choices, `capitulos: ${choices.length} ${customText}`, startIndex, 'autocomplete')
 }
-export const chapterLangChoices = (langs: ChapterLanguage[]) => {
-    const choices = langs.map((e):Choice=>{
-        return {
-            title: e.lang,
-            value: e.lang
-        }
-    })
-    return SectionPrompt(configuration.select_lang_title,choices, '', 0, 'select'  )
-}
 export const downloadFormatOptions = () => {
     const avalibleDownloadFormats = Object.entries(DownloadFormat)
     const choices = avalibleDownloadFormats.map(([key, format]):Choice =>{
@@ -305,70 +310,67 @@ export const accoutOptionsPrompt = (trackerName: TrackerNames, userName: string)
     return SectionPrompt(trackerName, choices, userName , 0, 'select')
 }
 export const readerConfigurationPrompt = ()=>{
+    const {img_protocols, page_fit, page_preloading_strategy, reader} = configuration
     const graphicsSupport = supportsTerminalGraphics.stdout
-    const graphicsProtocolsDescriptions = {
-        'kitty': 'A modern, high-performance protocol that transfers image data via base64 escape sequences, supporting true color, animations, and advanced layering.',
-        'iterm2': 'An inline image protocol introduced by iTerm2 that uses base64-encoded escape sequences to display images directly within the terminal window.',
-        'sixel': 'A legacy bitmap graphics format originally developed by DEC that encodes images as patterns of six-pixel-high vertical blocks, supported by many terminal emulators.',
-        'ascii': 'A universal fallback method that approximates visual data by translating image pixels into standard text characters of varying densities and colors.',
-    }
+
 
     const avalibleProtocols = Object.keys(graphicsSupport).filter((k)=> {
         const key = k as keyof typeof graphicsSupport
         return graphicsSupport[key] === true
     })
     .map((e): Choice =>{
+        const key = e as keyof typeof img_protocols
         return {
-            title: e,
-            description: graphicsProtocolsDescriptions[e as keyof typeof graphicsProtocolsDescriptions],
+            title: img_protocols[key].name,
+            description: img_protocols[key].description,
             value: e,
         }
     })
     avalibleProtocols.push({
-        title: 'ascii',
+        title: img_protocols.ascii.name,
         value: 'ascii',
-        description: graphicsProtocolsDescriptions.ascii,
+        description: img_protocols.ascii.description,
         },
         {
-            title: 'default',
-            value: 'default',
-            description: 'default option',
+            title: 'Default',
+            value: 'default'
         })
+
     type  PromptObj = PromptObject<'value'> 
     const prompt_graphicProtocol: PromptObj = {
         type: 'select',
         name: 'value',
-        message: 'force image protocol',
+        message: reader.graphic_protocol,
         choices: avalibleProtocols
     }
     const prompt_forceAscii: PromptObj = {
         type: 'toggle',
         name: 'value',
-        message: 'Force ascii mode'
+        message: reader.force_ascii
     }
     const prompt_enableImgPreloading: PromptObj = {
         type: 'toggle',
         name: 'value',
-        message: 'Preload pages'
+        message: reader.page_preloading
     }
     const prompt_imgPreloadingPolicy: PromptObj = {
         type: 'select',
         name: 'value',
-        message: 'Preloading strategy',
+        message: reader.page_preloading_strategy,
         choices: [
             {
-                title: 'Around',
-                description: 'Preload the pages surrounding the current page',
+                title: page_preloading_strategy.around.title,
+                description: page_preloading_strategy.around.description,
                 value: 'around'
             },
             {
-                title: 'Fill',
-                description: 'Preload any page that has not yet loaded',
+                title: page_preloading_strategy.fill.title,
+                description: page_preloading_strategy.fill.description,
                 value: 'fill'
             },
             {
-                title: 'Forward',
-                description: 'Preload only the page that is ahead of the current page.',
+                title: page_preloading_strategy.forward.title,
+                description: page_preloading_strategy.forward.description,
                 value: 'forward'
             }
         ]
@@ -376,15 +378,15 @@ export const readerConfigurationPrompt = ()=>{
     const prompt_imgFit: PromptObj = {
         type: 'select',
         name: 'value',
-        message: 'Default image fit',
+        message: reader.page_fit,
         choices: [
             {
-                title: 'Contain',
-                description: 'Scale the image to the screen size while maintaining its aspect ratio, default option',
+                title: page_fit.contain.title,
+                description: page_fit.contain.description,
                 value: 'contain'
             }, {
-                title: 'Cover',
-                description: 'Scale the image to the available width, ideal for reading manhwas',
+                title: page_fit.fit.title,
+                description: page_fit.fit.description,
                 value: 'cover'
             }
         ]
@@ -392,13 +394,13 @@ export const readerConfigurationPrompt = ()=>{
     const prompt_maxImagePreloading: PromptObj = {
         type: 'number',
         name: 'value',
-        message: 'Maximum preloaded pages',
+        message: reader.page_max_preloading,
         max: 24
     }
     const prompt_maxRenderWidth: PromptObj = {
         type: 'number',
         name: 'value',
-        message: 'Maximum image render width',
+        message: reader.page_render_max_width,
         hint: 'When an image is scaled, its width will not exceed this value; this only applies in Cover rendering mode.',
         max: 8196
     }
@@ -462,7 +464,7 @@ export const readerConfigurationPrompt = ()=>{
             value: SignalsCodes.exit
         }
     ]
-    return SectionPrompt('Reader', choices, '', 0, 'select')
+    return SectionPrompt(configuration.options.reader, choices, '', 0, 'select')
 }
 export interface ConfigurationSettingPrompt {
     target: keyof Settings
@@ -470,17 +472,18 @@ export interface ConfigurationSettingPrompt {
 }
 
 export const historyConfigurationPrompt = ()=>{
+    const {history} = configuration
     const history_filter: PromptObject = {
         type: 'toggle',
         name: 'value',
-        message: 'filter by provider'
+        message: history.history_filter
     }
     const history_size: PromptObject = {
         type: 'number',
         name: 'value',
         min: 32,
         max: 4096,
-        message: 'max history size'
+        message: history.history_size
     }
 
     const choices: Choice[] = [
@@ -505,5 +508,5 @@ export const historyConfigurationPrompt = ()=>{
             value: SignalsCodes.exit
         }
     ]
-    return SectionPrompt('History', choices, '', 0, 'select')
+    return SectionPrompt(main_sections.history.title, choices, '', 0, 'select')
 }

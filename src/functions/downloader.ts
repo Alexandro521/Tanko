@@ -13,6 +13,7 @@ import { EventEmitter } from 'events';
 import { DownloadFormat } from '../types/enum.js';
 import type { ChapterPage, DownloadPageProps, DownloadProps, FormatProps, ImgBuffer } from '../types/types.js';
 import { ZipArchive } from "archiver"
+import { Configuration } from './configuration.ts';
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
     margin: '0',
@@ -140,8 +141,10 @@ export class Downloader extends EventEmitter {
                 break
         }
         const noti = Notify.getInstace()
+        const conf = await Configuration.getInstance()
+        const {configuration} = await conf.getLanguageInterface()
         noti.push({
-            title: 'Download complete',
+            title: configuration.downloads.complete,
             type: NotifyType.event,
             message:
                 `${props.mangaTitle} chapter, ${ansi.link(chalk.underline.blueBright(props.chapterTitle), downloadDir)} downloaded`
