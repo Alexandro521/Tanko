@@ -4,6 +4,8 @@ import ansi from 'ansi-escapes'
 import type {BrowserContextOptions, LaunchOptions} from "playwright"
 import gradient from "gradient-string"
 import chalk, { Chalk } from "chalk"
+import userAgents from '../json/user_agents.json' with {type: "json"}
+import { randomInt } from "crypto"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
@@ -56,6 +58,9 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
 export const BROWSER_CONTEXT_OPTIONS:BrowserContextOptions = {
   javaScriptEnabled: true,
   reducedMotion: 'reduce',
+  screen: { width: 1280, height: 720 },
+  locale: 'es',
+  userAgent: userAgents.agents[randomInt(userAgents.agents.length)]
 }
 
 export const FIRST_INIT_MESSAGE = `
