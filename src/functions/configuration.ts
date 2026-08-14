@@ -2,15 +2,12 @@ import { mangaServerRegister, type Client } from "../servers/port.js";
 import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
-import ora from "ora";
 import { type Browser, type BrowserContext, firefox, chromium , type Page } from "playwright";
 import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.js";
 import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.js";
 import EventEmitter from "events";
-import { Notify, NotifyType } from "./notify.js";
+import { Notify } from "./notify.js";
 import { AniList } from "../trackers/anilist.js";
-
-const LOAD_SPIN = ora()
 
 type ConfigurationEvents = {
     'updateprovider': [provider: MangaProvider]
@@ -156,27 +153,32 @@ class ProviderConfiguration {
         try {
             const isBrowserRunning = this.browser.isRunning()
             if (!provider.need_browser && isBrowserRunning ) {
-                const isOk = await this.browser.close()
-                if (!isOk)
+                if (!(await this.browser.close()))
                     throw new Error("The browser could not be closed, please try again");
             } else if (provider.need_browser && !isBrowserRunning) {
-                const isOk = await this.browser.init()
-                if (!isOk)
+                if (!(await this.browser.init()))
                     throw new Error(this.langInterface.err_messages.client_switch.msg);
             }
+
             this.settings = {
                 name: provider.name,
                 need_browser: provider.need_browser
             };
+
             if(provider.need_browser){
-                const mainPage = this.browser.mainContextPage
+                let mainPage = this.browser.getMainContextPage()
+                if (!mainPage) {
+                    mainPage = await this.browser.newPage()
+                }
                 if(mainPage)
                     this.provider = provider.client(mainPage)
-            }else {
+                }
+            else {
                 //@ts-ignore
                 this.provider = provider.client(undefined)
             }
-            this.parent.settings.provider = this.providerInfo
+
+            this.parent.settings.provider = this.settings
             this.parent.emit('updateprovider', this.provider)
         } catch (e) {
             if(e instanceof Error){
@@ -184,16 +186,15 @@ class ProviderConfiguration {
             }
         }
     }
-    get providerInfo() {
+    getSettings() {
         return this.settings
     }
     get providerInstance() {
         return this.provider
     }
     async setProviderByName(newServerName: ServerName) {
-        const serverTarget = 
-        mangaServerRegister
-        .find(server => server.name === newServerName) ?? mangaServerRegister[1]
+        const serverTarget = mangaServerRegister
+        .find(server => server.name === newServerName) ?? mangaServerRegister[0]
         if (serverTarget) {
             await this.setServer(serverTarget)
             return this.provider
@@ -278,8 +279,16 @@ class BrowserConfiguration {
                 let hasContext = false
                 const launcher = typeof firefox.launch === 'function' ? firefox : chromium
                 if (typeof launcher.launch === 'function') {
-                    const browser = await firefox.launch(LAUNCH_OPTIONS);
-                    const browserContext = await browser.newContext(BROWSER_CONTEXT_OPTIONS)
+                    const browser = await launcher.launch({
+                        ...LAUNCH_OPTIONS,
+                    });
+                    const browserContext = await browser.newContext(
+                        {
+                            ...BROWSER_CONTEXT_OPTIONS,
+                            baseURL: 'leercapitulo.org'
+                        }
+                    
+                    )
                     this.browser = browser
                     this.context = browserContext
                     browser.once('context', () => {
@@ -309,6 +318,7 @@ class BrowserConfiguration {
                         });
                     }
                 });
+
                 this.mainPage = (browserContext.pages())[0] ?? (await browserContext.newPage())
                 this.mainPage.route('**/*', route => {
                     const request = route.request()
@@ -380,27 +390,20 @@ class BrowserConfiguration {
     }
     isRunning() {
         if (this.mainPage !== null && this.context !== null && this.browser !== null) {
-            if (this.browser.isConnected())
-                return true
-            else return false
+        return true
         }
         else
             return false
     }
-    async newPage(){
-        try{
-            if(this.isRunning()){
-                const page = (await this.context?.newPage())
-                return page
-            }
+    async newPage() {
+        if (this.isRunning()) {
+            const page = (await this.context?.newPage())
+            return page
         }
-        catch(e){
-            return undefined
-        }
+
     }
-    get mainContextPage () {
-        return this.mainPage
+    getMainContextPage () {
+        return this.mainPage ?? undefined
     }
 }
 
-const conf = await Configuration.getInstance()

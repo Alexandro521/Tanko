@@ -58,8 +58,8 @@ export async function configurationTui() {
 }
 async function providerConfigurationTui() {
   const configInstance = await Configuration.getInstance()
-  const langObj = await configInstance.getLanguageInterface()
-  const { configuration: localizedConfig } = langObj
+  const languageInterface = await configInstance.getLanguageInterface()
+  const { configuration: localizedConfig } = languageInterface
   const serverChoices = ServerRegister.map((server): Choice => ({
       value: server,
       title: server.name,
@@ -67,11 +67,13 @@ async function providerConfigurationTui() {
   }));
 
   while (true) {
-    const server = await prompts(serverPrompt(configInstance.conf_provider.providerInfo.name, serverChoices));
+    const server = await prompts(
+      serverPrompt(configInstance.settings.provider.name, serverChoices));
     if (!server.target) break;
     await configInstance.conf_provider.setServer(server.target)
   }
 }
+
 async function sessionConfigurationTui() {
 const confInstance = await Configuration.getInstance();
   let whileStatus = true
