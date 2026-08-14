@@ -38,16 +38,17 @@ function onKeyPress (this: any, key: Key): void{
 export async function askChapterLang(chapter: Chapter) {
     const avalibleTranslations = Object.keys(chapter.translations); //as ChapterLangStruct[]
     let lang = null
-    const choices = avalibleTranslations.map((key): Choice => {
-        const literalString = configuration.lang_iso[key as LangIso] ?? key
-        return {
-            title: literalString,
-            value: key
-        }
-    })
-    const sectionPrompt = SectionPrompt(configuration.select_lang_title, choices, '', 0, 'select')
-    
-    if (chapter.translation_count > 1) {
+    if (chapter.translation_count === 1) {
+        return avalibleTranslations[0]
+    } else {
+        const choices = avalibleTranslations.map((key): Choice => {
+            const literalString = configuration.lang_iso[key as LangIso] ?? key
+            return {
+                title: literalString,
+                value: key
+            }
+        })
+        const sectionPrompt = SectionPrompt(configuration.select_lang_title, choices, '', 0, 'select')
         const targetLang = await prompts(sectionPrompt);
         if (!targetLang?.target) return null;
         lang = targetLang.target;

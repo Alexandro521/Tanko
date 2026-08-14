@@ -16,9 +16,11 @@ export class LeerCapitulo implements MangaProvider {
     private axios = new Axios({baseURL: "https://www.leercapitulo.co", method: 'GET'})
     public name: ServerName = "leercapitulo";
     private baseUrl = "https://www.leercapitulo.co"
+
     constructor(pageContext: Page) {
         this.page = pageContext
     }
+
     async getLastMangas(): Promise<MangaInfo[]> {
         const mangaList: MangaInfo[] = []
         const req = await fetch(this.baseUrl);
@@ -35,7 +37,6 @@ export class LeerCapitulo implements MangaProvider {
     }
     async getChapterList(mangaSrc: string): Promise<Chapter[]> {
         const res = await this.axios.get(this.baseUrl + mangaSrc)
-
         const $ = cheerio.load(await res.data)
         const chapters: Chapter[] = []
         $('div.chapter-list ul > li').each((i, node) => {
@@ -77,20 +78,30 @@ export class LeerCapitulo implements MangaProvider {
         }
     }
     async getChapterPages(chapterSrc: string): Promise<ChapterPage[]> {
-        await this.page.goto(this.baseUrl + chapterSrc);
-        let pagesNodes = await this.page.locator('.each-page a').all();
-        const pages = await Promise.all(
-            pagesNodes.map(async page => {
-                return {
-                    src: await page.locator('img').getAttribute('data-src') ?? 'undefined',
-                    page_index: await page.getAttribute('data-page') ?? '0'
-                }
-            }
-            ))
+        const page = this.page
+        const url = this.baseUrl+chapterSrc 
+        await page.goto(url, {waitUntil: 'domcontentloaded'})
+        const body = await  page.innerHTML('html')
+        const pages: ChapterPage[] = []
+        if (body) {
+            const $ = cheerio.load(body)
+            const pagesContainer = $('div.each-page div.chapter-content-inner div.comic_wraCon')
+            $(pagesContainer).find('a').each((index, element) => {
+                const imgAttributes = $(element).find('img').attr()
+                const pageAttr = $(element).attr()
+                //@ts-ignore
+                const pageNumber = pageAttr['data-page'] ?? pageAttr['name'] ?? String(index+1)
+                //@ts-ignore
+                const imageSrc = imgAttributes['data-original'] ?? imgAttributes['src'] ?? imgAttributes['data-src']
+                pages.push({
+                    page_index: pageNumber,
+                    src: imageSrc
+                })
+            })
+        }
         return pages
     }
     async getPopulars(): Promise<MangaInfo[]> {
-
         const res = await this.axios.get<string>('');
         const $ = cheerio.load( res.data);
         const Populars: MangaInfo[] = []
