@@ -3,8 +3,8 @@ import os from "os"
 import ansi from 'ansi-escapes'
 import type {BrowserContextOptions, LaunchOptions} from "playwright"
 import gradient from "gradient-string"
-import chalk, { Chalk } from "chalk"
-import userAgents from '../json/user_agents.json' with {type: "json"}
+import chalk from "chalk"
+import userAgents from './json/user_agents.json' with {type: "json"}
 import { randomInt } from "crypto"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
