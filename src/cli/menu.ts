@@ -182,7 +182,7 @@ async function loadMangaChapter(
       });
       const readProgress = ((trackData.reading*100)/trackData.chapterCount).toFixed(1)
       const chapterIndex = await prompts(
-        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ Progress: ${readProgress}%`),
+        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ Progress: ${readProgress}%`)
       );
       if (!chapterIndex.target) {
         break;
