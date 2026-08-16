@@ -19,8 +19,10 @@ import { versionVerify } from './scripts.js';
 import { TerminalControl } from './functions/reader.js';
 import { stdout } from 'process';
 import ora from 'ora';
+
 const loader = ora()
 await TerminalControl.getWindowDimension()
+stdout.write(ansi.enterAlternativeScreen);
 
 loader.start('starting...')
 if(!fs.existsSync(BASE_DIR)) {
@@ -74,8 +76,10 @@ if(confInstance.settings.tanko_isFirstRun) {
 }
 
 loader.stop()
-stdout.write(ansi.clearViewport);
 stdout.write(WELCOME_MESSAGE);
 await main(confInstance)
 await confInstance.conf_browser.close()
 await confInstance.store()
+stdout.write(ansi.exitAlternativeScreen);
+
+
