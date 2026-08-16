@@ -6,7 +6,7 @@ import { stdout } from "node:process";
 
 export function getTimeSkip(time: number) {
   const currentTime = new Date();
-  const readTime= new Date();
+  const readTime = new Date();
   currentTime.setTime(Date.now())
   readTime.setTime(time);
 
@@ -19,43 +19,43 @@ export function getTimeSkip(time: number) {
     readTime.getDay(),
     readTime.getMonth(),
     readTime.getFullYear()
-    ]
+  ]
   const [dayDiff, montDiff, yearDiff] = [
     Math.abs(currentDay - readDay),
     Math.abs(currentMonth - readMonth),
     Math.abs(currentYear - readYear)
   ];
-  if(yearDiff >= 1 || montDiff >= 1){
+  if (yearDiff >= 1 || montDiff >= 1) {
     return readTime.toDateString()
-  }else if(dayDiff >= 7){
-    return `${(dayDiff/7)| 0} Weeks ago`
-  }else if(dayDiff >= 2) {
+  } else if (dayDiff >= 7) {
+    return `${(dayDiff / 7) | 0} Weeks ago`
+  } else if (dayDiff >= 2) {
     return `${dayDiff} Days ago`
   }
   else {
     const hours = readTime.getHours()
     const timePrefix = hours >= 0 && hours < 12 ? "AM" : "PM";
     const timeString = `${hours.toString().padStart(2, "0")}:${readTime.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
-    return `${ dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
+    return `${dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
   }
 }
 
 export function sortChapterList(chapters: Chapter[], sort: 'asc' | 'desc' = 'desc'): Chapter[] {
-  const handle: (a:Chapter,b:Chapter)=>number = sort === 'desc' ? 
-  (a, b) => {
-    return b.number - a.number
-  } :
-  (a, b) => {
-    return a.number - b.number
-  }
-  const chapterListSort = chapters.sort(handle) 
+  const handle: (a: Chapter, b: Chapter) => number = sort === 'desc' ?
+    (a, b) => {
+      return b.number - a.number
+    } :
+    (a, b) => {
+      return a.number - b.number
+    }
+  const chapterListSort = chapters.sort(handle)
   return chapterListSort
 }
-export function extractChapterNumber(str: string){
+export function extractChapterNumber(str: string) {
   const chapterRegex = new RegExp(/\w+\s+(\d+):?/)
-  if(chapterRegex.test(str)){
+  if (chapterRegex.test(str)) {
     const n = chapterRegex.exec(str)?.[1]
-    if(typeof n === 'string'){
+    if (typeof n === 'string') {
       return Number(n)
     }
   }
@@ -78,17 +78,17 @@ export function extractTitleByLang(chapter: Chapter, targetLangIso: Translations
 
 export async function makeDir(root: string, ...paths: string[]) {
   const sanitizePaths = paths.map(name => sanitize(name))
-  const absolutePath =  path.join(root, ...sanitizePaths)
+  const absolutePath = path.join(root, ...sanitizePaths)
   await fs.mkdir(
     absolutePath,
-    {recursive: true}
+    { recursive: true }
   )
   return absolutePath
 }
 export function debounce(func: Function, delay: number) {
   let timeoutId: NodeJS.Timeout;
-  return async function (...args:any[]) {
-    if(timeoutId)
+  return async function (...args: any[]) {
+    if (timeoutId)
       clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
       //@ts-ignore
@@ -96,11 +96,11 @@ export function debounce(func: Function, delay: number) {
     }, delay);
   };
 }
-export function centerX(width: number, containerWidth: number, padding = 0){
+export function centerX(width: number, containerWidth: number, padding = 0) {
   const pos = Math.ceil(containerWidth >> 1) - Math.ceil(width >> 1)
-  return Math.max(pos+padding, 0)
+  return Math.max(pos + padding, 0)
 }
-interface VirtualWindowInput{
+interface VirtualWindowInput {
   rows: number,
   columns: number,
   cellPxWidth: number,
@@ -110,7 +110,7 @@ interface VirtualWindowInput{
     y: number
   }
 }
-export function virtualWindow(props: VirtualWindowInput): WSZ{
+export function virtualWindow(props: VirtualWindowInput): WSZ {
   const rows = Math.min(stdout.rows, props.rows)
   const colums = Math.min(stdout.columns, props.columns)
   const pixelH = rows * (props.cellPxHeigth | 0)
@@ -131,7 +131,55 @@ export function virtualWindow(props: VirtualWindowInput): WSZ{
     w_ratio: pixelW / pixelH
   }
 }
-export function slice(str: string, maxLength: number, padding = 0){
-  if(str.length < maxLength ) return str
-  return str.slice(0, maxLength -1 - padding)
+export function slice(str: string, maxLength: number, padding = 0) {
+  if (str.length < maxLength) return str
+  return str.slice(0, maxLength - 1 - padding)
+}
+export function fuzzyMatch(s: string, stringComp: string) {
+  const searchPattern = s.trim().toLowerCase();
+  const targetString = stringComp.toLowerCase();
+
+  if (targetString.length < searchPattern.length) return 0;
+
+  const patternMap: { [key: string]: number } = {};
+  let totalValidChars = 0;
+
+  for (let i = 0; i < searchPattern.length; i++) {
+    const char = searchPattern[i];
+    if (char !== ' ') {
+      patternMap[char] = (patternMap[char] || 0) + 1;
+      totalValidChars++;
+    }
+  }
+
+  if (totalValidChars === 0) return 0;
+
+  const pointPerChar = 100 / totalValidChars;
+
+  let percent = 0;
+  const targetMap: { [key: string]: number } = {};
+
+  for (let e = 0; e < targetString.length; e++) {
+    const char = targetString[e];
+
+    if (!patternMap[char]) continue;
+
+    targetMap[char] = (targetMap[char] || 0) + 1;
+
+    if (targetMap[char] <= patternMap[char]) {
+      percent += pointPerChar;
+
+      if (e > 0 && e < targetString.length - 1) {
+        const prevChar = targetString[e - 1];
+        const nextChar = targetString[e + 1];
+
+        if (!patternMap[prevChar] && !patternMap[nextChar]) {
+
+          percent = Math.max(percent - (pointPerChar * 0.5), 0);
+        }
+      }
+    }
+  }
+  const finalPercent = Math.min(Math.round(percent * 100) / 100, 100);
+  return finalPercent;
 }
