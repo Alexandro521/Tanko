@@ -133,10 +133,9 @@ export class TermImageGraphics {
             break
          }
          case 'iterm2':{
-            const imgBuffer =
-            metadata.format === 'webp' ?
-                  await imgsrgb.jpeg().toBuffer() :
-                  imgsrgb.toBuffer()
+            const imgBuffer = metadata.format === 'webp' ?
+            await imgsrgb.jpeg().toBuffer() :
+            await imgsrgb.toBuffer()
             const base64 = imgBuffer.toString('base64')
             output.encodedImg = this.iterm2(base64, input)
             break
@@ -258,9 +257,10 @@ export class TermImageGraphics {
       let sixelSequence = `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
       return sixelSequence
    }
-   static iterm2(base64: string, { imgsz, position }: TermImgProtocolInput) {
-      const dimensions = `width=${imgsz.img_pixelWidth}px;height=${imgsz.img_pixelHeigth}px;preserveAspectRatio=1`
-      let startSequence = `${ansi.cursorTo(position.x, position.y)}\x1B]1337;File=${dimensions};inline=1:${base64}\x1B\\`
-      return startSequence
+   static iterm2(base64: string, {imgsz, position}: TermImgProtocolInput) {
+      const options = `width=${imgsz.img_pixelWidth}px;height=${imgsz.img_pixelHeigth};preserveAspectRatio=1;inline=1`
+      const cursorPosition = ansi.cursorTo(position.x, position.y)
+      return `${cursorPosition}\x1b]1337;File=${options}:${base64}\x1b\\`
    }
 }
+
