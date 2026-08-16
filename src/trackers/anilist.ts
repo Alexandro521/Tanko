@@ -209,15 +209,20 @@ export class AniList implements TrackerIntegration{
                 body: query
             })
             const resData = <ReqResponse<T>> await res.json()
-            if(resData.errors){
+            if(resData?.errors){
                 const errors =  resData.errors;
                 const noti = Notify.getInstace()
-                for(let error of errors){
-                    noti.push({
-                        type: NotifyType.error,
-                        message: error.message,
-                        title: 'Anilist Api Request'
-                    })
+                for (let error of errors) {
+                    if (error instanceof Error) {
+                        Notify.pushError(error)
+                    } {
+                        
+                        noti.push({
+                            type: NotifyType.error,
+                            message: error.message,
+                            title: 'Anilist Api Request'
+                        })
+                    }
                 }
             }
             if(resData?.data){
@@ -225,7 +230,7 @@ export class AniList implements TrackerIntegration{
             }else {
                 return undefined
             }
-        }catch{
+        }catch(e){
             return undefined
         }
     }
