@@ -253,7 +253,7 @@ export class AniList implements TrackerIntegration{
         const res  = <SearchResponse>await this.request(searchQuery)
         if(res?.Page){
             const first = res.Page.media?.[0]
-            return first.id
+            return first?.id || undefined
         }else {
             return undefined
         }
