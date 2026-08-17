@@ -16,7 +16,8 @@ import { History } from "./history.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
 import { RequestPool, type RequestStruct } from "./request.ts";
-import { centerX } from "../utils.ts";
+import { centerX, extractTitleByLang } from "../utils.ts";
+import type { LangIso } from "./lang.ts";
 
 
 export class PagesControl {
@@ -337,47 +338,33 @@ export class ChapterControl {
   }
 
   getChapterInfo() {
-    const target = this.chapters[this.index];
-    const targetChapter = target.translations[this.lang];
+    const chapter = this.chapters[this.geChapterIndex()];
+    if(!chapter) throw new Error('chapter is undefined, bad chapters loading')
+    const chapterLanguage = this.extractChapterSrcByLang(chapter, this.lang);
     return {
-      ...target,
-      chapterTarget: targetChapter,
-      title: targetChapter?.title,
+      ...chapter,
+      chapterTarget: chapterLanguage,
+      title: chapterLanguage.title,
     };
   }
-  getChapter() {
-    return this.chapters[this.index];
-  }
-  extractChapterSrcByLang(
-    chapter: Chapter,
-    lang: Translations,
-  ): ChapterLanguage {
-    if (chapter.translations[lang]) return chapter.translations[lang];
 
-    let targetChapter: any = null;
-    Object.values(chapter.translations).some((e) => {
-      if (e) {
-        targetChapter = e as ChapterLanguage;
-        return;
-      }
-    });
-    return targetChapter as ChapterLanguage;
+  getChapter() {
+    return this.chapters[this.index] || this.chapters[this.chapters.length -1];
   }
+  extractChapterSrcByLang(chapter: Chapter, lang: LangIso): ChapterLanguage {
+    if(!(chapter?.translations)) throw new Error('invalid input')
+    if (chapter.translations[lang]) return chapter.translations[lang];
+    const avalibelTranslations = Object.keys(chapter.translations) as LangIso[]
+    return chapter.translations[avalibelTranslations[0]] as ChapterLanguage
+  }
+
   async loadChapter() {
-    try {
-      if (!this.chapters[this.index]) throw new Error("chapters out!");
-      let target = this.extractChapterSrcByLang(
-        this.chapters[this.index],
-        this.lang,
-      );
-      const data = await this.server.getChapterPages(target.id);
-      this.hasBeenTracked = false;
-      return data;
-    } catch (e) {
-      if (e instanceof Error) {
-        Notify.pushError(e);
-      }
-    }
+    let chapter = this.chapters[this.index]
+    if (!chapter) chapter = this.chapters[this.chapters.length - 1]
+    const chapterLanguage = this.extractChapterSrcByLang(chapter, this.lang)
+    const data = await this.server.getChapterPages(chapterLanguage.id);
+    this.hasBeenTracked = false;
+    return data;
   }
   getLang() {
     return this.lang;
@@ -392,7 +379,7 @@ export class ChapterControl {
       this.index--;
     }
   }
-  setChapterLanguage(newLang: Translations) {
+  setChapterLanguage(newLang: LangIso) {
     this.lang = newLang;
   }
   setChapterIndex(newIndex: number) {
@@ -401,19 +388,20 @@ export class ChapterControl {
   geChapterIndex() {
     return this.index;
   }
+  /**
+   * @description
+   * `-1` the last chapter
+   * `0` none
+   * `1` the first chapter
+   */
   isFirstOrLast() {
-    /**
-     * 0 = none
-     * 1 = the first
-     * -1  =the last
-     */
     return this.index === 0
       ? -1
       : this.index === this.chapters.length - 1
         ? 1
         : 0;
   }
-  historySave(title: string, src: string, serverName: ServerName) {
+  historySave(title: string, mangaSrc: string, serverName: ServerName) {
     const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang);
     History.save({
       chapters_length: this.chapters.length,
@@ -422,7 +410,7 @@ export class ChapterControl {
       last_lang: this.lang,
       server: serverName,
       last_title: chapter.title,
-      mangaSrc: src,
+      mangaSrc: mangaSrc,
       mangaTitle: title,
       time: Date.now(),
     });
