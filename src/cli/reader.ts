@@ -1,6 +1,6 @@
 import ora from "ora"
 import boxen, { type Options } from "boxen"
-import ansiEsc from "ansi-escapes"
+import ansi from "ansi-escapes"
 import { memoryUsage, stdout } from "node:process"
 import type { Key } from "node:readline"
 import { downloadSection } from "./menu.ts"
@@ -130,7 +130,7 @@ export async function terminalReader(
       if(LOADER.isSpinning)
         LOADER.stop()
       
-      LOADER.prefixText = ansiEsc.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
+      LOADER.prefixText = ansi.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
       if(!DEBUG_MODE)
         LOADER.start(loading_states.default_loading)
       
@@ -242,9 +242,9 @@ export async function terminalReader(
       const titleCenter = centerX(mangaInfo.title.length, process.stdout.columns)
       const chapterTitleCenter = centerX(chapterTitle.length, process.stdout.columns)
 
-      process.stdout.write(`${ansiEsc.cursorForward(titleCenter)}${mangaTitle}\n`)
-      process.stdout.write(`${ansiEsc.cursorForward(chapterTitleCenter)}${chapterTitle}\n`)
-      process.stdout.write(`${ansiEsc.cursorForward(centerStats)}${stats}\n`)
+      process.stdout.write(`${ansi.cursorForward(titleCenter)}${mangaTitle}\n`)
+      process.stdout.write(`${ansi.cursorForward(chapterTitleCenter)}${chapterTitle}\n`)
+      process.stdout.write(`${ansi.cursorForward(centerStats)}${stats}\n`)
     }
 
     const renderFooter = ()=>{
@@ -276,16 +276,16 @@ export async function terminalReader(
       }
       const x = centerX(strlength, stdout.columns)
       process.stdout.write(
-        ansiEsc.cursorSavePosition + 
-        ansiEsc.cursorTo(x, stdout.rows) +
+        ansi.cursorSavePosition + 
+        ansi.cursorTo(x, stdout.rows) +
         str +
-        ansiEsc.cursorRestorePosition
+        ansi.cursorRestorePosition
       )
     }
 
     const render = async (invalidateCache=false, forceReload=false) => {
       if (!process.stdin.isRaw) return;
-      process.stdout.write(ansiEsc.clearScreen)
+      process.stdout.write(ansi.clearScreen)
       if (!FULLSCREEN_MODE && IMGFITMODE !== 'cover') {
         renderHeader()
         if (DEBUG_MODE) debugModeRendeer()
@@ -296,9 +296,9 @@ export async function terminalReader(
 
     const chapterLoader = async (action: SignalsCodes | undefined = undefined, force = false) => {
       try {
+        process.stdout.write(ansi.clearTerminal)
         LOADER.start(loading_states.loading_chapter)
         let isFirstOrLast = chapterCtl.isFirstOrLast()
-
         switch (action) {
           case SignalsCodes.next_chapter:
             if (isFirstOrLast === 1) {
@@ -313,7 +313,6 @@ export async function terminalReader(
             await chapterCtl.prevChapter()
             break
         }
-
         if (isFirstOrLast === 0 || force) {
           const newPages = await chapterCtl.loadChapter()
           chapterCtl.historySave(mangaInfo.title, mangaInfo.src, mangaProvider.name);
@@ -321,16 +320,17 @@ export async function terminalReader(
         }
         if (LOADER.isSpinning)
           LOADER.stop()
-
         if (process.stdin.isTTY)
           TerminalControl.openRawMode(keyPressHandle)
         await render()
-      } catch (e) {
+        } catch (e) {
+        if(LOADER.isSpinning) LOADER.stop()
         if (process.stdin.isRaw)
           TerminalControl.exitRawMode(keyPressHandle)
-        if (e instanceof Error)
+        if (e instanceof Error) {
           Notify.pushError(e)
-        process.stdout.write(ansiEsc.cursorShow)
+        }
+        process.stdout.write(ansi.cursorShow)
         resolve()
       }
     }
@@ -344,15 +344,19 @@ export async function terminalReader(
 
       if ((keyctrl && keyName === 'c') || keyName === 'q' || keyEsc) {
         process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
-        process.stdout.write(ansiEsc.cursorShow)
+        process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle);
         if (key.ctrl && keyName === 'c') {
           await CONFIGURATION.conf_browser.close()
           await CONFIGURATION.store()
           pagesCtl.reset()
+          stdout.write(
+            ansi.clearTerminal +
+            ansi.exitAlternativeScreen
+          );
           process.exit(0)
         }
-        process.stdout.write(ansiEsc.clearScreen)
+        process.stdout.write(ansi.clearScreen)
         pagesCtl.reset()
         resolve();
       } 
@@ -403,8 +407,8 @@ export async function terminalReader(
         await render(false, true)
       }
       else if (keyName === 'c') {
-        process.stdout.write(ansiEsc.clearViewport)
-        process.stdout.write(ansiEsc.cursorShow)
+        process.stdout.write(ansi.clearViewport)
+        process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle)
 
         const optionsPrompt = await prompts(terminalReaderChapterOptions())
@@ -425,9 +429,17 @@ export async function terminalReader(
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
           const languageTarget = chapterCtl.getLang()
-
+          const localTrackerProps: LocalTrackerProps = {
+            chapterCount: 0,
+            chapterIndex: 0,
+            mangaId: mangaInfo.src
+          }
+          const trackData = await localTracker.getStats(localTrackerProps)
           const choices: Choice[] = chapters.map((e, index): Choice => {
-            const title = extractTitleByLang(e, languageTarget)
+            let title = extractTitleByLang(e,languageTarget)
+            if (trackData.readingMap.has(e.number)) {
+              title += ' ⏺ ' + chalk.dim(chalk.green('Read'))
+            }
             const props = {
               title: title,
               value: String(index)
@@ -449,14 +461,14 @@ export async function terminalReader(
           await chapterLoader(undefined, true)
         }
         else if (optionsPrompt.target === SignalsCodes.exit) {
-          process.stdout.write(ansiEsc.clearViewport)
+          process.stdout.write(ansi.clearViewport)
           process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
           resolve()
         }
       }
     }
 
-    process.stdout.write(ansiEsc.cursorHide)
+    process.stdout.write(ansi.cursorHide)
     process.on('SIGWINCH', SIGWINCH_HANDLER)
     await chapterLoader(undefined, true);
   })
