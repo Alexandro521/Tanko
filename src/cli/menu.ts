@@ -228,23 +228,23 @@ async function loadMangaChapter(
 async function history(provider: MangaProvider) {
   try {
     const conf = await Configuration.getInstance()
-    const history = 
-    conf.settings.history_filterByProvider ?  History.parseMap().filter(e=> e.server === provider.name):History.parseMap()
+    const history = conf.settings.history_filterByProvider ?
+      History.parseMap().filter(e => e.server === provider.name) : History.parseMap()
     
     if (history.length < 1) {
       await prompts(voidPrompt(err_messages.void_Section.msg));
       return;
     }
 
-    const choices = history.map(
-      (e, i): Choice => ({
-        title: e.mangaTitle,
-        description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
-        value: String(i)
-      }),
-    );
     let memoryChoicePosition = 0;
     while (true) {
+      const choices = history.map(
+        (e, i): Choice => ({
+          title: e.mangaTitle,
+          description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
+          value: String(i)
+        }),
+      );
       const mangaIndex = await prompts(
         historySectionPrompt(choices, memoryChoicePosition),
       );
@@ -253,12 +253,10 @@ async function history(provider: MangaProvider) {
       }
       memoryChoicePosition = Number(mangaIndex.target);
       const mangaTarget = history[Number(mangaIndex.target)];
-      // clearScreen()
       const options = await prompts(
         historyChapterOptions(mangaTarget.mangaTitle),
       );
       if (!options.target) {
-
         continue;
       }
       //dynamic server change
@@ -273,20 +271,23 @@ async function history(provider: MangaProvider) {
       if (loading.isSpinning) loading.stop();
       if(!chapterList) continue;
       switch (options.target) {
-        case SignalsCodes.resume_read:
+        case SignalsCodes.resume_read: {
           await terminalReader(
-            {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
+            {
+              title: mangaTarget.mangaTitle,
+              src: mangaTarget.mangaSrc
+            },
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
-  
           );
           break;
+        }
         case SignalsCodes.get_chapters_list:
           await loadMangaChapter(provider, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
           break;
         case SignalsCodes.download_chapter:
-          await downloadSection(   {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
+          await downloadSection({title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
