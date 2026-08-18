@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.2.0",
+        "lang_version": "1.3",
         "lang": "en"
     },
     "main_sections": {
@@ -18,15 +18,15 @@
         },
         "popular": {
             "title": "Popular",
-            "alt": "popular"
+            "alt": "Popular"
         },
         "history": {
             "title": "History",
             "alt": "History"
         },
         "config": {
-            "title": "Settings",
-            "alt": "Settings"
+            "title": "Configuration",
+            "alt": "Configuration"
         },
         "exit": {
             "title": "Exit",
@@ -43,7 +43,7 @@
             "desc": "PDF format"
         },
         "resume_read": {
-            "title" : "Continue reading",
+            "title" : "Resume reading",
             "desc": ""
         },
         "suscribe": {
@@ -69,29 +69,160 @@
     },
     "configuration": {
         "options": {
-            "lang-ui": "Interface language",
+            "lang_ui": "UI Language",
             "save": "Save",
             "client": "Clients",
             "downloads": "Downloads",
             "search": "Search",
-            "restore": "Reset settings"
+            "restore": "Restore configuration",
+            "accouts": "Accounts",
+            "reader": "Reader",
+            "history": "Read History"
         },
-        "lang-ui": {
-            "es": "Spanish",
-            "en": "English",
-            "fr": "French"
+        "lang_iso": {
+          "es": "Spanish",
+          "en": "English",
+          "fr": "French",
+          "es-la": "Latin Spanish",
+          "zh": "Simplified Chinese",
+          "pt-br": "Brazilian Portuguese",
+          "ja-ro": "Romanized Japanese",
+          "ko-ro": "Romanized Korean",
+          "zh-ro": "Romanized Chinese",
+          "de": "German",
+          "it": "Italian",
+          "pt": "Portuguese",
+          "ru": "Russian",
+          "ar": "Arabic",
+          "ja": "Japanese",
+          "ko": "Korean",
+          "zh-tw": "Traditional Chinese",
+          "hi": "Hindi",
+          "nl": "Dutch",
+          "tr": "Turkish",
+          "pl": "Polish",
+          "sv": "Swedish",
+          "vi": "Vietnamese",
+          "th": "Thai",
+          "id": "Indonesian",
+          "el": "Greek",
+          "he": "Hebrew",
+          "uk": "Ukrainian",
+          "cs": "Czech",
+          "ro": "Romanian",
+          "hu": "Hungarian",
+          "da": "Danish",
+          "fi": "Finnish",
+          "no": "Norwegian",
+          "bg": "Bulgarian",
+          "ca": "Catalan",
+          "hr": "Croatian",
+          "sr": "Serbian",
+          "sk": "Slovak",
+          "sl": "Slovenian",
+          "lt": "Lithuanian",
+          "lv": "Latvian",
+          "et": "Estonian",
+          "fa": "Persian",
+          "ur": "Urdu",
+          "bn": "Bengali",
+          "ta": "Tamil",
+          "te": "Telugu",
+          "ml": "Malayalam",
+          "sw": "Swahili",
+          "tl": "Tagalog"
         },
+        "reader": {
+          "graphic_protocol": "Image protocol",
+          "force_ascii": "Force ascii rendering",
+          "page_preloading": "Preload pages",
+          "page_preloading_strategy": "Preloading strategy",
+          "page_fit": "Page resolution fit",
+          "page_max_preloading": "Number of pages to preload",
+          "page_render_max_width": "Maximum page width",
+          "read": "Read",
+          "progress": "Progress"
+          
+        },
+        "img_protocols": {
+          "kitty": {
+            "name": "Kitty",
+            "description": "A modern, high-performance protocol that transfers image data using base64 escape sequences, supporting true color, animations, and advanced layer blending."
+          },
+          "sixel": {
+            "name": "Sixel",
+            "description": "An older bitmap graphics format, originally developed by DEC, encoding images as vertical six-pixel high block patterns, supported by many terminal emulators."
+          },
+          "iterm2": {
+            "name": "Iterm2",
+            "description": "An inline image protocol introduced by iTerm2 that uses base64-encoded escape sequences to display images directly within the terminal window."
+          },
+          "ascii": {
+            "name": "Ascii",
+            "description": "A universal fallback method that approximates visual data by translating image pixels into standard text characters of varying densities and colors."
+          }
+        },
+        "page_preloading_strategy": {
+          "around": {
+            "title": "Around",
+            "description": "Preloads the pages surrounding the current page within a predetermined range"
+          },
+          "fill": {
+            "title": "Fill",
+            "description": "Similar to filling empty gaps, this method will try to preload any image that is not yet in the cache buffers"
+          },
+          "forward": {
+            "title": "Forward",
+            "description": "Preloads only a specific number of pages ahead of the current page"
+          }
+        },
+        "page_fit": {
+          "contain": {
+            "title": "Contain",
+            "description": "Fits the image to the screen size while maintaining its aspect ratio (default option)"
+          },
+          "fit": {
+            "title": "Fit",
+            "description": "Fits the image to the maximum screen width (ideal for reading manhwas)"
+          }
+        },
+        "downloads": {
+          "format_select": "Download format",
+          "complete": "Download completed"
+        },
+        "accouts": {
+          "login": "Log in",
+          "logout": "Log out",
+          "profile": "View profile",
+          "follow_link": "Open this link in your browser to log in to",
+          "click_on": "Click on this link to log in to",
+          "paste": "Paste the token",
+          "auth_cancel": "Authentication canceled",
+          "auth_successful": "Authentication successful.",
+          "auth_failed": "Authentication error",
+          "auth_attempts": "Too many failed attempts. Please check your token.",
+          "welcome": "Welcome to tanko"
+        },
+        "history": {
+          "history_filter": "Filter history",
+          "history_size": "History size"
+        },
+        
         "unsaved_changes": "You have unsaved changes. Do you want to save them before exiting?",
-        "need_browser": "Requires a browser?",
+        "need_browser": "Requires browser?",
         "yes": "Yes",
         "no": "No",
         "server_title": "Server",
         "options_title": "Options",
-        "select_lang_title": "Select Language"
+        "select_lang_title": "Select language"
     },
     "reader": {
-        "prev_page": "Previous page",
-        "next_page": "Next page",
+        "navigation": "Navigate",
+        "reload_page": "Reload page",
+        "reload_chapter": "Reload chapter",
+        "fit": "Fit",
+        "fullscreen": "Maximize",
+        "debug": "View debugger",
         "exit": "Exit",
         "prev_ch": "Previous chapter",
         "next_ch": "Next chapter",
@@ -102,7 +233,7 @@
         "loading_chapter": "loading chapter",
         "default_loading": "loading",
         "searching": "searching",
-        "browser_init": "initializing browser",
+        "browser_init": "starting browser",
         "browser_close": "closing browser",
         "downloading_pages": "downloading pages",
         "downloading_chapter": "downloading chapter",
@@ -114,39 +245,39 @@
     },
     "err_messages": {
         "network": {
-            "msg": "No internet connection!",
-            "hint": "Check that you are connected to a network"
+            "msg": "you have no internet connection!",
+            "hint": "check that you are connected to a network"
         },
         "fetching": {
-            "msg": "An error occurred while trying to fetch data",
-            "hint": "If the error persists, you can report it at"
+            "msg": "An error occurred while trying to fetch the data",
+            "hint": "if the error persists, you can report it at"
         },
         "pdf_make": {
             "msg": "An error occurred while trying to create the PDF",
-            "hint": "If the error persists, you can report it at"
+            "hint": "if the error persists, you can report it at"
         },
         "client_switch": {
-            "msg": "An error occurred while trying to change the client",
-            "hint": "If the error persists, you can report it at"
+            "msg": "An error occurred while trying to switch the client",
+            "hint": "if the error persists, you can report it at"
         },
         "corrupt_conf_file": {
-            "msg": "The configuration file has an invalid format",
-            "hint": "Try restoring the settings to their default state"
+            "msg": "The configuration file has an incorrect format",
+            "hint": "try restoring the configuration to its default state"
         },
         "corrupt_history_file": {
-            "msg": "The history file is corrupted!",
-            "hint": "Solution: settings -> history -> check integrity"
+            "msg": "The history file is corrupt!",
+            "hint": "Solution: configuration -> history -> check integrity"
         },
         "page_loading": {
             "msg": "An error occurred while trying to load the page",
-            "hint": "Check that you are connected to a network"
+            "hint": "check that you are connected to a network"
         },
         "chapter_loading": {
             "msg": "An error occurred while trying to load the chapter",
-            "hint": "Check that you are connected to a network"
+            "hint": "check that you are connected to a network"
         },       
         "no_results": {
-            "msg": "No results found",
+            "msg": "No results",
             "hint": ""
         },
         "void_Section": {

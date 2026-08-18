@@ -1,215 +1,416 @@
 import { mangaServerRegister, type Client } from "../servers/port.js";
-import type { AvalibleLangs, LangInterface } from "../types/lang.js";
-import type { ConfigurationInterface, MangaProvider, ServerName } from "../types/types.js";
-import chalk from "chalk";
+import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
-import ora from "ora";
-import path from "path";
-import { type Browser, type BrowserContext, firefox, type Page } from "playwright";
-import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS, TEMP_DIR } from "../const.js";
-import { LANGUAGE_REGISTER } from "./lang.js";
+import { type Browser, type BrowserContext, firefox, chromium , webkit , type Page } from "playwright";
+import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.js";
+import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.js";
 import EventEmitter from "events";
-import { Notify, NotifyType } from "./notify.js";
-const spin = ora()
+import { Notify } from "./notify.js";
+import { AniList } from "../trackers/anilist.js";
 
-export enum ConfigurationEvents {
-    updateServer = 'updateserver',
-    updateLanguage = 'updateLang',
-    loadConfiguration = 'loadConf',
-    updateGlobal = 'updateGlobal',
-    storeConfFile = 'storeFile',
-    failedLoad = 'failLoading',
-    browserClose = 'browserClose',
-    browserLoaded = 'browserOpen'
-}
-const noti = Notify.getInstace()
-const contextInitScript = () => {
-    /*for leercapitulo.co */
-    const storageData = [
-        { name: "display_mode", value: "1" },
-        { name: "pic_style", value: "0" }
-    ];
-    if (window.location.hostname.includes('leercapitulo.co')) {
-        storageData.forEach(item => {
-            window.localStorage.setItem(item.name, item.value);
-        });
-    }
+type ConfigurationEvents = {
+    'updateprovider': [provider: MangaProvider]
+    'updatelanguage': [language: LanguageInterface]
+    'load': [settings: Settings]
+    'updateglobal': [settings: Settings]
+    'store': [settings: Settings, path: string]
+    'error': [error: Error]
+    'browserinit': []
+    'browserclosing': []
+    'browserclose': []
+    'browserload': [configuration: BrowserConfiguration]
+    'login': [tracker:  TrackerNames]
+    'logout': [tracker:  TrackerNames]
+    'atomicupdate': [change: keyof Settings]
 }
 
-export class Configuration extends EventEmitter {
+export class Configuration extends EventEmitter<ConfigurationEvents> {
     private static confInstance: Configuration
-    private ServerHandler!: MangaProvider
-    private lang!: LangInterface
-    private browser: Browser | null = null
-    private browserContext!: BrowserContext
-    private browserPage!: Page
+    conf_language!: LanguageInterface
+    conf_provider!: ProviderConfiguration
+    conf_browser!:  BrowserConfiguration
+    conf_session!: SessionConfiguration
 
-    private config: ConfigurationInterface = {
-        isFirstRun: true,
-        downloads_path: DOWNLOADS_DEFAULT_DIR,
-        deepSearch: false,
-        langKey: 'es',
-        server: mangaServerRegister[1], // mangadex is default server
-        favoriteChapterLang: 'any',
-        historyMaxSize: 256,
-        historyServerFilter: true,
-        imageCacheMaxSize: '64'
+    public settings: Settings = {
+        tanko_isFirstRun: true,
+        languageISO: 'es',
+        preferedLanguageISO: 'any',
+        history_maxSize: 256,
+        history_filterByProvider: true,
+        image_maxCacheLength: 24,
+        image_maxCacheByteLength: 64 * 1024,
+        search_deepSearch: false,
+        provider: mangaServerRegister[1], // mangadex
+        downloader_path: DOWNLOADS_DEFAULT_DIR
+        //customBrowserHandlePath: 'NULL',
+        ,
+        reader_forceAscii: false,
+        reader_forceImgProtocol: 'default',
+        reader_maxImagePreloading: 5,
+        reader_enableImgPreloading: true,
+        reader_imgPreloadingStrategy: "around",
+        reader_imgFit: "contain",
+        reader_maxImgWidth: 8096
     }
 
-    private constructor() {
+    private  constructor() {
         super()
+        this.conf_browser = new BrowserConfiguration(this)
+        this.conf_session = new SessionConfiguration(this)
+        this.conf_language = LANGUAGE_REGISTER['en']
+        this.conf_provider = new ProviderConfiguration(this, this.conf_browser, this.conf_language)
     }
-
     static async getInstance() {
         if (!this.confInstance) {
             this.confInstance = new Configuration()
-            await this.confInstance.loadConfiguration()
+            await this.confInstance.init()
         }
         return this.confInstance
     }
-
-    get configuration() {
-        return this.config
+    async setLanguage(newLang: AvalibleLanguageInterface) {
+        this.conf_language = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
+        this.conf_provider.langInterface = this.conf_language
+        this.emit('updatelanguage', this.conf_language)
     }
-    async loadBrowser() {
-        if (this.browser || this.browserContext) return
+    async init() {
         try {
-            spin.start(this.lang.loading_states.browser_init)
-            this.browser = await firefox.launch(LAUNCH_OPTIONS);
-            this.browserContext = await this.browser.newContext(BROWSER_CONTEXT_OPTIONS)
-            if(fs.existsSync(BROWSER_STORAGE_FILE)){
-                await this.browserContext.setStorageState(BROWSER_STORAGE_FILE)
+            const self = this.settings
+            if (fs.existsSync(CONFIG_FILE_PATH)) {
+                const settingsFile = await fsPromise.readFile(CONFIG_FILE_PATH)
+                const settings = await JSON.parse( settingsFile.toString()) as Settings
+                this.settings = {
+                    languageISO: settings?.languageISO ?? self.languageISO,
+                    provider: settings?.provider ?? self.provider,
+                    search_deepSearch: settings?.search_deepSearch ?? self.search_deepSearch,
+                    downloader_path: settings?.downloader_path ?? self.downloader_path,
+                    preferedLanguageISO: settings?.preferedLanguageISO ?? self.preferedLanguageISO,
+                    history_maxSize: settings?.history_maxSize ?? self.history_maxSize,
+                    history_filterByProvider: settings?.history_filterByProvider ?? self.history_filterByProvider,
+                    image_maxCacheByteLength: Number(settings?.image_maxCacheByteLength) ?? self.image_maxCacheByteLength,
+                    image_maxCacheLength:  settings?.image_maxCacheLength ?? self.image_maxCacheLength,
+                    tanko_isFirstRun: settings?.tanko_isFirstRun ?? self.tanko_isFirstRun,
+                    reader_forceAscii: settings?.reader_forceAscii ?? self.reader_forceAscii,
+                    reader_forceImgProtocol: settings?.reader_forceImgProtocol ?? self.reader_forceImgProtocol,
+                    reader_maxImagePreloading: settings?.reader_maxImagePreloading ?? self.reader_maxImagePreloading,
+                    reader_enableImgPreloading: settings?.reader_enableImgPreloading ?? self.reader_enableImgPreloading,
+                    reader_imgPreloadingStrategy: settings?.reader_imgPreloadingStrategy ?? self.reader_imgPreloadingStrategy,
+                    reader_imgFit: settings?.reader_imgFit ?? self.reader_imgFit,
+                    reader_maxImgWidth: settings?.reader_maxImgWidth ?? self.reader_maxImgWidth
+                }
             }
-            await this.browserContext.addInitScript(contextInitScript);
-            spin.stop()
-            this.browserPage = this.browserContext.pages()[0] || await this.browserContext.newPage();
-            this.browserPage.route('**/*', route => {
-                const requestType = route.request().resourceType();
-                if (requestType === 'script' && route.request().frame() !== this.browserPage.mainFrame()) {
-                    return route.abort();
-                }
-                if (['font', 'image', 'media', 'beacon'].includes(requestType)) {
-                    route.abort()
-                } else {
-                    route.continue()
-                }
-            })
-            this.emit(ConfigurationEvents.browserLoaded)
-        } catch (e: any) {
-            if (spin.isSpinning) spin.fail()
+            await this.setLanguage(this.settings.languageISO)
+            let providerName = this.settings.provider.name
+            const hasProvider = mangaServerRegister.values().some((e)=> e.name === providerName)
+            await this.conf_provider.setProviderByName(hasProvider ? providerName : mangaServerRegister[0].name)
+            await this.conf_session.login('anilist')
+            this.emit('load', this.settings)
+        } catch (e) {
             if (e instanceof Error) {
-                noti.push({
-                    title: e.name,
-                    message: e.message,
-                    type: NotifyType.error
-                })
+                Notify.pushError(e)
             }
         }
     }
-    async closeBrowser() {
+    async store() {
         try {
-            if (!this.browser) return
-            spin.start(this.lang.loading_states.browser_close)
-            await this.browserContext.storageState({path:BROWSER_STORAGE_FILE})
-            await this.browserContext.close()
-            await this.browser.close()
-            spin.stop()
-            this.browser = null
-            this.emit(ConfigurationEvents.browserClose)
-        } catch (e) {
-            if (spin.isSpinning) spin.fail()
-            console.log(e)
-        }
-    }
-    async setServer(newServer: Client) {
-        if (!newServer.need_browser && this.browser) {
-            await this.closeBrowser()
-        } else if (newServer.need_browser && !this.browser) {
-            await this.loadBrowser()
-        }
-        if ((!this.browserContext || !this.browser) && newServer.need_browser)
-            throw new Error('Error on browser loading')
-        this.config.server = newServer;
-        this.ServerHandler = newServer.client(this.browserPage)
-        this.emit(ConfigurationEvents.updateServer, this.ServerHandler)
-    }
-    async setLanguage(newLang: AvalibleLangs) {
-        this.lang = LANGUAGE_REGISTER[newLang]
-        this.emit(ConfigurationEvents.updateLanguage, this.lang)
-    }
-    async loadConfiguration(conf: ConfigurationInterface | null = null) {
-        try {
-            if (fs.existsSync(CONFIG_FILE_PATH) && !conf) {
-                const confRaw = (await fsPromise.readFile(CONFIG_FILE_PATH)).toString()
-                const conf = await JSON.parse(confRaw) as ConfigurationInterface
-                const thisConf = this.config
-                this.config = {
-                    langKey: conf?.langKey ?? thisConf.langKey,
-                    server: conf?.server ??  thisConf.server,
-                    deepSearch: conf?.deepSearch ?? thisConf.deepSearch,
-                    downloads_path: conf?.downloads_path ?? thisConf.downloads_path,
-                    favoriteChapterLang: conf?.favoriteChapterLang ?? thisConf.favoriteChapterLang,
-                    historyMaxSize: conf?.historyMaxSize  ?? thisConf.historyMaxSize,
-                    historyServerFilter: conf?.historyServerFilter ?? thisConf.historyServerFilter,
-                    imageCacheMaxSize: conf?.imageCacheMaxSize ?? thisConf.imageCacheMaxSize,
-                    isFirstRun: conf?.isFirstRun ?? thisConf.isFirstRun
-                }
+            await fsPromise.writeFile( CONFIG_FILE_PATH, JSON.stringify(this.settings, null, '\t'))
+            this.emit('store', this.settings, CONFIG_FILE_PATH)
+        } 
+        catch (err) {
+            if(err instanceof Error){
+                this.emit('error', err)
+                Notify.pushError(err)
             }
-            if (this.config.langKey)
-                this.lang = LANGUAGE_REGISTER[this.config.langKey]
-            if (this.config.server.need_browser && !this.browser) {
-                await this.loadBrowser()
-            } else if (!this.config.server.need_browser && this.browser) {
-                await this.closeBrowser()
-            }
-            if (!this.browser && this.config.server.need_browser)
-                throw new Error('Error on browser loading')
-            const serverTarget = mangaServerRegister.find(server => server.name === this.config.server.name)
-            if (serverTarget) this.ServerHandler = serverTarget?.client(this.browserPage)
-            this.emit(ConfigurationEvents.loadConfiguration, this.config, this.ServerHandler, this.browserPage, this.browserContext)
-        } catch (e) {
-            console.log(e)
-        }
-    }
-    async writeConfigFile() {
-        try {
-            await fsPromise.writeFile(
-                CONFIG_FILE_PATH,
-                JSON.stringify(this.config, null, '\t'))
-            this.emit(ConfigurationEvents.storeConfFile)
-        } catch (e) {
-            console.log(e)
         }
     }
     async getLanguageInterface() {
-        if (!this.lang)
-            await this.loadConfiguration()
-        return this.lang
+        if (!this.conf_language)
+            await this.init()
+        return this.conf_language
+    }
+    async setGlobalConfig(conf: Settings) {
+        if (conf)
+            await this.init()
+        await this.store()
+        this.emit('updateglobal', this.settings)
+    }
 
+}
+
+class ProviderConfiguration {
+    browser!: BrowserConfiguration
+    settings!: ProviderConfInterface
+    provider!: MangaProvider
+    parent!: Configuration
+    langInterface!:LanguageInterface
+    constructor(parent: Configuration, browser: BrowserConfiguration, langInterface: LanguageInterface){
+        this.browser = browser 
+        this.settings = mangaServerRegister[0]
+        this.langInterface =  langInterface
+        this.parent = parent
     }
-    getBrowserContext() {
-        if (this.browserContext)
-            return this.browserContext
-        return null
-    }
-    getServerInfo() {
-        return this.config.server
-    }
-    getServer() {
-        return this.ServerHandler
-    }
-    async setServerByName(newServerName: ServerName) {
-        const serverTarget = mangaServerRegister.find(server => server.name === newServerName)
-        if (serverTarget) {
-            await this.setServer(serverTarget)
-            return this.ServerHandler
+    async setServer(provider: Client) {
+        try {
+            const isBrowserRunning = this.browser.isRunning()
+            if (!provider.need_browser && isBrowserRunning ) {
+                if (!(await this.browser.close()))
+                    throw new Error("The browser could not be closed, please try again");
+            } else if (provider.need_browser && !isBrowserRunning) {
+                const initStatus = await this.browser.init()
+                if (!initStatus)
+                    throw new Error(this.langInterface.err_messages.client_switch.msg);
+            }
+
+            this.settings = {
+                name: provider.name,
+                need_browser: provider.need_browser
+            };
+
+            if(provider.need_browser){
+                let mainPage = this.browser.getMainContextPage()
+                if (!mainPage) {
+                    mainPage = await this.browser.newPage()
+                }
+                if(mainPage)
+                    this.provider = provider.client(mainPage)
+                }
+            else {
+                //@ts-ignore
+                this.provider = provider.client(undefined)
+            }
+            this.parent.settings.provider = this.settings
+            this.parent.emit('updateprovider', this.provider)
+        } catch (e) {
+            if (e instanceof Error) {
+               Notify.pushError(e)
+            }
         }
     }
-    async setGlobalConfig(conf: ConfigurationInterface) {
-        if (conf)
-            await this.loadConfiguration(conf)
-        await this.writeConfigFile()
-        this.emit(ConfigurationEvents.updateGlobal, this.config, this.ServerHandler, this.lang)
+    getSettings() {
+        return this.settings
+    }
+    get providerInstance() {
+        return this.provider
+    }
+    async setProviderByName(newServerName: ServerName) {
+        const serverTarget = mangaServerRegister
+        .find(server => server.name === newServerName) ?? mangaServerRegister[0]
+        if (serverTarget) {
+            await this.setServer(serverTarget)
+            return this.provider
+        }
     }
 }
+class SessionConfiguration{
+    trackerInterface!: TrackerInterface
+    parent!: Configuration
+    constructor(parent: Configuration){
+        this.trackerInterface = {
+            anilist: {
+                instance: AniList.getInstance(),
+                isAuth: false
+            }
+        }
+        this.parent = parent
+    }
+    async login(trackerName: TrackerNames | undefined = undefined){
+        const trackerLogin = async (name: TrackerNames) =>{
+            const tracker = this.trackerInterface[name].instance
+            const userData = await tracker.auth()
+            if(userData) {
+                this.parent.emit('login', name)
+                this.trackerInterface[name] = {
+                    isAuth: true,
+                    instance: tracker,
+                    data: userData
+                }
+            }
+        }
+        if(trackerName) {
+            await trackerLogin(trackerName)
+            return   
+        }
+        await Promise.all(
+            Object.values(this.trackerInterface).map(
+                ({ isAuth, instance: integration }) => {
+                if (!isAuth) {
+                    return trackerLogin(integration.trackerName)
+                } else {
+                    Promise.resolve()
+                }
+            })
+        )
+    }
+    async logout(trackerName: TrackerNames){
+        const tracker = this.trackerInterface[trackerName].instance
+        this.trackerInterface[trackerName] = {
+            isAuth: false,
+            instance: tracker
+        }
+        await tracker.logout()
+        this.parent.emit('logout', trackerName)
+    }
+    getTracker(trackerName: TrackerNames){
+        return this.trackerInterface[trackerName]
+    }
+    getLoginData(){
+        return this.trackerInterface
+    }
+}
+class BrowserConfiguration {
+    browser!: Browser | null
+    context!: BrowserContext | null
+    mainPage!: Page | null
+    parent!: Configuration
+
+    constructor(parent: Configuration){
+        this.browser = null
+        this.context = null
+        this.mainPage = null
+        this.parent = parent
+    }
+    async init(): Promise<boolean> {
+        return new Promise(async (resolve, reject) => {
+            try {
+                this.parent.emit('browserinit')
+                if (this.isRunning()) {
+                    return true
+                }
+                let hasContext = false
+                const existsFirefox = fs.existsSync(firefox.executablePath())
+                const existsChromium = fs.existsSync(chromium.executablePath())
+                const existsWebkit = fs.existsSync(webkit.executablePath())
+                //Notify.pushMessage(`Firefox: ${existsFirefox}\nChromium: ${existsChromium}\nWebkit:${existsWebkit}`)
+                const launcher = (existsFirefox ? firefox : (existsChromium ? chromium : (existsWebkit ? webkit : firefox)))
+
+                if (typeof launcher.launch === 'function') {
+                    const browser = await launcher.launch({
+                        ...LAUNCH_OPTIONS,
+                    });
+                    const browserContext = await browser.newContext(
+                        {
+                            ...BROWSER_CONTEXT_OPTIONS,
+                            baseURL: 'leercapitulo.org'
+                        }
+                    
+                    )
+                    this.browser = browser
+                    this.context = browserContext
+                    browser.once('context', () => {
+                        hasContext = true
+                    })
+                }
+                else {
+                    throw new Error('Error on browser loading, please check if playwright browser has installed')
+                }
+                if (this.browser && !this.browser.isConnected()) {
+                    throw new Error('connection refused')
+                }
+                const browserContext = this.context as BrowserContext
+                if(!browserContext) throw new Error('Error on browser loading')
+                if (fs.existsSync(BROWSER_STORAGE_FILE)) {
+                    await this.context?.setStorageState(BROWSER_STORAGE_FILE)
+                }
+                await this.context?.addInitScript(() => {
+                    /*for leercapitulo.co */
+                    const storageData = [
+                        { name: "display_mode", value: "1" },
+                        { name: "pic_style", value: "0" }
+                    ];
+                    if (window.location.hostname.includes('leercapitulo.co')) {
+                        storageData.forEach(item => {
+                            window.localStorage.setItem(item.name, item.value);
+                        });
+                    }
+                });
+
+                this.mainPage = (browserContext.pages())[0] ?? (await browserContext.newPage())
+                this.mainPage.route('**/*', route => {
+                    const request = route.request()
+                    const contentType = request.resourceType();
+                    if (contentType === 'script' && route.request().frame() !== (<Page>this.mainPage).mainFrame()) {
+                        return route.abort();
+                    }
+                    const contentTypeRexp = new RegExp(/.+(font|image|media|beacon).+/)
+                    if (contentTypeRexp.test(contentType)) {
+                        route.abort()
+                    } else {
+                        route.continue()
+                    }
+                })
+                this.parent.emit('browserload', this)
+                resolve(true)
+            } catch (e: any) {
+                if (e instanceof Error) {
+                    this.parent.emit('browserload', this)
+              //      this.parent.emit('error', e)
+                    Notify.pushError(e)
+                    reject(false)
+                }
+            }
+        })
+    }
+    async testConnection() {
+        if (this.isRunning()) {
+            try {
+                const testPage = await ( this.context as BrowserContext ).newPage()
+                await testPage.goto('https://example.com/', { timeout: 5000 })
+                await testPage.close()
+                return true
+            } catch (e) {
+                return false
+            }
+        }
+    }
+    async storageState(){
+        if(this.isRunning()){
+            await ( this.context as BrowserContext ).storageState({ path: BROWSER_STORAGE_FILE })
+        }
+    }
+    async close(): Promise<boolean> {
+        try {
+            if (!this.isRunning()) return true
+            else {
+                this.parent.emit('browserclosing')
+                await this.storageState()
+                await this.context?.close()
+                this.mainPage = null
+                this.context = null
+            }
+            if (this.browser) {
+                await this.browser.close()
+                this.browser = null
+            }
+            this.parent.emit('browserclose')
+            return true
+        } catch (e) {
+            if(e instanceof Error){
+                this.parent.emit('error', e)
+            }
+            return false
+        }
+    }
+    getContext() {
+        if (this.context)
+            return this.context
+        return null
+    }
+    isRunning() {
+        if (this.mainPage !== null && this.context !== null && this.browser !== null) {
+        return true
+        }
+        else
+            return false
+    }
+    async newPage() {
+        if (this.isRunning()) {
+            const page = (await this.context?.newPage())
+            return page
+        }
+
+    }
+    getMainContextPage () {
+        return this.mainPage ?? undefined
+    }
+}
+

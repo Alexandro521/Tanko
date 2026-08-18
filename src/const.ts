@@ -3,7 +3,10 @@ import os from "os"
 import ansi from 'ansi-escapes'
 import type {BrowserContextOptions, LaunchOptions} from "playwright"
 import gradient from "gradient-string"
-import chalk, { Chalk } from "chalk"
+import chalk from "chalk"
+import userAgents from './json/user_agents.json' with {type: "json"}
+import { randomInt } from "crypto"
+import supportsHyperlinks from "supports-hyperlinks"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
@@ -13,7 +16,7 @@ export const HISTORY_PATH = path.resolve(DATA_DEFAULT_DIR, 'read_history_v2.json
 export const TEMP_DIR = os.tmpdir()
 export const BROWSER_STORAGE_PATH = path.resolve(DATA_DEFAULT_DIR, 'browser')
 export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.json')
-
+export const ISSUES_REPO = "https://github.com/Alexandro521/Tanko/issues"
 export const PRIMARY_COLOR = '#bf78fa'
 
 export const WELCOME_MESSAGE = gradient('#84b7fa', PRIMARY_COLOR).multiline(`
@@ -56,13 +59,16 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
 export const BROWSER_CONTEXT_OPTIONS:BrowserContextOptions = {
   javaScriptEnabled: true,
   reducedMotion: 'reduce',
+  screen: { width: 1280, height: 720 },
+  locale: 'es',
+  userAgent: userAgents.agents[randomInt(userAgents.agents.length)]
 }
-
+const link = supportsHyperlinks.stdout ? ansi.link(chalk.underline.blueBright('issue'), ISSUES_REPO) : chalk.underline.blueBright(ISSUES_REPO)
 export const FIRST_INIT_MESSAGE = `
 Welcome to Tanko! It's been several months since I last updated this tool,
 but I've been working hard to release an update that lives up to my absence.
 This is just a small preview of my progress. Thanks for using Tanko!
 
-If you find any errors, it would help me a lot if you opened an ${ansi.link(chalk.underline.blueBright('issue'), 'https://github.com/Alexandro521/Tanko/issues')} in the GitHub repository.
+If you find any errors, it would help me a lot if you opened an ${link} in the GitHub repository.
 
 P.S.: Press Ctrl+Q to close this message`

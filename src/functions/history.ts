@@ -1,6 +1,8 @@
 import type { HistoryObject } from "../types/types.js";
 import { HISTORY_PATH } from "../const.js";
 import fsp from 'node:fs/promises'
+import { Notify } from "./notify.js";
+import { Configuration } from "./configuration.ts";
 
 interface HistoryDataStruct {
   last_update: number,
@@ -28,16 +30,34 @@ export class History {
       return true;
     } catch (e) {
       if (e instanceof Error) {
-        console.log(e.message)
-        await fsp.writeFile(HISTORY_PATH, JSON.stringify({ last_update: Date.now(), history: [] }, null))
+        Notify.pushError(e)
       }
       return false
     }
   }
   static save(mangaInfo: HistoryObject) {
-    mangaInfo.time = Date.now()
-    this.map.set(mangaInfo.mangaTitle, mangaInfo)
-    this.store()
+    Configuration.getInstance()
+      .then(conf => {
+        if (this.map.size >= conf.settings.history_maxSize) {
+          const sortByTime = this.map
+            .values()
+            .toArray()
+            .sort((a, b) => a.time - b.time)
+          //delete the 20% of the most old history entries
+          const deletePorcentage = Math.floor((20 * this.map.size) / 100)
+          for (let i = 0; i < deletePorcentage; i++) {
+            const key = (sortByTime[i]).mangaTitle
+            this.map.delete(key)
+          }
+          mangaInfo.time = Date.now()
+          this.map.set(mangaInfo.mangaTitle, mangaInfo)
+          this.store()
+        } else {
+          mangaInfo.time = Date.now()
+          this.map.set(mangaInfo.mangaTitle, mangaInfo)
+          this.store()
+        }
+    })
   }
   static async store() {
     try {
@@ -49,7 +69,7 @@ export class History {
       await fsp.writeFile(HISTORY_PATH, JSON.stringify(fileStruct, null, '\t'))
     } catch (e) {
       if (e instanceof Error) {
-        console.error(e.message)
+        Notify.pushError(e)
       }
     }
   }

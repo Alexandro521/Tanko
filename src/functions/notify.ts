@@ -2,6 +2,9 @@ import type{Options} from "boxen";
 import boxen from "boxen";
 import ansi from 'ansi-escapes'
 import { EventEmitter } from "node:events";
+import chalk from "chalk";
+import supportsHyperlinks from "supports-hyperlinks";
+import { ISSUES_REPO } from "../const.js";
 type Colors = Options['borderColor']
 
 export enum NotifyType {
@@ -26,13 +29,8 @@ export class Notify extends EventEmitter{
     private stackSize = 64
     private stackIndex = 0;
     private stack: NotifyProps[] = new Array(this.stackSize).fill(null)
-    private strbox: undefined | string = undefined
     private popTimeout: NodeJS.Timeout | null = null
-    private boxProps = {
-        x_pos: 0,
-        width: 0,
-        height: 0,
-    }
+
     private constructor () {
         super()
     }
@@ -49,7 +47,6 @@ export class Notify extends EventEmitter{
     push(notify: NotifyProps): void{
         if(this.stackIndex < this.stackSize){
             this.stack[this.stackIndex++] = notify;
-            this.strbox = undefined
             if(this.popTimeout){
             //    clearTimeout(this.popTimeout)
             }
@@ -60,7 +57,6 @@ export class Notify extends EventEmitter{
         }
     }
     pop(): NotifyProps | undefined {
-        this.strbox = undefined
         if(this.stackIndex > 0){
             if(this.popTimeout) {
               //  clearTimeout(this.popTimeout)
@@ -76,14 +72,20 @@ export class Notify extends EventEmitter{
         }
         return undefined
     }
-    getf():string | undefined {
-        const notify = this.get()
-        if(!notify) return undefined
+    getf() {
+        const props = this.get()
+        if(!props) return undefined
+        let message = props.message
         let color: Colors = 'gray'
-        const width =Math.min(120, Math.max(notify.message.length, 80))
-        switch(notify.type){
+        //min 80, max 120
+        const width =Math.min(120, Math.max(props.message.length, 80), process.stdout.columns -2)
+        switch(props.type){
             case NotifyType.error:
                 color = 'redBright'
+                const issueLink = supportsHyperlinks.stdout ? ansi.link("Tanko issues" ,ISSUES_REPO) : ISSUES_REPO
+                message += (
+                    `\n\n open an issue ${chalk.underline(chalk.magenta(issueLink))}`
+                )
                 break
             case NotifyType.message: 
                 color = 'gray'
@@ -96,7 +98,7 @@ export class Notify extends EventEmitter{
                 break
         }
         const options:Options ={
-            title: notify.title,
+            title: props.title,
             textAlignment: 'center',
             titleAlignment: 'left',
             borderStyle: 'single',
@@ -116,48 +118,51 @@ export class Notify extends EventEmitter{
                 top: 1
             },
         }
-        const str = boxen(notify.message, options)
+        const str = boxen(message, options)
         const lines = str.split('\n')
-        this.strbox = str
-        this.boxProps = {
+        return {
+            strBox: str,
             x_pos: 1,
             width: width,
             height: lines.length
         }
-        return str
     }
     render(){
-        let s = this.strbox
-        if(!s){
-            s = this.getf()
-            if(!s) {
-                process.stdout.write('\x1B[0J')
-                return
-            }
-        }
-        const quitText = '[^Q] quit '+ `${this.stackIndex > 1 ?['⏺', this.stackIndex, 'Left'].join(' ') : ''}`
-        //before clear from the cursor pos to the end screen
-        process.stdout.write('\x1B[0J'+ s)
+        const box = this.getf()
+        if(!box) return
+        const quitText = chalk.bgGray(' ^Q ') + 'quit ' + `${this.stackIndex > 1 ?['⏺', this.stackIndex, 'Left'].join(' ') : ''}`
+
+        process.stdout.write('\x1B[0J'+ box?.strBox)
         process.stdout.write(
-            ansi.cursorSavePosition +
-            '\r' +
+            ansi.cursorSavePosition + '\r' +
             ansi.cursorUp(1) + 
-            ansi.cursorForward(Math.abs(this.boxProps.width - quitText.length -2)) +
+            ansi.cursorForward(Math.abs(box.width - quitText.length -2)) +
             quitText +
             ansi.cursorRestorePosition +
-            ansi.cursorUp(this.boxProps.height -1)
+            ansi.cursorUp(box.height -1)
         )
     } 
     clear(): void{
-
+        this.stackIndex = 0
     }
+    static pushError(err: Error) {
+        const notify = Notify.getInstace()
+        if (err instanceof Error) {
+            const props: NotifyProps = {
+                type: NotifyType.error,
+                message: err.message,
+                title: err.name,
+            }
+            notify.push(props)
+        }
+    }
+    static pushMessage(message: string, title = '') {
+        const notify = Notify.getInstace()
+            const props: NotifyProps = {
+                type: NotifyType.message,
+                message,
+                title,
+            }
+            notify.push(props)
+        }
 }
-/*
-const instance = Notify.getInstace()
-
-instance.push({
-    message: 'hello world this is a messagdf\nfffffffffffff fffffe dfdfsdf',
-    title: 'test notify',
-    type: NotifyType.message
-})
-instance.render();*/

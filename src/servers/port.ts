@@ -2,12 +2,12 @@ import { LeerCapitulo } from "./leerCapitulo.js";
 import { MangaDex } from "./mangadex.js";
 import type {
   MangaProvider,
-  ServerConfInterface,
+  ProviderConfInterface,
   ServerName,
 } from "../types/types.js";
 import type { Page } from "playwright";
 
-export interface Client extends ServerConfInterface {
+export interface Client extends ProviderConfInterface {
   client: (e: Page) => MangaProvider;
 }
 export type ServerRegister = Client[]
@@ -22,6 +22,6 @@ export const mangaServerRegister: ServerRegister =
   {
     name: "mangadex",
     need_browser: false,
-    client: (e: Page) => new MangaDex(),
+    client: (_: Page) => new MangaDex(),
   }
 ]

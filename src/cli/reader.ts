@@ -1,314 +1,475 @@
 import ora from "ora"
-import chalk from "chalk"
-import esc from "ansi-escapes"
-import readLine from "node:readline"
-import { stdin, title } from "node:process"
+import boxen, { type Options } from "boxen"
+import ansi from "ansi-escapes"
+import { memoryUsage, stdout } from "node:process"
+import type { Key } from "node:readline"
+import { downloadSection } from "./menu.ts"
+import chalk, { type ColorName } from "chalk"
+import { Notify } from "../functions/notify.ts"
+import { MediaListStatus } from "../types/enum.ts"
 import prompts, { type Choice } from "@alex_521/prompts"
-import { Configuration, ConfigurationEvents } from "../functions/configuration.js"
-import { SignalsCodes } from "../types/enum.js"
-import { History } from "../functions/history.js"
-import { askChapterLang, generateChapterList, terminalReaderChapterOptions } from "./prompts.js"
-import { ImageCache, loadImage as imageLoader } from "../functions/images.js"
-import type { Chapter,  ChapterPage, MangaProvider, MangaInfo,ChapterLanguage, ChapterLangType } from "../types/types.js"
-import type { LangInterface } from "../types/lang.js"
-import { downloadChapter } from "../functions/downloader.js"
+import { Configuration } from "../functions/configuration.ts"
+import { centerX, debounce, virtualWindow, slice, extractTitleByLang} from "../utils.ts"
+import { SignalsCodes } from "../types/enum.ts"
+import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
+import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
+import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
+import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
+import supportsTerminalGraphics from "supports-terminal-graphics"
 
-const confInst = await Configuration.getInstance()
-const loading = ora()
-let instance = await Configuration.getInstance()
-let { err_messages, loading_states, reader } = await instance.getLanguageInterface()
+const LOADER = ora()
+const CONFIGURATION = await Configuration.getInstance()
+const localTracker = LocalTracker.getInstance()
 
-instance.on('update',(_, __, lang)=>{
-    err_messages = (lang as LangInterface).err_messages
-    loading_states = (lang as LangInterface).loading_states
-    reader = (lang as LangInterface).reader
+let trackerAniList = CONFIGURATION.conf_session.getTracker('anilist')
+let { err_messages, loading_states, reader } = await CONFIGURATION.getLanguageInterface()
+
+CONFIGURATION.on('updatelanguage', (lang) => {
+  err_messages = lang.err_messages
+  loading_states = lang.loading_states
+  reader = lang.reader
 })
-instance.on(ConfigurationEvents.updateLanguage, (lang)=>{
-    err_messages = (lang as LangInterface).err_messages
-    loading_states = (lang as LangInterface).loading_states
-    reader = (lang as LangInterface).reader
+
+CONFIGURATION.on('login', (trackerName) => {
+  trackerAniList = CONFIGURATION.conf_session.getTracker(trackerName)
 })
-function debounce(func: Function, delay: number) {
-    let timer: any;
-    return async () => {
-        clearTimeout(timer)
-        timer = setTimeout(async () => await func(), delay);
-    }
-}
 
-class PagesControl {
-  private pages!: ChapterPage[];
-  pagesLength = 0
-  index = 0;
-  constructor(pages: ChapterPage[]) {
-    this.pages = pages;
-    this.pagesLength = pages.length
-  }
-    nextPage() {
-      if (this.index < this.pages.length-1)
-        this.index++;
+export async function terminalReader(
+  mangaInfo: MangaInfo,
+  chapters: Chapter[],
+  startIndex: number,
+  lang: Translations
+){
+  return new Promise<void>(async (resolve) => {
+    let DEBUG_MODE = false
+    let FULLSCREEN_MODE = false
+    let IMGFITMODE:ObjectFit = CONFIGURATION.settings.reader_imgFit 
+    let TOP_PADDING = 3
+    let BOTTOM_PADDING = 1
+    let RENDER_WSZ = {
+      colums: stdout.columns,
+      rows: stdout.rows
     }
-    backPage(){
-      if (this.index > 0)
-        this.index--;
-    }
-    reset(){
-      this.index = 0;
-    }
-  async loadPage() {
-    try{
-        loading.start(loading_states.default_loading)
-        await imageLoader(this.pages[this.index])
-        loading.stop()
-      }catch(e){
-        loading.fail(err_messages.page_loading.msg)
+    let ANILIST_ID: number | undefined = mangaInfo?.anilistId ? 
+    Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
+    
+    const pagesCtl = new PagesControl([]);
+    const mangaProvider = CONFIGURATION.conf_provider.providerInstance
+    const chapterCtl = new ChapterControl(chapters, startIndex, lang, mangaProvider);
+    
+    const SIGWINCH_HANDLER = async () => {
+      RENDER_WSZ.colums = stdout.columns
+      RENDER_WSZ.rows = stdout.rows
+      if(TerminalControl.isRaw){
+        const $ = supportsTerminalGraphics.stdout
+        if(!$.kitty && !$.iterm2){
+          await render(true, false)
+        }else{
+          await render()
+        }
       }
-  }
-  getPages(){
-    return this.pages
-  }
-  setPages(newPages: ChapterPage[]) {
-      this.pages = newPages;
-      this.pagesLength = newPages.length
-      this.index = 0;
-  }
-    set setIndex (newIndex: number) {
-      this.index = newIndex
     }
-}
-class TerminalControl {
-  static exitRawMode(keyHandler: any) {
-    process.stdout.write(esc.cursorShow)
-    if(keyHandler)
-      process.stdin.removeListener('keypress', keyHandler);
-    process.stdin.setRawMode(false);
-    process.stdin.pause();
-    process.stdout.write(esc.clearViewport);
-  }
-  static openRawMode(keyHandler: any = undefined) {
-    readLine.emitKeypressEvents(process.stdin)
-    process.stdin.resume()
-    process.stdin.setRawMode(true)
-    process.stdin.setEncoding('utf8');
-    process.stdout.write(esc.cursorHide)
-    if (keyHandler) {
-      process.stdin.on('keypress', keyHandler)
-    }
-  }
-}
-class ChapterControl {
-  private chapters!: Chapter[];
-  private index!: number;
-  private server!: MangaProvider;
-  private lang!: ChapterLangType;
+    
+    const trackerCtl = async () => {
+      if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
+        const chapterInfo = chapterCtl.getChapterInfo()
+        const chaptersCount = Math.max(chapters[0].number, chapters[chapters.length -1].number, chapters.length)
+        const localTrackerProps: LocalTrackerProps = {
+          chapterCount: chaptersCount,
+          chapterIndex: chapterInfo.number,
+          mangaId: mangaInfo.src
+        }
+        if (!(await localTracker.exists(localTrackerProps))) {
+          await localTracker.regist(localTrackerProps)
+        }
+        const hasBeenRead = await localTracker.markAsRead(localTrackerProps)
 
-
-  constructor(chapterList: Chapter[],chapterIndex: number, lang: ChapterLangType, server: MangaProvider) {
-    this.chapters = chapterList
-    this.index = chapterIndex;
-    this.lang = lang;
-    this.server = server;
-  }
-  setChapterIndex(newIndex: number) {
-    this.index = newIndex
-  }
-  getChapterInfo() {
-    const target = this.chapters[this.index]
-    const targetChapter = target.translations[this.lang]
-    return {
-      ...target,
-      chapterTarget: targetChapter,
-      title: targetChapter?.title
-    }
-  }
-  getChapter(){
-    return this.chapters[this.index]
-  }
-  extractChapterSrcByLang(chapter: Chapter, lang: ChapterLangType): ChapterLanguage {
-    if (chapter.translations[lang]) return chapter.translations[lang];
-    let targetChapter: any = null;
-    Object.values(chapter.translations).some((e) => {
-      if (e) {
-        targetChapter = e as ChapterLanguage;
-        return;
+        if (trackerAniList.isAuth && !hasBeenRead && typeof ANILIST_ID === 'number') {
+          await trackerAniList.instance.track({
+            mediaId: ANILIST_ID,
+            lastRead: chapterInfo.number,
+            progress: chapterInfo.number,
+            status: MediaListStatus.Current,
+          })
+          chapterCtl.hasBeenTracked = true
+        }
       }
-    })
-    return targetChapter as ChapterLanguage
-  }
-  async loadChapter() {
-    try {
-      if (!this.chapters[this.index])
-        throw new Error("chapters out");
-      let target = this.extractChapterSrcByLang(this.chapters[this.index], this.lang);
-      const data = await this.server.getChapterPages(target.src);
-      return data;
-    } catch (e) {
-      console.log(e);
     }
-  }
-  getLang() {
-    return this.lang
-  }
-  async prevChapter() {
-    if (this.index < this.chapters.length) {
-      this.index++;
-    }
-    return null
-  }
-  async nextChapter() {
-    if (this.index > 0) {
-      this.index--;
-    }
-    return null
-  }
-  set chapterLanguage(newLang: ChapterLangType) {
-    this.lang = newLang;
-  }
-  set chapterIndex(newIndex: number) {
-    if (newIndex > -1 && newIndex < this.chapters.length)
-      this.index = newIndex;
-  }
-  historySave(title: string, src:string) {
-    const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang)
-    History.save({
-      chapters_length: this.chapters.length,
-      chapterSrc: chapter.src,
-      last_index: this.index,
-      last_lang: this.lang,
-      server: confInst.configuration.server.name,
-      last_title: chapter.title,
-      mangaSrc: src,
-      mangaTitle: title,
-      time: Date.now()
-    })
-  }
-}
-const centerText = (textLength: number, relativeofLenght: number) => {
-    return Math.abs(Math.ceil(relativeofLenght / 2) - Math.ceil(textLength / 2))
-}
-const renderHeader = (title: string, mangatitle: string, index: number, n: number) => {
-    const header = `${mangatitle}: ${chalk.gray(title)}\n`
-    const currentPage = chalk.gray(`${index} de ${n}\n`)
-    let startPoint = centerText(`${index}    ${n}`.length + 1, title.length + mangatitle.length + 1)
 
-    process.stdout.write(esc.clearViewport);
-    process.stdout.write(header);
-    process.stdout.write(esc.cursorMove(startPoint, 0) + currentPage);
-    // process.stdout.write(esc.cursorSavePosition +esc.cursorMove(0, rows-2))
-    // process.stdout.write(chalk.gray(`   ←            →          Q & ESC            P                    N                C    \n`))
-    // process.stdout.write(chalk.gray(` Anterior    Siguiente       Exit       capitulo anterior   capitulo siguiente    Opciones\n`))
-    // process.stdout.write(esc.cursorRestorePosition)
-};
-const debugLogs = (src: string) => {
-    process.stdout.write(`[DEBUG INFO] (CACHE SIZE): ${(ImageCache.cacheSize / 1000000).toFixed(2)} MB (MAX CACHE SIZE) : ${(ImageCache.MAX_SIZE / 1000000).toFixed(2)} MB (CACHE POINTER POSITION): ${ImageCache.pointer}, (PAGES IN CACHE) ${ImageCache.cache.size}, (FROM CACHE) ${ImageCache.cache.has(src)}\n\n`)
-}
+    const pageRender = debounce(async (invalidateCache=false, forceReload=false) => {
+      const imgPosition = {
+        y: FULLSCREEN_MODE ? 0 : (stdout.rows - RENDER_WSZ.rows) + (TOP_PADDING), 
+        x: FULLSCREEN_MODE ? 0 : stdout.columns - RENDER_WSZ.colums 
+      }
 
-export async function terminalReader(mangaInfo: MangaInfo, chapters: Chapter[] ,startIndex: number, lang: ChapterLangType, server: MangaProvider) {
+      const imageContainer = virtualWindow({
+        cellPxHeigth: TerminalControl.wsz.w_cellPxHeight,
+        cellPxWidth: TerminalControl.wsz.w_cellPxWidth,
+        columns: FULLSCREEN_MODE ? stdout.columns : RENDER_WSZ.colums,
+        rows: FULLSCREEN_MODE ? stdout.rows :  RENDER_WSZ.rows - (TOP_PADDING + BOTTOM_PADDING),
+        position: imgPosition,
+      })
 
-    return new Promise<void>(async (resolve) => {
-        const chapterCtrl = new ChapterControl(chapters, startIndex, lang, server);
-        const pageCtrl = new PagesControl([]);
+      const imageLoaderAttr: LoadImageProps = {
+        cotainerSize: imageContainer,
+        invalidateCache,
+        forceReload,
+        maxImagePreloading: CONFIGURATION.settings.reader_maxImagePreloading,
+        enableImgPreloading: CONFIGURATION.settings.reader_enableImgPreloading,
+        imgPreloadingStrategy: CONFIGURATION.settings.reader_imgPreloadingStrategy,
+        fit: IMGFITMODE,
+        maxWidth: CONFIGURATION.settings.reader_maxImgWidth,
+        position: {
+          x: 'center',
+          y: 'center',
+        }
+      }
+      const x = centerX(loading_states.default_loading.length, stdout.columns)
+      const y = (imgPosition.y + (imageContainer.w_rows >> 1))
       
-        TerminalControl.openRawMode()
-        const renderInfo = () => {
-            const chapterInfo = chapterCtrl.getChapterInfo()
-            console.log(esc.clearViewport)
-            renderHeader(mangaInfo.title, chapterInfo.title || '', pageCtrl.index + 1, pageCtrl.pagesLength)
-            //debugLogs(pagesNav.getState().src.src)
-        }
+      if(LOADER.isSpinning)
+        LOADER.stop()
+      
+      LOADER.prefixText = ansi.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
+      if(!DEBUG_MODE)
+        LOADER.start(loading_states.default_loading)
+      
+      await pagesCtl.loadPage(imageLoaderAttr)
 
-        const pageDebounce = debounce(async () => {
-                await pageCtrl.loadPage()
-                process.stdout.write(esc.cursorHide)
-                const controlBar = `\n   ←            →          Q & ESC            P                    N                C\n${reader.prev_page}    ${reader.next_page}        ${reader.exit}       ${reader.prev_ch}   ${reader.next_ch}    ${reader.options}`
-                process.stdout.write(chalk.gray(controlBar))
-        }, 300)
-        renderInfo()
-      const chapterLoader = async (signal: SignalsCodes | undefined = undefined, handle: Function | undefined = undefined) => {
-            try {
-                if (stdin.isRaw) {
-                    TerminalControl.exitRawMode(handle)
-                }
-                loading.start(loading_states.loading_chapter)
+      if(LOADER.isSpinning)
+        LOADER.stop()
 
-                if(signal === SignalsCodes.next_chapter) 
-                  await chapterCtrl.nextChapter()
-                else if(signal === SignalsCodes.previous_chapter)
-                  await chapterCtrl.prevChapter()
-              
-                let newPages = await chapterCtrl.loadChapter()
-                chapterCtrl.historySave(mangaInfo.title, mangaInfo.src);
-                pageCtrl.setPages(newPages ?? [])
-                loading.stop()
-                if (stdin.isTTY) TerminalControl.openRawMode(handle)
-                renderInfo()
-                await pageCtrl.loadPage()
-            } catch (e) {
-                loading.fail(err_messages.no_results.msg)
-                if (stdin.isTTY) TerminalControl.openRawMode(handle)
-            }
-        }
-      await chapterLoader();
-      const handleKeypress = async (__: string, key: any) => {
-            const name: string = key.name;
-            if (key && key.ctrl && name === 'c') {
-                process.exit();
-            } else if (name === 'left' || name === 'right') {
-              if (name.startsWith('l')) 
-                pageCtrl.backPage()
-              else
-                pageCtrl.nextPage()
-              renderInfo()
-              await pageDebounce()
-            } 
-            else if (name === 'q' || key.name === 'escape') {
-                TerminalControl.exitRawMode(handleKeypress)
-                resolve();
-            } else if (name === 'c') {
-                process.stdout.write(esc.clearViewport)
-                TerminalControl.exitRawMode(handleKeypress)
-                const options = await prompts(terminalReaderChapterOptions())
-                TerminalControl.openRawMode(handleKeypress)
-                if (!options?.target) {
-                    console.log(esc.clearViewport)
-                    renderInfo()
-                    await pageCtrl.loadPage()
-                    return
-                }
-                if (options.target === SignalsCodes.next_chapter)
-                    await chapterLoader(SignalsCodes.next_chapter, handleKeypress)
-                else if (options.target === SignalsCodes.previous_chapter, handleKeypress)
-                    await chapterLoader(SignalsCodes.previous_chapter)
-                else if (options.target === SignalsCodes.download_chapter){
-                  const info =  chapterCtrl.getChapterInfo()
-                  const pages = pageCtrl.getPages()
-                  TerminalControl.exitRawMode(handleKeypress)
-                  await downloadChapter(mangaInfo.title, info.title as string, pages )
-                  TerminalControl.openRawMode(handleKeypress)
-                }
-                else if(options.target === SignalsCodes.get_chapters_list) {
-                  TerminalControl.exitRawMode(handleKeypress)
-                  const choices: Choice[] = chapters.map((e, index):Choice=>({title: e.title, value: String(index)}))
-                  const chapterIndex = await prompts(generateChapterList(mangaInfo.title, chapterCtrl.chapterIndex, choices))
-                  if(!chapterIndex ||!chapterIndex.chapter) return
-                  const targetChapter = chapters[Number(chapterIndex.chapter)]
-                  const lang = await askChapterLang(targetChapter)
-                  if(lang)
-                    chapterCtrl.chapterLanguage = lang
-                  chapterCtrl.setChapterIndex(Number(chapterIndex.chapter))
-                  chapterLoader(undefined, handleKeypress)
-                }
-                else if (options.target === SignalsCodes.exit) {
-                    TerminalControl.exitRawMode(handleKeypress)
-                    console.log(esc.clearViewport)
-                    resolve()
-                }
-            }
-            else if (name === 'p' || name === 'P')
-                await chapterLoader(SignalsCodes.previous_chapter, handleKeypress)
-            else if (name === 'n' || name === 'N')
-                await chapterLoader(SignalsCodes.next_chapter, handleKeypress)
+      pagesCtl.render()
+      await trackerCtl()
+    }, 300)
+
+    const debugModeRendeer = async () => {
+      const pages = pagesCtl.getPages()
+      const index = pagesCtl.index
+      const cacheHit= pagesCtl.imageLoader.cacheHit(pages[index])
+      const cacheStats = pagesCtl.imageLoader.getStats()
+      const wsz = TerminalControl.wsz
+      const forl = chapterCtl.isFirstOrLast()
+      const forlStr = (forl < 0)  ? 'last' : (forl > 0) ? 'first' : 'none'
+      const {
+        rss,
+        heapTotal, 
+        heapUsed,
+        external,
+        arrayBuffers
+      } = memoryUsage()
+
+      const rows = [
+        `cache hit:${cacheHit}:${cacheHit ? 'green' : 'red'}`,
+        `Is it the first or the last? :${forlStr}:blue`,
+        `cache alloc size:${cacheStats.size} MB:yellow`,
+        `cache length:${pagesCtl.imageLoader.size}:green`,
+        `chapters length:${chapters.length}:gray`,
+        `chapter index:${chapterCtl.geChapterIndex()}:gray`,
+        `image protocol:${TerminalControl.graphicalProtocol}:blue`,
+        `window width:${wsz.w_width}:blue`,
+        `window height:${wsz.w_height}:blue`,
+        `window colums:${wsz.w_colums}:blue`,
+        `window rows:${wsz.w_rows}:blue`,
+        `window cell width:${wsz.w_cellPxWidth}:blue`,
+        `window cell height:${wsz.w_cellPxHeight}:blue`,
+        `window ratio:${wsz.w_ratio}:blue`,
+      ]
+      const memoryUse = [
+        `Rss:${(rss/1024/1024).toFixed(2)}:MB`,
+        `Heap Total:${(heapTotal/1024/1024).toFixed(2)}:MB`,
+        `Heap Used:${(heapUsed/1024/1024).toFixed(2)}:MB`,
+        `External:${(external/1024/1024).toFixed(2)}:MB`,
+        `Array buffers:${(arrayBuffers/1024/1024).toFixed(2)}:MB`,
+      ]
+      const str = rows.map((e)=>{
+        const s = e.split(':')
+        const key =  chalk.yellow(s[0])
+        const value = chalk[s[2] as ColorName](s[1])
+        return `${key}:${value}`
+      }).join('\n')
+      const memoryUsedStr = memoryUse.map((e)=>{
+        const s = e.split(':')
+        const key =  chalk.yellowBright(s[0])
+        const value = chalk.blueBright(s[1])
+        return `${key}:${value} ${chalk.gray(s[2])}`
+      }).join('\n')
+      const boxOptions:Options = {
+        borderStyle: 'single',
+        borderColor: 'yellow',
+        textAlignment: 'left',
+        titleAlignment: 'center',
+        padding: { left: 1, right: 1 },
+        width: process.stdout.columns -4,
       }
-      process.stdin.on('keypress', handleKeypress)
-    })
+      const box = boxen(str, {
+        ...boxOptions,
+        title: 'Debug Information',
+        margin: {top: 1},
+      }) 
+      const box2 = boxen(memoryUsedStr, {
+        ...boxOptions,
+        borderStyle: {
+          topLeft: '├',
+          top: '─',
+          topRight: '┤',
+          right: '│',
+          bottomRight: '┘',
+          bottom: '─',
+          bottomLeft: '└',
+          left: '│',
+        },
+        title: 'Memory Usage',
+        margin: {top: 0},
+      })
+
+      RENDER_WSZ.rows = (stdout.rows - (rows.length + memoryUse.length) -4)
+      process.stdout.write(box + '\r')
+      process.stdout.write(box2)
+    }
+
+    const renderHeader = ()=>{
+      const chapterInfo = chapterCtl.getChapterInfo()
+      const chapterTitle =  slice(chapterInfo.title ?? '', stdout.columns)
+      const mangaTitle = slice(mangaInfo.title, stdout.columns)
+      const stats =slice([
+        `${pagesCtl.index+1}/${pagesCtl.PagesLength}`,
+        `${pagesCtl.readProgress.toFixed(1) }%`,
+        `${ANILIST_ID}`
+      ].join(" ⏺ "), stdout.columns)
+
+      const centerStats = centerX(stats.length, process.stdout.columns)
+      const titleCenter = centerX(mangaInfo.title.length, process.stdout.columns)
+      const chapterTitleCenter = centerX(chapterTitle.length, process.stdout.columns)
+
+      process.stdout.write(`${ansi.cursorForward(titleCenter)}${mangaTitle}\n`)
+      process.stdout.write(`${ansi.cursorForward(chapterTitleCenter)}${chapterTitle}\n`)
+      process.stdout.write(`${ansi.cursorForward(centerStats)}${stats}\n`)
+    }
+
+    const renderFooter = ()=>{
+      const SHORTCUTS = [
+      ['⥄', 'Move'],
+      ['P', 'Previous'],
+      ['N', 'Next'],
+      ['C', 'Options'],
+      ['F', 'Max/Min'],
+      ['M', 'Toggle fit'],
+      ['R', 'Reload page'],
+      ['Shift+R', 'Redraw page'],
+      ['^R', 'Reload chapter'],
+      ['F12', 'Debug on/off'],
+      ['Esc/Q', 'Exit'],
+    ]
+      let str = ''
+      let strlength = 0
+      let i = 0
+      while(i < SHORTCUTS.length){
+        const tokens = SHORTCUTS[i]
+        const [key, value] = tokens
+        const length = strlength + key.length + value.length + 4 //-> white space
+        if(length < stdout.columns){
+          str += `${chalk.bgWhite(` ${chalk.black(key)} `)} ${value} `
+          strlength = length
+        }
+        i++
+      }
+      const x = centerX(strlength, stdout.columns)
+      process.stdout.write(
+        ansi.cursorSavePosition + 
+        ansi.cursorTo(x, stdout.rows) +
+        str +
+        ansi.cursorRestorePosition
+      )
+    }
+
+    const render = async (invalidateCache=false, forceReload=false) => {
+      if (!process.stdin.isRaw) return;
+      process.stdout.write(ansi.clearScreen)
+      if (!FULLSCREEN_MODE && IMGFITMODE !== 'cover') {
+        renderHeader()
+        if (DEBUG_MODE) debugModeRendeer()
+        renderFooter()
+    }
+      await pageRender(invalidateCache, forceReload)
+    }
+
+    const chapterLoader = async (action: SignalsCodes | undefined = undefined, force = false) => {
+      try {
+        process.stdout.write(ansi.clearTerminal)
+        LOADER.start(loading_states.loading_chapter)
+        let isFirstOrLast = chapterCtl.isFirstOrLast()
+        switch (action) {
+          case SignalsCodes.next_chapter:
+            if (isFirstOrLast === 1) {
+              isFirstOrLast = 0;
+            }
+            await chapterCtl.nextChapter()
+            break
+          case SignalsCodes.previous_chapter:
+            if (isFirstOrLast === -1) {
+              isFirstOrLast = 0
+            }
+            await chapterCtl.prevChapter()
+            break
+        }
+        if (isFirstOrLast === 0 || force) {
+          const newPages = await chapterCtl.loadChapter()
+          chapterCtl.historySave(mangaInfo.title, mangaInfo.src, mangaProvider.name);
+          pagesCtl.setPages(newPages ?? [])
+        }
+        if (LOADER.isSpinning)
+          LOADER.stop()
+        if (process.stdin.isTTY)
+          TerminalControl.openRawMode(keyPressHandle)
+        await render()
+        } catch (e) {
+        if(LOADER.isSpinning) LOADER.stop()
+        if (process.stdin.isRaw)
+          TerminalControl.exitRawMode(keyPressHandle)
+        if (e instanceof Error) {
+          Notify.pushError(e)
+        }
+        process.stdout.write(ansi.cursorShow)
+        resolve()
+      }
+    }
+
+    const keyPressHandle = async (__: string, key: Key) => {
+      const keyName = key.name;
+      const keyctrl = key.ctrl
+      const keyshift = key.shift
+      const keymeta = key.meta
+      const keyEsc = key?.sequence === '\x1B'
+
+      if ((keyctrl && keyName === 'c') || keyName === 'q' || keyEsc) {
+        process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
+        process.stdout.write(ansi.cursorShow)
+        TerminalControl.exitRawMode(keyPressHandle);
+        if (key.ctrl && keyName === 'c') {
+          await CONFIGURATION.conf_browser.close()
+          await CONFIGURATION.store()
+          pagesCtl.reset()
+          stdout.write(
+            ansi.clearTerminal +
+            ansi.exitAlternativeScreen
+          );
+          process.exit(0)
+        }
+        process.stdout.write(ansi.clearScreen)
+        pagesCtl.reset()
+        resolve();
+      } 
+      else if (keyName === 'left' || keyName === 'right') {
+        if (keyName.startsWith('l')) pagesCtl.backPage()
+        else pagesCtl.nextPage()
+        await render()
+        return
+      }
+      else if (keyName === 'p'){
+        await chapterLoader(SignalsCodes.previous_chapter)
+        return
+      }
+      else if (keyName === 'n'){
+        await chapterLoader(SignalsCodes.next_chapter)
+        return
+      }
+      else if (keyName === 'f') {
+        FULLSCREEN_MODE = !FULLSCREEN_MODE
+        const $ = supportsTerminalGraphics.stdout
+        if(!$.kitty && !$.iterm2){
+          await render(false, true)
+        }else{
+          await render()
+        }
+        return
+      }
+      else if (keyName === 'f12') {
+        DEBUG_MODE = !DEBUG_MODE
+        if (!DEBUG_MODE) {
+          RENDER_WSZ.rows = stdout.rows
+        }
+        await render()
+        return
+      }
+      else if (keyName === 'r'){
+        if(keyctrl){
+          pagesCtl.reset()
+          await chapterLoader(undefined, true)
+        }else if (keyshift){
+          await render(false, true)
+        }else {
+          await render(true, true)
+        }
+      }
+      else if(keyName === 'm'){
+        IMGFITMODE = IMGFITMODE === 'contain' ? 'cover' : 'contain'
+        await render(false, true)
+      }
+      else if (keyName === 'c') {
+        process.stdout.write(ansi.clearViewport)
+        process.stdout.write(ansi.cursorShow)
+        TerminalControl.exitRawMode(keyPressHandle)
+
+        const optionsPrompt = await prompts(terminalReaderChapterOptions())
+        if (!optionsPrompt?.target) {
+          TerminalControl.openRawMode(keyPressHandle)
+          await render()
+          return
+        }
+        if (optionsPrompt.target === SignalsCodes.next_chapter)
+          await chapterLoader(SignalsCodes.next_chapter)
+        else if (optionsPrompt.target === SignalsCodes.previous_chapter)
+          await chapterLoader(SignalsCodes.previous_chapter)
+        else if (optionsPrompt.target === SignalsCodes.download_chapter) {
+          await downloadSection(mangaInfo, chapters, chapterCtl.geChapterIndex(), chapterCtl.getLang(), mangaProvider)
+          TerminalControl.openRawMode(keyPressHandle)
+          await render()
+          return
+        }
+        else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
+          const languageTarget = chapterCtl.getLang()
+          const localTrackerProps: LocalTrackerProps = {
+            chapterCount: 0,
+            chapterIndex: 0,
+            mangaId: mangaInfo.src
+          }
+          const trackData = await localTracker.getStats(localTrackerProps)
+          const choices: Choice[] = chapters.map((e, index): Choice => {
+            let title = extractTitleByLang(e,languageTarget)
+            if (trackData.readingMap.has(e.number)) {
+              title += ' ⏺ ' + chalk.dim(chalk.green('Read'))
+            }
+            const props = {
+              title: title,
+              value: String(index)
+            }
+            return props
+          })
+          const chapterIndex = await prompts(
+            chapterListPrompt(mangaInfo.title, chapterCtl.geChapterIndex(), choices)
+          )
+          if (!chapterIndex || !chapterIndex.target) {
+            TerminalControl.openRawMode(keyPressHandle)
+            await render()
+            return
+          }
+          const targetChapter = chapters[Number(chapterIndex.target)]
+          const lang = await askChapterLang(targetChapter) ?? languageTarget
+          chapterCtl.setChapterLanguage(lang)
+          chapterCtl.setChapterIndex(Number(chapterIndex.target))
+          await chapterLoader(undefined, true)
+        }
+        else if (optionsPrompt.target === SignalsCodes.exit) {
+          process.stdout.write(ansi.clearViewport)
+          process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
+          resolve()
+        }
+      }
+    }
+
+    process.stdout.write(ansi.cursorHide)
+    process.on('SIGWINCH', SIGWINCH_HANDLER)
+    await chapterLoader(undefined, true);
+  })
 }

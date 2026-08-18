@@ -1,27 +1,85 @@
 import  type { Page } from "playwright"
 import type { keyof } from "zod"
 import type { AvalibleLangs } from "./lang.js"
+import type { Query } from "./anilist-schema.js"
+import type { AltTitles } from "./mangadex/search.js"
+import type { SharpInput } from "sharp"
+
 
 export interface ChapterPage  {
     src: string
     page_index: string
 }
-type ChapterLangType = "es" | 'es-la' | 'pt-br' | 'en' | 'vi' | 'ru' | 'fr' 
+
+type Translations =
+  | "es"
+  | "en"
+  | "fr"
+  | "es-la"
+  | "zh"
+  | "pt-br"
+  | "ja-ro"
+  | "ko-ro"
+  | "zh-ro"
+  | "de"
+  | "it"
+  | "pt"
+  | "ru"
+  | "ar"
+  | "ja"
+  | "ko"
+  | "zh-tw"
+  | "hi"
+  | "nl"
+  | "tr"
+  | "pl"
+  | "sv"
+  | "vi"
+  | "th"
+  | "id"
+  | "el"
+  | "he"
+  | "uk"
+  | "cs"
+  | "ro"
+  | "hu"
+  | "da"
+  | "fi"
+  | "no"
+  | "bg"
+  | "ca"
+  | "hr"
+  | "sr"
+  | "sk"
+  | "sl"
+  | "lt"
+  | "lv"
+  | "et"
+  | "fa"
+  | "ur"
+  | "bn"
+  | "ta"
+  | "te"
+  | "ml"
+  | "sw"
+  | "tl";
+
 
 export interface Chapter {
-    id: string
-    title: string
+    number: number
     translation_count: number
+    volume?:number
     translations: {
-        [key in ChapterLangType] ?: ChapterLanguage
+        [key in Translations] ?: ChapterLanguage
     }
 }
+
 export type ServerName = "mangadex" | "leercapitulo"
 
 export interface ChapterLanguage {
     title: string
-    lang: ChapterLangType,
-    src: string
+    lang: Translations,
+    id: string
 }
 
 export interface SearchResult {
@@ -38,7 +96,7 @@ export interface HistoryObject {
   server: ServerName,
   last_title: string,
   last_index: number,
-  last_lang: ChapterLangType,
+  last_lang: Translations,
   chapters_length: number,
   time: number,
 }
@@ -47,7 +105,25 @@ export interface MangaInfo {
   title: string,
   src: string,
   description?:string,
-  lastUploadChapterSrc?: string
+  lastUploadChapterSrc?: string,
+  anilistId?: string | number | null
+  altTitles?: AltTitles[] | string[]
+}
+export type TrackerNames = "anilist"
+export interface LoginData {
+    Viewer: {
+        id: number,
+        name: string
+    }
+}
+export interface TrackerProps {
+    isAuth: boolean,
+    instance: TrackerIntegration,
+    data?: LoginData
+}
+
+export type TrackerInterface = {
+    [key in TrackerNames]: TrackerProps
 }
 
 export declare class MangaProvider{
@@ -60,19 +136,153 @@ export declare class MangaProvider{
     getPopulars(): Promise<MangaInfo[]>
     getLastMangas(): Promise<MangaInfo[]>
 }
-
-export interface ConfigurationInterface {
-    isFirstRun: Boolean,
-    langKey: AvalibleLangs,
-    deepSearch: boolean,
-    historyServerFilter: boolean,
-    server: ServerConfInterface,
-    imageCacheMaxSize: string,
-    favoriteChapterLang: ChapterLangType | 'any',
-    historyMaxSize: number,
-    downloads_path : string,
+interface TrackProps { 
+    mediaId: number, 
+    status: MediaListStatus, 
+    progress: number,
+    lastRead: number,
+    progressVolume?: number, 
+    repeat?: number 
 }
-export interface ServerConfInterface {
+
+export declare class TrackerIntegration {
+    public trackerName: TrackerNames
+    static getInstance(): TrackerIntegration
+    loginTui(): Promise<void>
+    track(props: TrackProps): Promise<boolean>
+    auth(): Promise<LoginData | undefined>
+    logout():Promise<void>
+    getId(mangaInfo: MangaInfo):Promise<number | undefined>
+}
+
+export interface Settings {
+    /* Application */
+    tanko_isFirstRun: Boolean,
+    /* Search */
+    search_deepSearch: boolean,
+    /* Manga Provider */
+    provider: ProviderConfInterface,
+    /* Language */
+    languageISO: AvalibleLangs,
+    preferedLanguageISO: Translations | 'any',
+    /* Read History */
+    history_filterByProvider: boolean,
+    history_maxSize: number,
+    /* Downloader */
+    downloader_path : string,
+    /* Image Loader */ 
+    image_maxCacheByteLength: number,
+    image_maxCacheLength: number,
+    /* Terminal Reader */
+    reader_forceAscii: boolean
+    reader_forceImgProtocol: TermImgProtocolName
+    reader_maxImagePreloading: number
+    reader_enableImgPreloading: boolean
+    reader_imgPreloadingStrategy: ImgPreloadingStrategy
+    reader_imgFit: 'contain' | 'cover'
+    reader_maxImgWidth: number
+}
+
+type ImgPreloadingStrategy = 'around' | 'fill' | 'forward'
+
+export interface ProviderConfInterface {
     name: ServerName,
     need_browser: boolean
+}
+
+/**Downloader */
+export interface DownloadProps {
+    mangaTitle: string,
+    chapterTitle: string,
+    serverName: ServerName,
+    pages: ChapterPage[],
+    format: DownloadFormat
+}
+export interface FormatProps {
+    path: string,
+    pages: DownloadPageProps[],
+}
+export interface DownloadPageProps {
+    index: number, data: ImgBuffer
+}
+export interface  ImgBuffer {
+    data: Buffer<ArrayBufferLike>;
+    info: sharp.OutputInfo;
+}
+
+//?Terminal Interfaces
+//window size
+export interface WSZ{
+    w_height: number,
+    w_width: number,
+    w_colums: number,
+    w_rows: number,
+    w_cellPxWidth: number,
+    w_cellPxHeight: number,
+    w_ratio: number,
+    w_position_x: number,
+    w_position_y: number
+}
+
+export interface IMGSZ {
+    img_originalWidth: number,
+    img_originalHeight: number,
+    img_pixelWidth: number,
+    img_pixelHeigth: number,
+    img_cellsHeigth: number,
+    img_cellsWidth: number,
+    img_ratio: number,
+}
+
+export interface StructImgPosition{
+    x: 'center' | 'left' | 'right' 
+    y: 'center' | 'top' | 'bottom',
+    padding?:{
+        top?: number
+        bottom?: number
+        left?: number
+        right?: number
+    }
+}
+export interface StructImgPositionProtocol{
+    x: number,
+    y: number
+}
+type TermImgProtocolName = 'kitty' | 'ascii' | 'iterm2' | 'sixel' | 'default'
+
+export interface TermImgProtocolInput{
+    position: StructImgPositionProtocol,
+    imgsz: IMGSZ,
+    wsz: WSZ,
+}
+
+export type ObjectFit = 'cover' | 'contain'
+export interface TankoTermImgInput{
+    wsz: WSZ,
+    position: StructImgPosition,
+    forceProtocol: TermImgProtocolName
+    forceAscii?: boolean,
+    imageFit?: ObjectFit,
+    maxImgWidth: number
+}
+
+export type BitMapArray = ArrayBufferLike 
+export type ImgBuffer = Buffer | Buffer<ArrayBufferLike >
+export interface TankoTermImgOutput{
+    position: StructImgPositionProtocol,
+    encodedImg: string,
+    base64?:string,
+    imgsz: IMGSZ,
+    wsz: WSZ
+}
+export interface LoadImageProps {
+    cotainerSize: WSZ,
+    position: StructImgPosition,
+    invalidateCache?: boolean,
+    forceReload?: boolean,
+    maxImagePreloading: number
+    enableImgPreloading: boolean
+    imgPreloadingStrategy: ImgPreloadingStrategy
+    fit: ObjectFit
+    maxWidth: number,
 }
