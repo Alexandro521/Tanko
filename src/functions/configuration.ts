@@ -2,7 +2,7 @@ import { mangaServerRegister, type Client } from "../servers/port.js";
 import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
-import { type Browser, type BrowserContext, firefox, chromium , type Page } from "playwright";
+import { type Browser, type BrowserContext, firefox, chromium , webkit , type Page } from "playwright";
 import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.js";
 import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.js";
 import EventEmitter from "events";
@@ -156,7 +156,8 @@ class ProviderConfiguration {
                 if (!(await this.browser.close()))
                     throw new Error("The browser could not be closed, please try again");
             } else if (provider.need_browser && !isBrowserRunning) {
-                if (!(await this.browser.init()))
+                const initStatus = await this.browser.init()
+                if (!initStatus)
                     throw new Error(this.langInterface.err_messages.client_switch.msg);
             }
 
@@ -177,12 +178,11 @@ class ProviderConfiguration {
                 //@ts-ignore
                 this.provider = provider.client(undefined)
             }
-
             this.parent.settings.provider = this.settings
             this.parent.emit('updateprovider', this.provider)
         } catch (e) {
-            if(e instanceof Error){
-                this.parent.emit('error', e)
+            if (e instanceof Error) {
+               Notify.pushError(e)
             }
         }
     }
@@ -277,7 +277,12 @@ class BrowserConfiguration {
                     return true
                 }
                 let hasContext = false
-                const launcher = typeof firefox.launch === 'function' ? firefox : chromium
+                const existsFirefox = fs.existsSync(firefox.executablePath())
+                const existsChromium = fs.existsSync(chromium.executablePath())
+                const existsWebkit = fs.existsSync(webkit.executablePath())
+                //Notify.pushMessage(`Firefox: ${existsFirefox}\nChromium: ${existsChromium}\nWebkit:${existsWebkit}`)
+                const launcher = (existsFirefox ? firefox : (existsChromium ? chromium : (existsWebkit ? webkit : firefox)))
+
                 if (typeof launcher.launch === 'function') {
                     const browser = await launcher.launch({
                         ...LAUNCH_OPTIONS,
@@ -336,9 +341,11 @@ class BrowserConfiguration {
                 this.parent.emit('browserload', this)
                 resolve(true)
             } catch (e: any) {
-                if(e instanceof Error){
-                    this.parent.emit('error', e)
-                    reject(e)
+                if (e instanceof Error) {
+                    this.parent.emit('browserload', this)
+              //      this.parent.emit('error', e)
+                    Notify.pushError(e)
+                    reject(false)
                 }
             }
         })
