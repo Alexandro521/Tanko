@@ -3,6 +3,8 @@ import fs from 'fs'
 import fsp from 'fs/promises'
 import path from "path";
 import sanitize from "sanitize-filename";
+import type { ChapterLanguage, MangaInfo, ServerName } from "../types/types.js";
+import { extractChapterNumber } from "../utils.ts";
 export interface LocalTrackerProps {
     mangaId: string | number,
     chapterCount: number,
@@ -109,6 +111,121 @@ export  class LocalTracker {
             chapterCount: buffer[0],
             reading: buffer[1],
             readingMap: readingMap
+        }
+    }
+}
+interface TimeReadObject {
+    mid: string,
+    cid: string,
+    providerName: ServerName,
+    chapterNumber: number,
+    chapterTitle: string
+    readTime: number,
+    startTime: number,
+}
+interface TimeTrackerStruct {
+    totalReadTime: number,
+    date: string,
+    reads: Map<string, TimeReadObject>
+}
+
+export class TimeTracker{
+    static trackerMap = new Map<string, TimeTrackerStruct>()
+    private mid!: string
+    private provider!: ServerName
+    private key!: string
+    private date!: string
+    private ArrayReadObjects!: TimeReadObject[]
+    private currentObjectRegister!: TimeReadObject | undefined
+
+    constructor(mid: string, provider: ServerName) {
+        this.mid = mid,
+        this.provider = provider
+        this.ArrayReadObjects = new Array()
+        const date = (new Date()).toDateString()
+        const key =  date
+        const has = TimeTracker.trackerMap.has(key)
+        this.key = key
+        this.date = date
+        const mangaTimeStruct: TimeTrackerStruct = has ? <TimeTrackerStruct> TimeTracker.trackerMap.get(mid) : {
+            totalReadTime: 0,
+            date,
+            reads: new Map()
+        }
+        if (!has) {
+            TimeTracker.trackerMap.set(mid, mangaTimeStruct)
+        }
+    }
+    static store() {
+        this.trackerMap.forEach((value, key) => {
+            const filename = sanitize(key)
+            const pathUrl = path.join(process.cwd(), filename)
+            const object = {
+                totalReadTime: value.totalReadTime,
+                date: value.date,
+                reads: value.reads.values()
+            }
+            fs.writeFile(pathUrl, JSON.stringify(object, null, '\t'), () => console.log('Error on write'))
+        })
+    }
+    initTrack(chapterInfo: ChapterLanguage) {
+        const readObject: TimeReadObject = {
+            chapterNumber: extractChapterNumber(chapterInfo.title) || -1,
+            chapterTitle: chapterInfo.title,
+            cid: chapterInfo.id,
+            mid: this.mid,
+            providerName: this.provider,
+            readTime: Infinity,
+            startTime: Date.now(),
+        }
+
+        if (this.currentObjectRegister === undefined) {
+            this.currentObjectRegister = readObject
+            return
+        }
+        if (this.currentObjectRegister.cid === chapterInfo.id) {
+            if (this.currentObjectRegister.readTime === Infinity) {
+                this.currentObjectRegister =  readObject
+            }
+            return
+        }
+
+        const index = this.ArrayReadObjects.findIndex( e => e.cid === chapterInfo.id )
+        if (index) {
+            const existsObject = this.ArrayReadObjects[index]
+            if (
+                this.currentObjectRegister.readTime > existsObject.readTime
+                && this.currentObjectRegister.readTime !== Infinity
+            ) {
+                this.ArrayReadObjects[index] = this.currentObjectRegister
+            }
+        } else {
+            this.ArrayReadObjects.push(this.currentObjectRegister)
+            this.currentObjectRegister = undefined
+        }
+        this.currentObjectRegister = readObject
+    }
+    endTrack() {
+        if (this.currentObjectRegister === undefined) return
+        const readTime = Math.abs(Date.now() - this.currentObjectRegister.startTime)
+        this.currentObjectRegister.readTime = readTime
+        this.ArrayReadObjects.push(this.currentObjectRegister)
+        this.currentObjectRegister = undefined
+    }
+
+    regist() {
+        const registObject = TimeTracker.trackerMap.get(this.key)
+        if (registObject) {
+            this.ArrayReadObjects.forEach((e) => {
+                const exists = registObject.reads.get(e.cid)
+                if (exists) {
+                    exists.readTime += e.readTime
+                } else {
+                    registObject.reads.set(e.cid, e)
+                }
+                registObject.totalReadTime += e.readTime
+            })
+            TimeTracker.trackerMap.set(this.key, registObject)
         }
     }
 }
