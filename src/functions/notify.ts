@@ -156,4 +156,13 @@ export class Notify extends EventEmitter{
             notify.push(props)
         }
     }
+    static pushMessage(message: string, title = '') {
+        const notify = Notify.getInstace()
+            const props: NotifyProps = {
+                type: NotifyType.message,
+                message,
+                title,
+            }
+            notify.push(props)
+        }
 }
