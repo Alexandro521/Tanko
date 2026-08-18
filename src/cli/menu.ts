@@ -228,16 +228,15 @@ async function loadMangaChapter(
 async function history(provider: MangaProvider) {
   try {
     const conf = await Configuration.getInstance()
-    const history = conf.settings.history_filterByProvider ?
-      History.parseMap().filter(e => e.server === provider.name) : History.parseMap()
-    
-    if (history.length < 1) {
-      await prompts(voidPrompt(err_messages.void_Section.msg));
-      return;
-    }
-
     let memoryChoicePosition = 0;
     while (true) {
+      const history = conf.settings.history_filterByProvider ?
+        History.parseMap().filter(e => e.server === provider.name) : History.parseMap()
+      
+      if (history.length < 1) {
+        await prompts(voidPrompt(err_messages.void_Section.msg));
+        break;
+      }
       const choices = history.map(
         (e, i): Choice => ({
           title: e.mangaTitle,
