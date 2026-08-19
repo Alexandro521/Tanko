@@ -14,13 +14,14 @@ import { fuzzyMatch } from "../utils.ts";
 
 const instance = await Configuration.getInstance()
 const notify = Notify.getInstace()
-let { configuration, main_sections, chapter_access_options } = await instance.getLanguageInterface()
+let { configuration,generics_words, main_sections, chapter_access_options } = await instance.getLanguageInterface()
 
 instance.on('updatelanguage', async (langInterface) => {
     const lang = langInterface
     configuration = lang.configuration
     main_sections = lang.main_sections
     chapter_access_options = lang.chapter_access_options
+    generics_words = lang.generics_words
 })
 
 export const clearScreen = () => {
@@ -299,7 +300,7 @@ export const terminalReaderChapterOptions = () => {
     ], '', 0, 'select')
 }
 export const chapterListPrompt = (title: string, startIndex: number, choices: Choice[], customText = '') => {
-    return SectionPrompt(title, choices, `capitulos: ${choices.length} ${customText}`, startIndex, 'autocomplete')
+    return SectionPrompt(title, choices, `${generics_words.chapters}: ${choices.length} ${customText}`, startIndex, 'autocomplete')
 }
 export const downloadFormatOptions = () => {
     const avalibleDownloadFormats = Object.entries(DownloadFormat)

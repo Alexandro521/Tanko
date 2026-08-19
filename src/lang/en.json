@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.3",
+        "lang_version": "1.4",
         "lang": "en"
     },
     "main_sections": {
@@ -32,6 +32,11 @@
             "title": "Exit",
             "alt": "Exit"
         }
+    },
+    "generics_words": {
+      "chapters": "Chapters",
+      "progress": "Progress",
+      "read": "Read"
     },
     "chapter_access_options": {
         "read": {

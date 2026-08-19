@@ -34,7 +34,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
 
     public settings: Settings = {
         tanko_isFirstRun: true,
-        languageISO: 'es',
+        languageISO: 'en',
         preferedLanguageISO: 'any',
         history_maxSize: 256,
         history_filterByProvider: true,
@@ -71,6 +71,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
     async setLanguage(newLang: AvalibleLanguageInterface) {
         this.conf_language = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
         this.conf_provider.langInterface = this.conf_language
+        this.settings.languageISO = this.conf_language.meta.lang
         this.emit('updatelanguage', this.conf_language)
     }
     async init() {
