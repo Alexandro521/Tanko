@@ -39,7 +39,8 @@ const loading = ora();
 const localTracker = LocalTracker.getInstance()
 let err_messages: LanguageInterface['err_messages'],
 loading_states: LanguageInterface['loading_states'],
-lang: LanguageInterface
+lang: LanguageInterface,
+generics_words: LanguageInterface['generics_words']
 
 const notifyInstance = Notify.getInstace()
 
@@ -60,11 +61,13 @@ export async function main(confInstance: Configuration) {
   lang = await confInstance.getLanguageInterface()
   loading_states = lang.loading_states
   err_messages = lang.err_messages
+  generics_words = lang.generics_words
   confInstance.on('updateprovider', (e)=> SERVER = e)
   confInstance.on('updatelanguage', (e)=> {
     lang = e
     err_messages = lang.err_messages;
     loading_states = lang.loading_states;
+    generics_words = lang.generics_words
   })
   try {
     while (true) {
@@ -182,7 +185,7 @@ async function loadMangaChapter(
       });
       const readProgress = ((trackData.reading*100)/trackData.chapterCount).toFixed(1)
       const chapterIndex = await prompts(
-        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ Progress: ${readProgress}%`)
+        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ ${generics_words.progress}: ${readProgress}%`)
       );
       if (!chapterIndex.target) {
         break;
@@ -421,7 +424,7 @@ async function lastedSection(server: MangaProvider) {
           (chapter, index): Choice => {
             let title = extractTitleByLang(chapter, (lang.meta.lang as Translations))
             if (markRead.readingMap.has(chapter.number)) {
-              title += ' ⏺ '+ chalk.dim(chalk.green('Read'))
+              title += ' ⏺ '+ chalk.dim(chalk.green(generics_words.read))
             }
             return { 
               title,
