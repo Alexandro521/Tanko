@@ -1,6 +1,6 @@
 {
     "meta": {
-        "lang_version": "1.1",
+        "lang_version": "1.2",
         "lang": "fr"
     },
     "main_sections": {
@@ -32,6 +32,11 @@
             "title": "Quitter",
             "alt": "Quitter"
         }
+    },
+    "generics_words": {
+    "chapters": "Chapitres",
+    "progress": "Progression",
+    "read": "Lire"
     },
     "chapter_access_options": {
         "read": {
