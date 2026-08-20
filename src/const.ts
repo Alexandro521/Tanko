@@ -33,7 +33,7 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
         '--headless',
         '--no-sandbox', 
         '--disable-gpu'
-    ],
+  ],
     firefoxUserPrefs: {
     'permissions.default.image': 2,
     'toolkit.cosmeticAnimations.enabled': false,
@@ -55,6 +55,9 @@ export const LAUNCH_OPTIONS:LaunchOptions = {
     'network.http.proxy.pipelining': true,
     'network.http.max-connections': 64,
   }
+}
+export const GET_USER_AGENT = () => {
+   return userAgents.agents[randomInt(userAgents.agents.length)]
 }
 export const BROWSER_CONTEXT_OPTIONS:BrowserContextOptions = {
   javaScriptEnabled: true,
