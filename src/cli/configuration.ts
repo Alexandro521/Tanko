@@ -2,7 +2,7 @@ import prompts, { type Choice, type PromptObject } from "@alex_521/prompts";
 import esc from "ansi-escapes";
 import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
 import { Configuration } from "../functions/configuration.js";
-import { mangaServerRegister as ServerRegister, type Client } from "../servers/port.js";
+import { mangaServerRegister as ServerRegister, type Client } from "../servers/port.ts";
 import {
   accoutOptionsPrompt,
   accoutPrompt,
@@ -13,7 +13,7 @@ import {
   serverPrompt,
   type ConfigurationSettingPrompt,
 } from "./prompts.js";
-import { ConfigurationOptions, SignalsCodes } from "../types/enum.js"; 
+import { ConfigurationOptions, SignalsCodes } from "../types/enum.js";
 import type {Settings, TrackerProps } from "../types/types.js";
 
 export async function configurationTui() {
@@ -31,7 +31,7 @@ export async function configurationTui() {
         await providerConfigurationTui();
         break
       case ConfigurationOptions.language:
-        let memoryChoicePosition = 0;  
+        let memoryChoicePosition = 0;
         while (true) {
           const langSelect = await prompts(languagePrompt(settings.languageISO, memoryChoicePosition));
           if (langSelect.target) {
@@ -99,7 +99,7 @@ const confInstance = await Configuration.getInstance();
       case SignalsCodes.logout_accout:
         await confInstance.conf_session.logout(tracker.trackerName)
         break
-      case SignalsCodes.see_profile: 
+      case SignalsCodes.see_profile:
         break
     }
   }
@@ -108,7 +108,7 @@ async function readerConfigurationTui(){
   const confInstance = await Configuration.getInstance()
   while(true){
     const prompt = await prompts(readerConfigurationPrompt())
-    const target = prompt?.target as SignalsCodes | {     
+    const target = prompt?.target as SignalsCodes | {
       target: keyof Settings,
       prompt: PromptObject<'value'>
     } | undefined
@@ -121,8 +121,8 @@ async function readerConfigurationTui(){
         (confInstance.settings[settingKey] as ValueOf) = value
         confInstance.emit('atomicupdate', settingKey)
       }
-    } 
-    else 
+    }
+    else
       break
   }
 }
@@ -137,10 +137,9 @@ async function historyConfigurationTui(){
         (confInstance.settings[target.target] as any) = settingPrompt.value
         confInstance.emit('atomicupdate', target.target)
       }
-    }else 
+    }else
       break
   }
 }
 
 async function downloads() {}
-

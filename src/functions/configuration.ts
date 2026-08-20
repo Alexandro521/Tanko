@@ -1,4 +1,4 @@
-import { mangaServerRegister, type Client } from "../servers/port.js";
+import { mangaServerRegister, type Client } from "../servers/port.ts";
 import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
 import fs from "fs";
 import fsPromise from "fs/promises";
@@ -116,7 +116,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         try {
             await fsPromise.writeFile( CONFIG_FILE_PATH, JSON.stringify(this.settings, null, '\t'))
             this.emit('store', this.settings, CONFIG_FILE_PATH)
-        } 
+        }
         catch (err) {
             if(err instanceof Error){
                 this.emit('error', err)
@@ -145,7 +145,7 @@ class ProviderConfiguration {
     parent!: Configuration
     langInterface!:LanguageInterface
     constructor(parent: Configuration, browser: BrowserConfiguration, langInterface: LanguageInterface){
-        this.browser = browser 
+        this.browser = browser
         this.settings = mangaServerRegister[0]
         this.langInterface =  langInterface
         this.parent = parent
@@ -229,7 +229,7 @@ class SessionConfiguration{
         }
         if(trackerName) {
             await trackerLogin(trackerName)
-            return   
+            return
         }
         await Promise.all(
             Object.values(this.trackerInterface).map(
@@ -293,7 +293,7 @@ class BrowserConfiguration {
                             ...BROWSER_CONTEXT_OPTIONS,
                             baseURL: 'leercapitulo.org'
                         }
-                    
+
                     )
                     this.browser = browser
                     this.context = browserContext
@@ -414,4 +414,3 @@ class BrowserConfiguration {
         return this.mainPage ?? undefined
     }
 }
-
