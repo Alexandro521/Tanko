@@ -37,7 +37,7 @@ export class PagesControl {
     this.requestPool.setResponseChecker((response, reject)=>{
       if (response.ok) {
         const contentType = response.headers.get('Content-Type')
-        if (!contentType || !contentType.startsWith('image')){
+        if (!contentType || (!contentType.startsWith('image') && contentType !== ('application/octet-stream') )){
           const reason = `Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`
           reject(reason)
         }

@@ -74,7 +74,7 @@ export interface Chapter {
     }
 }
 
-export type ServerName = "mangadex" | "leercapitulo"
+export type ServerName = "mangadex" | "leercapitulo" | "katana"
 
 export interface ChapterLanguage {
     title: string

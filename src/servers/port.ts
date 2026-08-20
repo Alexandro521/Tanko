@@ -1,5 +1,6 @@
-import { LeerCapitulo } from "./leerCapitulo.js";
-import { MangaDex } from "./mangadex.js";
+import { LeerCapitulo } from "./leerCapitulo.ts"
+import { MangaDex } from "./mangadex.ts"
+import { MangaKatana } from "./katana.ts"
 import type {
   MangaProvider,
   ProviderConfInterface,
@@ -13,7 +14,7 @@ export interface Client extends ProviderConfInterface {
 export type ServerRegister = Client[]
 
 export const mangaServerRegister: ServerRegister =
-  [ 
+  [
   {
     name: "leercapitulo",
     need_browser: true,
@@ -23,5 +24,10 @@ export const mangaServerRegister: ServerRegister =
     name: "mangadex",
     need_browser: false,
     client: (_: Page) => new MangaDex(),
+    },
+  {
+    name: "katana",
+    need_browser: false,
+    client: (_: Page) => new  MangaKatana(),
   }
 ]
