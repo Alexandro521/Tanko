@@ -7,6 +7,7 @@ import type {
   ServerName,
 } from "../types/types.js";
 import type { Page } from "playwright";
+import { MangaPill } from "./mangapill.ts";
 
 export interface Client extends ProviderConfInterface {
   client: (e: Page) => MangaProvider;
@@ -29,5 +30,10 @@ export const mangaServerRegister: ServerRegister =
     name: "katana",
     need_browser: false,
     client: (_: Page) => new  MangaKatana(),
+  },
+    {
+      name: 'mangapill',
+      need_browser: false,
+      client: (_:Page) => new MangaPill()
   }
 ]

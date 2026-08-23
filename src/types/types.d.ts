@@ -74,7 +74,7 @@ export interface Chapter {
     }
 }
 
-export type ServerName = "mangadex" | "leercapitulo" | "katana"
+export type ServerName = "mangadex" | "leercapitulo" | "katana" | "mangapill"
 
 export interface ChapterLanguage {
     title: string
@@ -107,7 +107,8 @@ export interface MangaInfo {
   description?:string,
   lastUploadChapterSrc?: string,
   anilistId?: string | number | null
-  altTitles?: AltTitles[] | string[]
+  altTitles?: AltTitles[] | string[],
+  coverImage?: string  
 }
 export type TrackerNames = "anilist"
 export interface LoginData {
