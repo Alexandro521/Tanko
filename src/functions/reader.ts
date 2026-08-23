@@ -16,10 +16,11 @@ import { History } from "./history.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
 import { RequestPool, type RequestStruct } from "./request.ts";
-import { centerX, extractTitleByLang } from "../utils.ts";
+import { centerX } from "../utils.ts";
 import type { LangIso } from "./lang.ts";
+import { Configuration } from "./configuration.ts";
 
-
+const CONF = await Configuration.getInstance()
 export class PagesControl {
   private pages!: ChapterPage[];
   private currenPage!: ChapterPage;
@@ -101,8 +102,18 @@ export class PagesControl {
         }
       }
     }
-    for(const src of srsc){
+    const currentProvider = CONF.conf_provider.provider.name
+    const mangapillPatch = {
+      Referer: 'https://mangapill.com/',
+      Host: 'https://mangapill.com/',
+    }
+
+    for (const src of srsc) {
+      if (currentProvider === 'mangapill') {
+        this.requestPool.push(src, {headers: mangapillPatch})
+      } else {
         this.requestPool.push(src)
+      }
     }
   }
   nextPage() {
@@ -144,8 +155,19 @@ export class PagesControl {
         const promiseStatus = await this.requestPool.waitFor(imgUrl)
         let request = this.requestPool.get(imgUrl) as RequestStruct
         if (!promiseStatus) {
-          for(let retrieve = 0; retrieve < 3; retrieve++){
-            this.requestPool.push(imgUrl)
+          const currentProvider = CONF.conf_provider.provider.name
+
+          const mangapillPatch = {
+              Referer: 'https://mangapill.com/',
+              Host: 'https://mangapill.com/',
+          }
+          
+          for (let retrieve = 0; retrieve < 3; retrieve++){
+            if (currentProvider === 'mangapill') {
+              this.requestPool.push(imgUrl, {headers: mangapillPatch})
+            } else {
+              this.requestPool.push(imgUrl)
+            }
             await this.requestPool.waitFor(imgUrl)
             request = this.requestPool.get(imgUrl) as RequestStruct
             if(request.status === 'resolve') break
