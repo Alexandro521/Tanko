@@ -50,6 +50,7 @@
   },
   "dependencies": {
     "@alex_521/prompts": "0.2.2",
+    "@opentui/core": "^0.5.9",
     "ansi-escapes": "7.3.0",
     "archiver": "8.0.0",
     "axios": "1.19.0",
