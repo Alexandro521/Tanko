@@ -1,6 +1,6 @@
-import sharp, { type SharpInput } from "sharp";
 import supportsTerminalGraphics from "supports-terminal-graphics";
 import supportsColor from "supports-color";
+import type { SharpInput } from "sharp";
 import type {
    WSZ,
    IMGSZ,
@@ -16,7 +16,6 @@ import ansi from "ansi-escapes";
 
 export class TermImageGraphics {
    private constructor() { }
-
    static calcPosition(
       position: StructImgPosition,
       { img_cellsHeigth, img_cellsWidth }: IMGSZ,
@@ -91,6 +90,7 @@ export class TermImageGraphics {
    }
 
    static async make(
+      
       buffer: SharpInput, 
       { 
          wsz,
@@ -100,6 +100,7 @@ export class TermImageGraphics {
          forceProtocol = 'default',
          maxImgWidth
       }: TankoTermImgInput): Promise<TankoTermImgOutput> {
+      const sharp = (await import("sharp")).default
       let imgsrgb  = sharp(buffer, { failOn: 'error', sequentialRead: false }).toColorspace('srgb')
       const metadata = await imgsrgb.metadata()
       const $ = supportsTerminalGraphics.stdout
