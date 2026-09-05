@@ -1,39 +1,45 @@
-import { LeerCapitulo } from "./leerCapitulo.ts"
-import { MangaDex } from "./mangadex.ts"
-import { MangaKatana } from "./katana.ts"
 import type {
   MangaProvider,
   ProviderConfInterface,
-  ServerName,
 } from "../types/types.js";
 import type { Page } from "playwright";
-import { MangaPill } from "./mangapill.ts";
 
 export interface Client extends ProviderConfInterface {
-  client: (e: Page) => MangaProvider;
+  client: (e: Page) => Promise<MangaProvider>;
 }
-export type ServerRegister = Client[]
 
+export type ServerRegister = Client[]
 export const mangaServerRegister: ServerRegister =
   [
   {
     name: "leercapitulo",
     need_browser: true,
-    client: (e: Page) => new LeerCapitulo(e),
+    client: async (e: Page) => {
+      const {LeerCapitulo} = await import('./leerCapitulo.ts')
+      return new LeerCapitulo(e)},
   },
   {
     name: "mangadex",
     need_browser: false,
-    client: (_: Page) => new MangaDex(),
-    },
+    client: async (_: Page) => {
+      const {MangaDex} = await import('./mangadex.ts')
+      return new MangaDex()
+    }
+  },
   {
     name: "katana",
     need_browser: false,
-    client: (_: Page) => new  MangaKatana(),
+    client: async (_: Page) => {
+      const {MangaKatana} = await import('./katana.ts')
+      return new  MangaKatana()
+    } 
   },
     {
       name: 'mangapill',
       need_browser: false,
-      client: (_:Page) => new MangaPill()
+      client: async (_:Page) => {
+        const {MangaPill} = await import('./mangapill.ts')
+        return new MangaPill()
+      }
   }
 ]
