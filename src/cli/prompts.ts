@@ -1,11 +1,11 @@
 import type { PromptObject, Choice } from "@alex_521/prompts";
-import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enum.js";
+import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enum.ts";
 import chalk from "chalk";
-import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.js";
-import { Configuration } from "../functions/configuration.js";
-import type { Chapter, ChapterLanguage, TrackerNames, Settings, Translations } from "../types/types.js";
+import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.ts";
+import { Configuration } from "../functions/configuration.ts";
+import type { Chapter, ChapterLanguage, TrackerNames, Settings, Translations } from "../types/types.ts";
 import { type Key } from "node:readline";
-import { Notify } from "../functions/notify.js";
+import { Notify } from "../functions/notify.ts";
 import ansi from 'ansi-escapes'
 import prompts from "@alex_521/prompts";
 import supportsTerminalGraphics from "supports-terminal-graphics";

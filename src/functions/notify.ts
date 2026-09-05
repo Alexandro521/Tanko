@@ -4,7 +4,7 @@ import ansi from 'ansi-escapes'
 import { EventEmitter } from "node:events";
 import chalk from "chalk";
 import supportsHyperlinks from "supports-hyperlinks";
-import { ISSUES_REPO } from "../const.js";
+import { ISSUES_REPO } from "../const.ts";
 type Colors = Options['borderColor']
 
 export enum NotifyType {

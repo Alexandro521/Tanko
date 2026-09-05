@@ -1,7 +1,7 @@
 import type { Page } from "playwright";
 import * as cheerio from "cheerio"
 import { Axios } from "axios";
-import { extractChapterNumber, sortChapterList } from "../utils.js";
+import { extractChapterNumber, sortChapterList } from "../utils.ts";
 import type {
     Chapter,
     ChapterPage,
@@ -9,7 +9,7 @@ import type {
     MangaProvider,
     SearchResult,
     MangaInfo
-} from "../types/types.js"
+} from "../types/types.ts"
 
 export class LeerCapitulo implements MangaProvider {
     private page: Page

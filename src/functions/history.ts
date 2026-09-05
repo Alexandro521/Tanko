@@ -1,7 +1,7 @@
-import type { HistoryObject } from "../types/types.js";
-import { HISTORY_PATH } from "../const.js";
+import type { HistoryObject } from "../types/types.ts";
+import { HISTORY_PATH } from "../const.ts";
 import fsp from 'node:fs/promises'
-import { Notify } from "./notify.js";
+import { Notify } from "./notify.ts";
 import { Configuration } from "./configuration.ts";
 
 interface HistoryDataStruct {
