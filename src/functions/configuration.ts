@@ -1,13 +1,13 @@
 import { mangaServerRegister, type Client } from "../servers/port.ts";
-import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.js";
+import type { Settings, MangaProvider, ProviderConfInterface, ServerName, TrackerInterface, TrackerNames } from "../types/types.ts";
+import type { Browser,  BrowserContext, Page} from 'playwright'
+import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.ts";
 import fs from "fs";
+import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.ts";
 import fsPromise from "fs/promises";
-import { type Browser, type BrowserContext, firefox, chromium , webkit , type Page } from "playwright";
-import { BROWSER_CONTEXT_OPTIONS, BROWSER_STORAGE_FILE, CONFIG_FILE_PATH, DOWNLOADS_DEFAULT_DIR, LAUNCH_OPTIONS } from "../const.js";
-import { LANGUAGE_REGISTER, type LanguageInterface, type AvalibleLanguageInterface } from "./lang.js";
 import EventEmitter from "events";
-import { Notify } from "./notify.js";
-import { AniList } from "../trackers/anilist.js";
+import { Notify } from "./notify.ts";
+import { AniList } from "../trackers/anilist.ts";
 
 type ConfigurationEvents = {
     'updateprovider': [provider: MangaProvider]
@@ -58,8 +58,8 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         super()
         this.conf_browser = new BrowserConfiguration(this)
         this.conf_session = new SessionConfiguration(this)
-        this.conf_language = LANGUAGE_REGISTER['en']
         this.conf_provider = new ProviderConfiguration(this, this.conf_browser, this.conf_language)
+        LANGUAGE_REGISTER['en']().then( lang => this.conf_language = lang)
     }
     static async getInstance() {
         if (!this.confInstance) {
@@ -69,7 +69,7 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         return this.confInstance
     }
     async setLanguage(newLang: AvalibleLanguageInterface) {
-        this.conf_language = LANGUAGE_REGISTER[newLang] ?? LANGUAGE_REGISTER['en']
+        this.conf_language = await LANGUAGE_REGISTER[newLang]() ?? LANGUAGE_REGISTER['en']()
         this.conf_provider.langInterface = this.conf_language
         this.settings.languageISO = this.conf_language.meta.lang
         this.emit('updatelanguage', this.conf_language)
@@ -173,17 +173,17 @@ class ProviderConfiguration {
                     mainPage = await this.browser.newPage()
                 }
                 if(mainPage)
-                    this.provider = provider.client(mainPage)
+                    this.provider = await provider.client(mainPage)
                 }
             else {
                 //@ts-ignore
-                this.provider = provider.client(undefined)
+                this.provider = await provider.client(undefined)
             }
             this.parent.settings.provider = this.settings
             this.parent.emit('updateprovider', this.provider)
         } catch (e) {
             if (e instanceof Error) {
-               Notify.pushError(e)
+                Notify.pushError(e)
             }
         }
     }
@@ -271,6 +271,8 @@ class BrowserConfiguration {
         this.parent = parent
     }
     async init(): Promise<boolean> {
+        const playwright = await import('playwright')
+        const { firefox, chromium , webkit } = playwright;
         return new Promise(async (resolve, reject) => {
             try {
                 this.parent.emit('browserinit')

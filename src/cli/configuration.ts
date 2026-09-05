@@ -1,7 +1,7 @@
 import prompts, { type Choice, type PromptObject } from "@alex_521/prompts";
-import esc from "ansi-escapes";
-import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
-import { Configuration } from "../functions/configuration.js";
+//import esc from "ansi-escapes";
+//import { DOWNLOADS_DEFAULT_DIR, WELCOME_MESSAGE } from "../const.js";
+import { Configuration } from "../functions/configuration.ts";
 import { mangaServerRegister as ServerRegister, type Client } from "../servers/port.ts";
 import {
   accoutOptionsPrompt,
@@ -13,8 +13,8 @@ import {
   serverPrompt,
   type ConfigurationSettingPrompt,
 } from "./prompts.js";
-import { ConfigurationOptions, SignalsCodes } from "../types/enum.js";
-import type {Settings, TrackerProps } from "../types/types.js";
+import { ConfigurationOptions, SignalsCodes } from "../types/enum.ts";
+import type {Settings, TrackerProps } from "../types/types.ts";
 
 export async function configurationTui() {
   const configuration = await Configuration.getInstance();
@@ -36,7 +36,7 @@ export async function configurationTui() {
           const langSelect = await prompts(languagePrompt(settings.languageISO, memoryChoicePosition));
           if (langSelect.target) {
             memoryChoicePosition = Number(langSelect.target.index)
-            configuration.setLanguage(langSelect.target.lang)
+            await configuration.setLanguage(langSelect.target.lang)
             settings = configuration.settings
           } else break
         }
