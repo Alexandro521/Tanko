@@ -1,16 +1,14 @@
 import ora from "ora";
 import prompts, {type Choice } from "@alex_521/prompts";
-import { Downloader } from "../functions/downloader.js";
-import { History } from "../functions/history.js";
-import { terminalReader } from "./reader.js";
+import { terminalReader } from "./reader.ts";
 import type {
   Chapter,
   DownloadProps,
   MangaInfo,
   MangaProvider,
   Translations,
-} from "../types/types.js";
-import { DownloadFormat, SignalsCodes} from "../types/enum.js";
+} from "../types/types.ts";
+import { DownloadFormat, SignalsCodes} from "../types/enum.ts";
 import {
   askChapterLang,
   basicChapterOptions,
@@ -25,16 +23,15 @@ import {
   searchPrompt,
   searchResultPrompt,
   voidPrompt,
-} from "./prompts.js";
-import { configurationTui } from "./configuration.js";
-import { Configuration } from "../functions/configuration.js";
+} from "./prompts.ts";
+import { Configuration } from "../functions/configuration.ts";
 import type { LangIso, LanguageInterface } from "../functions/lang.ts";
-import { extractTitleByLang, getTimeSkip } from "../utils.js";
-import { Notify, NotifyType } from "../functions/notify.js";
-import { LocalTracker, type LocalTrackerProps } from "../trackers/local.js";
+import { extractTitleByLang, getTimeSkip } from "../utils.ts";
+import { Notify, NotifyType } from "../functions/notify.ts";
+import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts";
 import chalk from "chalk";
 
-
+let firstRunHistory = false
 const loading = ora();
 const localTracker = LocalTracker.getInstance()
 let err_messages: LanguageInterface['err_messages'],
@@ -70,7 +67,8 @@ export async function main(confInstance: Configuration) {
     generics_words = lang.generics_words
   })
   try {
-    while (true) {
+    let loop = true
+    while (loop) {
       const main = await prompts(mainPrompt());
       if (!main?.target) break;
       switch (main.target) {
@@ -83,16 +81,17 @@ export async function main(confInstance: Configuration) {
         case SignalsCodes.popular_section:
           await populars(SERVER);
           break;
-        case SignalsCodes.configuration_section:
+        case SignalsCodes.configuration_section: 
+        {
+          const { configurationTui }= await import("./configuration.ts");
           await configurationTui();
           break;
+        }
         case SignalsCodes.lasted_section:
           await lastedSection(SERVER);
           break;
         case SignalsCodes.exit:
-          await confInstance.store()
-          await confInstance.conf_browser.close();
-          process.exit(0);
+          loop = false
       }
     }
   } catch (e) {
@@ -230,6 +229,11 @@ async function loadMangaChapter(
 
 async function history(provider: MangaProvider) {
   try {
+    const { History } = await import("../functions/history.js");
+    if(!firstRunHistory){
+      await History.load()
+      firstRunHistory = true
+    }
     const conf = await Configuration.getInstance()
     let memoryChoicePosition = 0;
     while (true) {
@@ -484,6 +488,7 @@ async function lastedSection(server: MangaProvider) {
 
 export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: Translations, server: MangaProvider) {
   try {
+    const {Downloader} = await import("../functions/downloader.ts")
     let pagesCount = 0;
     const chapterTarget = chapterList[index]
     const chapterTranslate = chapterTarget.translations[lang]

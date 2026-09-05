@@ -12,7 +12,6 @@ import type {
   ImgPreloadingStrategy,
 } from "../types/types.js";
 import { ImageLoader } from "./images.ts";
-import { History } from "./history.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
 import { RequestPool, type RequestStruct } from "./request.ts";
@@ -425,16 +424,18 @@ export class ChapterControl {
   }
   historySave(title: string, mangaSrc: string, serverName: ServerName) {
     const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang);
-    History.save({
-      chapters_length: this.chapters.length,
-      chapterSrc: chapter.id,
-      last_index: this.index,
-      last_lang: this.lang,
-      server: serverName,
-      last_title: chapter.title,
-      mangaSrc: mangaSrc,
-      mangaTitle: title,
-      time: Date.now(),
+    import("./history.ts").then(({History})=>{
+      History.save({
+        chapters_length: this.chapters.length,
+        chapterSrc: chapter.id,
+        last_index: this.index,
+        last_lang: this.lang,
+        server: serverName,
+        last_title: chapter.title,
+        mangaSrc: mangaSrc,
+        mangaTitle: title,
+        time: Date.now(),
+      });
     });
   }
 }
