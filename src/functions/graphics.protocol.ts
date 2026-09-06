@@ -13,6 +13,8 @@ import type {
    TermImgProtocolName
 } from "../types/types.ts";
 import ansi from "ansi-escapes";
+//import { TerminalControl } from "./reader.ts";
+//import { stdout } from "node:process";
 
 export class TermImageGraphics {
    private constructor() { }
@@ -231,24 +233,64 @@ export class TermImageGraphics {
       }
 
       for (let y = 0, i = 0; y < imgHeight; y += 6, i++) {
-         const imageRowIndex = y * imgWidth * 3
-         for (let x = 0; x < imgWidth; x++) {
-            let pixelColumnOffset = imageRowIndex + (x * 3)
-            //let sixelInt = 0x3F
-            let lumen = 0
+         const sixelRowIndex = y * imgWidth * 3
+         let passLastIndex = [0,0,0,0,0,0]
+         let pass = [
+            '',
+            '',
+            '',
+            '',
+            '',
+            '',
+         ]
+        // const colorMap = new Map<number, Uint8Array>()
+      for (let x = 0; x < imgWidth; x++) {
+            let lastLumentIndex = 0
+            let sixelColumnIndex = sixelRowIndex + (x * 3)
+            let sixel = 0
             for (let sixelRow = 0; sixelRow < 6; sixelRow++) {
-               const absolutePixelIndex = (imgWidth * sixelRow * 3) + pixelColumnOffset
-               //aproximation
-               let luminance = (
+               const absolutePixelIndex = (imgWidth * sixelRow * 3) + sixelColumnIndex
+               const luminance = (
                   299 * pixelArr[absolutePixelIndex] +  //RED
                   587 * pixelArr[absolutePixelIndex + 1] + //GREEN
-                  114 * pixelArr[absolutePixelIndex + 2]) //BLUE
-                  >> 10
-               lumen += (luminance * 100) >> 8
+                  114 * pixelArr[absolutePixelIndex + 2]) >> 10
+               const lumenIndex = (luminance * 100) >> 8
+
+               if(sixelRow === 0) {
+                  lastLumentIndex = lumenIndex
+                  sixel |= 1 << 0
+                  continue
+               }
+               if(lastLumentIndex === lumenIndex){
+                  sixel |= 1 << sixelRow
+               }
+               else {
+                  const char = String.fromCodePoint(sixel+63)
+                  const sixelSequence = `#${lastLumentIndex};${char}`
+                  const xDiff = x - passLastIndex[sixelRow -1] -1
+                  if(xDiff > 0){
+                     pass[sixelRow -1] += `!${xDiff}?`
+                  }
+                  pass[sixelRow -1] += sixelSequence 
+                  passLastIndex[sixelRow -1] = x
+                  lastLumentIndex = lumenIndex
+                  sixel = 1 << sixelRow
+               }
+               if(sixelRow === 5){
+                  const char = String.fromCodePoint(sixel+63)
+                  const sixelSequence = `#${lastLumentIndex};${char};`
+                  const xDiff = x - passLastIndex[sixelRow] -1
+                  if(xDiff > 0){
+                     pass[sixelRow -1] += `!${xDiff}?`
+                  }
+                  pass[sixelRow] += sixelSequence 
+                  passLastIndex[sixelRow] = x 
+               }
             }
-            sixelImgEncoded += `#${(lumen / 6) | 0};~`
+          //  console.log(pass.map(e=> e.length))
          }
-         sixelImgEncoded += '-'
+
+         sixelImgEncoded+= pass.join('$') + '-'
       }
       /*"Pan;Pad;Ph;Pv */
       const raster = `"2;1;${imgWidth};${imgHeight}`
@@ -263,4 +305,17 @@ export class TermImageGraphics {
       return `${cursorPosition}\x1b]1337;File=${options}:${base64}\x1b\\`
    }
 }
+/*
+const wsz = (await TerminalControl.getWindowDimension())!
+console.time('sixel make image')
+const result = await TermImageGraphics.make('/home/alexdev/Documents/js-projects/Tanko/images/climber.jpg', {
+   wsz,
+   forceProtocol: 'sixel',
+   maxImgWidth: 8000,
+   position: {x: 'center', y: 'top'}
+})
+console.timeEnd()
+process.stdout.write(result.encodedImg)
+console.timeLog('sixel make image')
 
+*/
