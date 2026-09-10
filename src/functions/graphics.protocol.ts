@@ -13,8 +13,6 @@ import type {
    TermImgProtocolName
 } from "../types/types.ts";
 import ansi from "ansi-escapes";
-//import { TerminalControl } from "./reader.ts";
-//import { stdout } from "node:process";
 
 export class TermImageGraphics {
    private constructor() { }
@@ -219,103 +217,103 @@ export class TermImageGraphics {
    }
    static sixel(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
       /*
-      https://en.wikipedia.org/wiki/Sixel
-      https://www.vt100.net/docs/vt3xx-gp/chapter14.html
-      https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
+      ? https://en.wikipedia.org/wiki/Sixel
+      ? https://www.vt100.net/docs/vt3xx-gp/chapter14.html
+      ? https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
       */
-      const pixelArr = new Uint8ClampedArray(buffer)
-      let imgWidth = imgsz.img_pixelWidth
-      let imgHeight = imgsz.img_pixelHeigth
-      let sixelImgEncoded = ''
-      let grayScaleRegister = ''
-      for (let i = 0; i < 100; i++) {
-         grayScaleRegister += `#${i};2;${(i)};${i};${i};`
-      }
+      const pixelMap = new Uint8ClampedArray(buffer)
+      const {img_pixelHeigth:imgHeight, img_pixelWidth: imgWidth} = imgsz
+      const sixelImgEncoded: string[] = []
+
+      const sixelCharVector = Array.from([
+         '?', '@', 'A', 'B', 'C', 'D', 'E', 'F',
+         'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+         'W', 'X', 'Y', 'Z', '[', '\\', ']', '^',
+         '_', '`', 'a', 'b', 'c', 'd', 'e', 'f',
+         'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+         'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+         'w', 'x', 'y', 'z', '{', '|', '}', '~'
+      ])
+
+      //? https://vtdn.dev/docs/graphics/sixel/#color-introduction
+      const grayScaleRegister = new Array(100)
+      for (let i = 0; i < 100; i++) 
+         grayScaleRegister[i] = (`#${i};2;${(i)};${i};${i}`)
+      
 
       for (let y = 0, i = 0; y < imgHeight; y += 6, i++) {
-         const sixelRowIndex = y * imgWidth * 3
-         let passLastIndex = [0,0,0,0,0,0]
-         let pass = [
-            '',
-            '',
-            '',
-            '',
-            '',
-            '',
-         ]
-        // const colorMap = new Map<number, Uint8Array>()
-      for (let x = 0; x < imgWidth; x++) {
-            let lastLumentIndex = 0
-            let sixelColumnIndex = sixelRowIndex + (x * 3)
-            let sixel = 0
-            for (let sixelRow = 0; sixelRow < 6; sixelRow++) {
-               const absolutePixelIndex = (imgWidth * sixelRow * 3) + sixelColumnIndex
-               const luminance = (
-                  299 * pixelArr[absolutePixelIndex] +  //RED
-                  587 * pixelArr[absolutePixelIndex + 1] + //GREEN
-                  114 * pixelArr[absolutePixelIndex + 2]) >> 10
-               const lumenIndex = (luminance * 100) >> 8
 
-               if(sixelRow === 0) {
-                  lastLumentIndex = lumenIndex
-                  sixel |= 1 << 0
-                  continue
+         const sixelRowStartIndex = y * imgWidth * 3
+         const passes: string[][] = [[],[],[],[],[],[]]
+         const lastWrittenPosition = new Int32Array(6).fill(-1)
+         const lastRegisteredColor = new Int8Array(6).fill(-1)
+         const lastSixelWritten = new Int8Array(6).fill(-1)
+         const concurrencyAccumulator = new Int32Array(6).fill(-1)
+
+         for (let x = 0; x < imgWidth; x++) {
+
+            const sixelColumnPosition = sixelRowStartIndex + x * 3 
+            const sixelColorRegister = new Uint8Array(100).fill(0)
+            const sixelMarker = new Int8Array(6).fill(-1)
+
+            for (let sixelPixelIndex = 0; sixelPixelIndex < 6; sixelPixelIndex++) {
+               const absolutePixelPosition = (imgWidth * sixelPixelIndex  * 3) + sixelColumnPosition
+               const colorIndex = ((
+                   0.2126 * pixelMap[absolutePixelPosition    ] //RED
+                  +0.7152 * pixelMap[absolutePixelPosition + 1] //GREEN
+                  +0.0722 * pixelMap[absolutePixelPosition + 2] //BLUE
+               ) * 100) >> 8
+               
+               if(sixelColorRegister[colorIndex] === 0){
+                  sixelMarker[sixelPixelIndex] = colorIndex
                }
-               if(lastLumentIndex === lumenIndex){
-                  sixel |= 1 << sixelRow
-               }
-               else {
-                  const char = String.fromCodePoint(sixel+63)
-                  const sixelSequence = `#${lastLumentIndex};${char}`
-                  const xDiff = x - passLastIndex[sixelRow -1] -1
-                  if(xDiff > 0){
-                     pass[sixelRow -1] += `!${xDiff}?`
-                  }
-                  pass[sixelRow -1] += sixelSequence 
-                  passLastIndex[sixelRow -1] = x
-                  lastLumentIndex = lumenIndex
-                  sixel = 1 << sixelRow
-               }
-               if(sixelRow === 5){
-                  const char = String.fromCodePoint(sixel+63)
-                  const sixelSequence = `#${lastLumentIndex};${char};`
-                  const xDiff = x - passLastIndex[sixelRow] -1
-                  if(xDiff > 0){
-                     pass[sixelRow -1] += `!${xDiff}?`
-                  }
-                  pass[sixelRow] += sixelSequence 
-                  passLastIndex[sixelRow] = x 
-               }
+               sixelColorRegister[colorIndex] |= 1 << sixelPixelIndex
             }
-          //  console.log(pass.map(e=> e.length))
-         }
 
-         sixelImgEncoded+= pass.join('$') + '-'
+            for(let index = 0; index < 6; index++){
+               if(sixelMarker[index] < 0) continue
+               const colorIndex = sixelMarker[index]
+               const sixelInt = sixelColorRegister[colorIndex]
+               const sixelChar = sixelCharVector[sixelInt]
+               const xDiff = x - lastWrittenPosition[index] - 1;
+
+               if (xDiff) {
+                  passes[index].push(`!${xDiff}?`)
+               }
+               if(lastRegisteredColor[index] !== colorIndex){
+                  passes[index].push(`#${colorIndex}`, sixelChar)
+                  concurrencyAccumulator[index] = 1
+                  lastSixelWritten[index] = sixelInt
+               }
+               else{
+                  if(xDiff === 0 && lastSixelWritten[index] === sixelInt){
+                     const sixelConcurrency = concurrencyAccumulator[index]
+                     passes[index][ passes[index].length -1 ] = (`!${sixelConcurrency+1}${sixelChar}`)
+                     concurrencyAccumulator[index]++
+                  }else{
+                     passes[index].push(sixelChar)
+                     concurrencyAccumulator[index] = 1
+                     lastSixelWritten[index] = sixelInt
+                  }
+               }
+
+               lastRegisteredColor[index] = colorIndex
+               lastWrittenPosition[index] = x
+            }
+         }
+         sixelImgEncoded.push(passes.join('$'))
       }
       /*"Pan;Pad;Ph;Pv */
       const raster = `"2;1;${imgWidth};${imgHeight}`
       const scrollingModeEnabled = '\x1BP?80h'
       const scrollingModeDisabled = '\x1BP?80l'
-      let sixelSequence = `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
-      return sixelSequence
+      return `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister.join('')}${sixelImgEncoded.join('-')}\x1B\\${scrollingModeDisabled}`
    }
+
    static iterm2(base64: string, {imgsz, position}: TermImgProtocolInput) {
       const options = `width=${imgsz.img_pixelWidth}px;height=${imgsz.img_pixelHeigth};preserveAspectRatio=1;inline=1`
       const cursorPosition = ansi.cursorTo(position.x, position.y)
       return `${cursorPosition}\x1b]1337;File=${options}:${base64}\x1b\\`
    }
 }
-/*
-const wsz = (await TerminalControl.getWindowDimension())!
-console.time('sixel make image')
-const result = await TermImageGraphics.make('/home/alexdev/Documents/js-projects/Tanko/images/climber.jpg', {
-   wsz,
-   forceProtocol: 'sixel',
-   maxImgWidth: 8000,
-   position: {x: 'center', y: 'top'}
-})
-console.timeEnd()
-process.stdout.write(result.encodedImg)
-console.timeLog('sixel make image')
-
-*/
