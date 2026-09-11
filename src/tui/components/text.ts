@@ -4,7 +4,8 @@ export function Text(ctx: RenderContext, content: string, props?: TextOptions){
     const text = new TextRenderable(ctx, {
         ...props,
         content: content,
-        width: content.length,
+        width: 'auto',
+        minWidth: content.length
     })
     return text
 }

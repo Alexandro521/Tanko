@@ -1,8 +1,10 @@
-import  {BoxRenderable, TextRenderable, type RenderContext, type SelectOption } from "@opentui/core";
+import  {BoxRenderable, InputRenderable, KeyEvent, SelectRenderable, TextRenderable, type RenderContext, type SelectOption } from "@opentui/core";
 import { MangaDex } from "../../servers/mangadex.ts";
 import { Input } from "../components/input.ts";
-import { Select } from "../components/select.ts";
+import { Select, type Options } from "../components/select.ts";
 import { Text } from "../components/text.ts";
+import { debounce } from "../../utils.ts";
+import type { MangaInfo } from "../../types/types.js";
 
 export function Search(ctx: RenderContext){
     const mangaDex = new MangaDex()
@@ -33,46 +35,40 @@ export function Search(ctx: RenderContext){
         async onSubmit(v) {
             try{
                 const resList = await mangaDex.search(v)
-                const choices = resList.map((e):SelectOption =>{
+                const choices = resList.map((e):Options<MangaInfo> =>{
                     return {
                         description: '',
                         name: e.title,
                         value: e
                     }
                 })
-                resultList.options = choices
+                Results.options = choices
+                Results.focus()
             }catch(e){
-
             }
         },
     })
-    const resultList = Select(ctx, {
+    const Results = new Select<MangaInfo>(ctx, {
         maxWidth: '100%',
-        options: [
-            {
-                name: 'results',
-                description: '',
-                value: ''
+        onKeyDown(key) {
+            if(key.name === 'escape'){
+                searchBar.focus()
             }
-        ]
-    })
-    const resultsHeader = new BoxRenderable(ctx, {
-        width: '100%',
-        height: 2,
-        flexDirection: 'row'
-    })
-    const filterInput = Input(ctx, {
-        borders: false,
-        labelText: 'filter: ',
-        })
-    const resultsText = Text(ctx, 'Results: 0 provider: Mangadex',  {fg: '#9e9a9a', marginLeft: 1})
+        },
 
-    resultsHeader.add(resultsText)
-    resultsHeader.add(filterInput)
+        options: new Array(15).fill(0).map((_, i) => {
+            return {
+                name: `Chapter ${15 - i}`,
+                description: 'decription',
+                value: `Chapter ${15 - i}`
+            }
+        })
+    })
+
     mainContainer.add(searchBar)
-    mainContainer.add(resultsHeader)
-    mainContainer.add(resultList)
+    mainContainer.add(Results)
     body.add(mainContainer)
     body.add(infoContainer)
+    searchBar.focus() 
     return body
 }

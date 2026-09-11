@@ -19,7 +19,7 @@ export function Main(ctx: RenderContext): BoxRenderable{
         alignItems: 'center',
         gap: 1
     })
-    const select = Select(ctx, {
+   /* const select = Select(ctx, {
         options: [
             {
                 name: 'search',
@@ -52,9 +52,9 @@ export function Main(ctx: RenderContext): BoxRenderable{
                 value: 'goto search'
             }
         ]
-    });
+    });*/
     menuContainer.add(title)
-    menuContainer.add(select)
+   /* menuContainer.add(select)*/
     body.add(menuContainer)
     return body
 }

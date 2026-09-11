@@ -1,9 +1,14 @@
 import { createCliRenderer, BoxRenderable } from "@opentui/core"
 import { Main } from "./pages/main.ts"
 import { Search } from "./pages/search.ts"
+import { TerminalControl } from "../functions/reader.ts"
+
+await TerminalControl.getWindowDimension()
+
 const renderer = await createCliRenderer({
     exitOnCtrlC: true,
     screenMode: 'alternate-screen',
+    externalOutputMode: 'passthrough'
 })
 
 export const WINDOW = new BoxRenderable(renderer, {

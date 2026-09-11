@@ -1,10 +1,10 @@
 import  {
     TextRenderable,
-    BoxRenderable,
     InputRenderable,
     InputRenderableEvents,
     type RenderContext, 
-    Renderable
+    type InputRenderableOptions,
+    BoxRenderable
 } from "@opentui/core"
 
 const borderColors = ['#b685e0aa', '#c896f5' ]
@@ -17,8 +17,8 @@ interface Props {
     onInput?: (v:string)=>void
     onChange?: (v:string)=>void
 }
-export function Input(ctx: RenderContext,props: Props){
 
+export function Input(ctx: RenderContext,props: Props){
     const container = new BoxRenderable(ctx, {
         id: 'search-bar',
         flexDirection: 'row',
@@ -46,6 +46,7 @@ export function Input(ctx: RenderContext,props: Props){
         width: props.labelText ? props.labelText.length : 1
     })
     const input = new InputRenderable(ctx, {
+        id: 'input',
         width: '100%',
         placeholder: props.placeholder
     })
@@ -58,6 +59,7 @@ export function Input(ctx: RenderContext,props: Props){
     if (props.onChange) {
         input.on(InputRenderableEvents.CHANGE, props.onChange)
     }
+    //container.setFocus('input')
     container.add(label)
     container.add(input)
     return container

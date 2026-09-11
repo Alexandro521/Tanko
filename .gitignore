@@ -13,3 +13,6 @@ dist/
 tanko*.tgz
 .vscode/
 anilist-schema.graphql
+.dockerignore
+any/
+images/
