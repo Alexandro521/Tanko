@@ -8,6 +8,8 @@ import fsPromise from "fs/promises";
 import EventEmitter from "events";
 import { Notify } from "./notify.ts";
 import { AniList } from "../trackers/anilist.ts";
+import ora from "ora";
+const loader = ora()
 
 type ConfigurationEvents = {
     'updateprovider': [provider: MangaProvider]
@@ -59,7 +61,27 @@ export class Configuration extends EventEmitter<ConfigurationEvents> {
         this.conf_browser = new BrowserConfiguration(this)
         this.conf_session = new SessionConfiguration(this)
         this.conf_provider = new ProviderConfiguration(this, this.conf_browser, this.conf_language)
-        LANGUAGE_REGISTER['en']().then( lang => this.conf_language = lang)
+        LANGUAGE_REGISTER['en']().then(lang => this.conf_language = lang)
+        this.on('browserinit', async () => {
+            if (loader.isSpinning) loader.stop()
+            const lang = await this.getLanguageInterface()
+            loader.start(lang.loading_states.browser_init)
+        })
+        this.on('browserload', () => {
+            loader.stop()
+        })
+        this.on('browserclosing', async () => {
+            const lang = await this.getLanguageInterface()
+            if (loader.isSpinning) loader.stop
+            loader.start(lang.loading_states.browser_close)
+        })
+        this.on('browserclose', () => {
+            loader.stop()
+        })
+        this.on('error', (e) => {
+            loader.stop()
+            Notify.pushError(e)
+        })
     }
     static async getInstance() {
         if (!this.confInstance) {
