@@ -147,14 +147,12 @@ export class Notify extends EventEmitter{
     }
     static pushError(err: Error) {
         const notify = Notify.getInstace()
-        if (err instanceof Error) {
-            const props: NotifyProps = {
-                type: NotifyType.error,
-                message: err.message,
-                title: err.name,
-            }
-            notify.push(props)
+        const props: NotifyProps = {
+            type: NotifyType.error,
+            message: err.message,
+            title: err.name,
         }
+        notify.push(props)
     }
     static pushMessage(message: string, title = '') {
         const notify = Notify.getInstace()
