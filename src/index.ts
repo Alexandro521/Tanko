@@ -23,12 +23,6 @@ stdout.write(ansi.enterAlternativeScreen);
 
 loader.start('starting...')
 versionChecker()
-
-fsp.access(BASE_DIR)
-.catch(()=>{
-  fsp.mkdir(BASE_DIR, {recursive: true})
-})
-
 async function createPathIfNotExists(path: string){
   return new Promise(async (resolve)=>{
     try{
