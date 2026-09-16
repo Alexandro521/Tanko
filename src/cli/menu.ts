@@ -1,22 +1,17 @@
 import ora from "ora";
 import prompts, {type Choice } from "@alex_521/prompts";
-import { Downloader } from "../functions/downloader.js";
-import { History } from "../functions/history.js";
-import { terminalReader } from "./reader.js";
+import { terminalReader } from "./reader.ts";
 import type {
   Chapter,
   DownloadProps,
   MangaInfo,
   MangaProvider,
   Translations,
-} from "../types/types.js";
-import { DownloadFormat, SignalsCodes} from "../types/enum.js";
+} from "../types/types.ts";
+import { DownloadFormat, SignalsCodes} from "../types/enum.ts";
 import {
-  askChapterLang,
-  basicChapterOptions,
   downloadFormatOptions,
-  chapterListPrompt,
-  historyChapterOptions,
+  historyOptionsPropmts,
   historySectionPrompt,
   lastedSectionPrompt,
   mainPrompt,
@@ -25,74 +20,72 @@ import {
   searchPrompt,
   searchResultPrompt,
   voidPrompt,
-} from "./prompts.js";
-import { configurationTui } from "./configuration.js";
-import { Configuration } from "../functions/configuration.js";
-import type { LangIso, LanguageInterface } from "../functions/lang.ts";
-import { extractTitleByLang, getTimeSkip } from "../utils.js";
-import { Notify, NotifyType } from "../functions/notify.js";
-import { LocalTracker, type LocalTrackerProps } from "../trackers/local.js";
-import chalk from "chalk";
+} from "./prompts.ts";
+import { ChapterSelect, type ChaperSelectOnSelectType } from "./components/chapterList.ts";
+import { Configuration } from "../functions/configuration.ts";
+import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
+import { getTimeSkip } from "../utils.ts";
+import { Notify } from "../functions/notify.ts";
+import { History } from "../functions/history.js";
 
+const LOADER = ora();
+const CONF = await Configuration.getInstance()
 
-const loading = ora();
-const localTracker = LocalTracker.getInstance()
-let err_messages: LanguageInterface['err_messages'],
-loading_states: LanguageInterface['loading_states'],
-lang: LanguageInterface,
-generics_words: LanguageInterface['generics_words']
+let 
+isfirstHistoryLoad = true,
+i18nErrors: LanguageErrorMessages,
+i18nLoadings: LanguageLoadingStates,
+i18nGenerics: LanguageGenericsWords,
+i18nLanguage: LanguageInterface
 
-const notifyInstance = Notify.getInstace()
-
-function pushError(e: any) {
-  if (loading.isSpinning)
-    loading.stop()
-  if (e instanceof Error) {
-    notifyInstance.push({
-      title: e.name,
-      message: e.message,
-      type: NotifyType.error,
-    })
-  }
+const setI18n = (language: LanguageInterface) => {
+  i18nLanguage = language
+  i18nLoadings = language.loading_states
+  i18nErrors   = language.err_messages
+  i18nGenerics = language.generics_words
 }
 
-export async function main(confInstance: Configuration) {
-  let SERVER = confInstance.conf_provider.provider
-  lang = await confInstance.getLanguageInterface()
-  loading_states = lang.loading_states
-  err_messages = lang.err_messages
-  generics_words = lang.generics_words
-  confInstance.on('updateprovider', (e)=> SERVER = e)
-  confInstance.on('updatelanguage', (e)=> {
-    lang = e
-    err_messages = lang.err_messages;
-    loading_states = lang.loading_states;
-    generics_words = lang.generics_words
-  })
+const pushError = (e: any) => {
+  if (LOADER.isSpinning)
+    LOADER.stop()
+  Notify.pushError(e)
+}
+
+export async function main() {
+  setI18n( await CONF.getLanguageInterface() )
+  let mangaProvider = CONF.conf_provider.provider
+  CONF.on('updateprovider', (e) => mangaProvider = e)
+  CONF.on('updatelanguage', setI18n)
   try {
-    while (true) {
+    let mainLoop = true
+    while (mainLoop) {
       const main = await prompts(mainPrompt());
-      if (!main?.target) break;
+      if (!main?.target || main.target === SignalsCodes.exit){
+        //? Check if the history has already been loaded to avoid unwanted overwriting
+        if(!isfirstHistoryLoad){
+          await History.store()
+        }
+        break
+      }
       switch (main.target) {
         case SignalsCodes.search_section:
-          await search(SERVER);
+          await sectionSearch(mangaProvider);
           break;
         case SignalsCodes.history_section:
-          await history(SERVER);
+          await sectionHistory(mangaProvider);
           break;
         case SignalsCodes.popular_section:
-          await populars(SERVER);
+          await sectionPopulars(mangaProvider);
           break;
-        case SignalsCodes.configuration_section:
+        case SignalsCodes.configuration_section: 
+        {
+          const { configurationTui }= await import("./configuration.ts");
           await configurationTui();
           break;
+        }
         case SignalsCodes.lasted_section:
-          await lastedSection(SERVER);
+          await sectionLastest(mangaProvider);
           break;
-        case SignalsCodes.exit:
-          await confInstance.store()
-          await confInstance.conf_browser.close();
-          process.exit(0);
       }
     }
   } catch (e) {
@@ -100,179 +93,117 @@ export async function main(confInstance: Configuration) {
   }
 }
 
-async function search(server: MangaProvider) {
+async function sectionSearch(server: MangaProvider) {
   try {
-    
     while (true) {
-      const searchQuery = await prompts(searchPrompt());
-      if (!searchQuery?.query) break;
-      loading.start(`${loading_states.searching} ${searchQuery.query}...`);
-      const results = await server.search(searchQuery.query);
-      //
+      const search = await prompts(searchPrompt());
+      if (!search?.query) break;
+      LOADER.start(`${i18nLoadings.searching} ${search.query}...`);
+      const results = await server.search(search.query);
+
       if (!results || results.length < 1) {
-        if (loading.isSpinning) loading.fail(err_messages.no_results.msg);
+        if (LOADER.isSpinning) 
+          LOADER.fail(i18nErrors.no_results.msg);
         continue;
-      } else if (loading.isSpinning) loading.stop();
-    
-      let memoryChoicePosition = 0;
-      const choices = results.map(
-        (res, i): Choice => ({ title: res.title, value: String(i) }),
-      );
-      while (true) {
-        const targetIndex = await prompts(
-          searchResultPrompt(choices, memoryChoicePosition),
-        );
-        if (!targetIndex?.target) {
-          
-          break;
-        }
-        memoryChoicePosition = Number(targetIndex.target);
-        const targetResult = results[Number(targetIndex.target)];
+      } else if (LOADER.isSpinning) 
+        LOADER.stop();
 
-        await loadMangaChapter(server, targetResult);
-        
-      }
-    }
-  } catch (e) {
-    pushError(e)
-  }
-}
+      let memoizedLastChoice = 0;
 
-async function loadMangaChapter(
-  server: MangaProvider,
-  mangaInfo: MangaInfo,
-  chaptersMemory: Chapter[] | null = null,
-) {
-  try {
-
-    loading.start(`${loading_states.loading_chapters}...`);
-    const chapterList = chaptersMemory ?? await server.getChapterList(mangaInfo.src)
-
-    if(!chapterList ||chapterList.length < 0) {
-      loading.fail(err_messages.chapter_loading.msg);
-      return;
-    } else if(loading.isSpinning) loading.stop();
-
-    const chaptersCount = Math.max(chapterList[0].number, chapterList[chapterList.length -1].number, chapterList.length)
-    const localTrackerProps: LocalTrackerProps = {
-      chapterCount: chaptersCount,
-      chapterIndex: 0,
-      mangaId: mangaInfo.src
-    }
-
-    if(!(await localTracker.exists(localTrackerProps))){
-      await localTracker.regist(localTrackerProps)
-    }
-    let trackData = await localTracker.getStats(localTrackerProps)
-
-    if (trackData.chapterCount < chapterList.length) {
-      await localTracker.update(localTrackerProps)
-    }
-
-    let indexOfLastChoice = 0;
-    while (true) {
-      trackData = await localTracker.getStats(localTrackerProps)
-
-      const choices: Choice[] = chapterList.map((e, i) => {
-        let title = extractTitleByLang(e, lang.meta.lang as Translations)
-        if(trackData.readingMap.has(e.number)){
-          title +=' ⏺ '+ chalk.dim(chalk.green('Read'))
-        }
-        return {
-          title,
-          value: String(i),
-        };
-      });
-      const readProgress = ((trackData.reading*100)/trackData.chapterCount).toFixed(1)
-      const chapterIndex = await prompts(
-        chapterListPrompt(mangaInfo.title, indexOfLastChoice, choices, `⏺ ${generics_words.progress}: ${readProgress}%`)
-      );
-      if (!chapterIndex.target) {
-        break;
-      }
-      indexOfLastChoice = Number(chapterIndex.target);
-      const targetChapter = chapterList[Number(chapterIndex.target)];
-      let targetLang: LangIso;
-      if ((targetLang = await askChapterLang(targetChapter)) === null) {
-        continue;
-      }
-      const options = await prompts(basicChapterOptions());
-
-      if (!options.target) {
-        continue;
-      }
-      if (options.target === SignalsCodes.read_chapter) {
-        await terminalReader(
-          mangaInfo,
-          chapterList,
-          Number(chapterIndex.target),
-          targetLang,
-        );
-      } else if (options.target === SignalsCodes.download_chapter) {
-        loading.start(loading_states.downloading_chapter)
-        const target = targetChapter.translations[targetLang]
-        const pages = await server.getChapterPages(target?.id as string)
-        loading.stop()
-        if(pages)
-          await downloadSection(
-          mangaInfo,
-          chapterList,
-          Number(chapterIndex.target),
-          targetLang,
-          server,
-        )
-      }
-    }
-  } catch (e) {
-    pushError(e)
-  }
-}
-
-async function history(provider: MangaProvider) {
-  try {
-    const conf = await Configuration.getInstance()
-    let memoryChoicePosition = 0;
-    while (true) {
-      const history = conf.settings.history_filterByProvider ?
-        History.parseMap().filter(e => e.server === provider.name) : History.parseMap()
-      
-      if (history.length < 1) {
-        await prompts(voidPrompt(err_messages.void_Section.msg));
-        break;
-      }
-      const choices = history.map(
-        (e, i): Choice => ({
-          title: e.mangaTitle,
-          description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
-          value: String(i)
+      const choices = results.map((result, i): Choice => ({ 
+        title: result.title, 
+        value: String(i) 
         }),
       );
-      const mangaIndex = await prompts(
-        historySectionPrompt(choices, memoryChoicePosition),
-      );
-      if (!mangaIndex?.target) {
+
+      while (true) {
+        const targetIndex = await prompts(
+          searchResultPrompt(choices, memoizedLastChoice),
+        );
+        if (!targetIndex?.target) {
+          break;
+        }
+        memoizedLastChoice = Number(targetIndex.target);
+        const targetResult = results[Number(targetIndex.target)];
+        await sectionChapterList(server, targetResult);
+      }
+    }
+  } catch (e) {
+    pushError(e)
+  }
+}
+async function sectionChapterList(provider: MangaProvider, mangaInfo: MangaInfo, memoizedChapters: Chapter[] | undefined = undefined) {
+  await ChapterSelect(provider, mangaInfo, memoizedChapters, async (e) => {
+    const { chapterActions, chapterIndex, chapterLanguage, chaptersList } = e
+    if (chapterActions === SignalsCodes.read_chapter) {
+      await terminalReader(
+        mangaInfo,
+        chaptersList,
+        chapterIndex,
+        chapterLanguage,
+      )
+    } else if (chapterActions === SignalsCodes.download_chapter) {
+      await downloadSection(
+        mangaInfo,
+        chaptersList,
+        chapterIndex,
+        chapterLanguage,
+        provider,
+      )
+    }
+  })
+}
+async function sectionHistory(provider: MangaProvider) {
+  const { settings } = CONF
+  let memoryChoicePosition = 0;
+
+  if (isfirstHistoryLoad) {
+    await History.load()
+    isfirstHistoryLoad = false
+  }
+  try {
+    while (true) {
+      const historyParse = History.parseMap()
+      const historyList = settings.history_filterByProvider ? historyParse.filter(e => e.server === provider.name) : historyParse
+      if (historyList.length < 1) {
+        await prompts(voidPrompt(i18nErrors.void_Section.msg));
         break;
       }
-      memoryChoicePosition = Number(mangaIndex.target);
-      const mangaTarget = history[Number(mangaIndex.target)];
-      const options = await prompts(
-        historyChapterOptions(mangaTarget.mangaTitle),
+      const historySelect = await prompts(
+        historySectionPrompt( historyList.map(
+          (e, i): Choice => ({
+            title: e.mangaTitle,
+            description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
+            value: String(i)
+          })
+        ), memoryChoicePosition)
       );
-      if (!options.target) {
+      if (!historySelect.target) break
+      const targetIndex = parseInt(historySelect.target)
+      memoryChoicePosition = targetIndex
+      const mangaTarget = historyList[targetIndex];
+
+      const optionsSelect = await prompts(
+        historyOptionsPropmts(mangaTarget.mangaTitle)
+      );
+
+      if (!optionsSelect.target || optionsSelect.target === SignalsCodes.exit) {
         continue;
       }
       //dynamic server change
-      if(mangaTarget.server !== provider.name) {
-        loading.start(`changing server to: ${mangaTarget.server}`)
-        const confInstance = await Configuration.getInstance()
-        if(loading.isSpinning) loading.stop()
-        provider = await confInstance.conf_provider.setProviderByName(mangaTarget.server) ?? provider
+      if (mangaTarget.server !== provider.name) {
+        LOADER.start(`changing server to: ${mangaTarget.server}`)
+        provider = await CONF.conf_provider.setProviderByName(mangaTarget.server) ?? provider
+        if (LOADER.isSpinning) LOADER.stop()
       }
-      loading.start(loading_states.loading_chapters);
+
+      LOADER.start(i18nLoadings.loading_chapters);
+
       const chapterList = await provider.getChapterList(mangaTarget.mangaSrc);
-      if (loading.isSpinning) loading.stop();
-      if(!chapterList) continue;
-      switch (options.target) {
+      if (LOADER.isSpinning) LOADER.stop();
+      if (!chapterList) continue;
+
+      switch (optionsSelect.target) {
         case SignalsCodes.resume_read: {
           await terminalReader(
             {
@@ -286,10 +217,10 @@ async function history(provider: MangaProvider) {
           break;
         }
         case SignalsCodes.get_chapters_list:
-          await loadMangaChapter(provider, {title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc});
+          await sectionChapterList(provider, { title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc }, chapterList);
           break;
         case SignalsCodes.download_chapter:
-          await downloadSection({title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc},
+          await downloadSection({ title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc },
             chapterList,
             mangaTarget.last_index,
             mangaTarget.last_lang,
@@ -304,83 +235,71 @@ async function history(provider: MangaProvider) {
     pushError(e)
   }
 }
-
-async function populars(server: MangaProvider) {
+async function sectionPopulars(server: MangaProvider) {
   try {
-    loading.start(loading_states.default_loading);
-    const populars = await server.getPopulars();
-    loading.stop();
+    LOADER.start(i18nLoadings.default_loading);
+    const popularList = await server.getPopulars();
+    LOADER.stop();
 
-    if (!populars || populars.length < 0) {
-      await prompts(voidPrompt(err_messages.no_results.msg));
+    if (!popularList || popularList.length < 0) {
+      await prompts(voidPrompt(i18nErrors.no_results.msg));
       return;
     }
 
-    const choices = populars.map((popular, index): Choice => {
+    const choices = popularList.map((popular, index): Choice => {
       return {
         title: popular.title,
         description: popular.description,// popular.chapters?.[0].title ?? undefined,
         value: String(index),
       };
     });
+    
     let memoryChoicePosition = 0;
     while (true) {
-      const select = await prompts(
+      const popularSelect = await prompts(
         popularSectionPrompt(choices, memoryChoicePosition),
-      );
-
-      if (!select.target) {
-        break;
+      )
+      if (!popularSelect.target) break;
+      const targetIndex = parseInt(popularSelect.target)
+      const targetManga = popularList[targetIndex];
+      memoryChoicePosition = targetIndex
+      const onSelect: ChaperSelectOnSelectType = async (res) =>{
+        const {chapterActions, chaptersList, chapterLanguage, chapterIndex} = res
+        switch(chapterActions){
+          case SignalsCodes.read_chapter: {
+              await terminalReader(
+                targetManga,
+                chaptersList,
+                chapterIndex,
+                chapterLanguage,
+              );
+              break
+          }
+          case SignalsCodes.download_chapter: {
+              await downloadSection(
+                targetManga,
+                chaptersList,
+                chapterIndex,
+                chapterLanguage,
+                server
+              )
+            break
+          }
+        }
       }
-      memoryChoicePosition = Number(select.target);
-      const info = populars[Number(select.target)];
-      const option = await prompts(popularMangaSelectOptions(info.title));
-      if (!option?.target || option.target === SignalsCodes.exit) {
-        continue;
-      }
-      loading.start(loading_states.default_loading);
-      const chapterList = await server.getChapterList(info.src);
-      info.title = info.title
-      info.description = info.description
-      if (loading.isSpinning) loading.stop();
-      if (!chapterList) throw new Error("");
-      const lastChapter = chapterList[chapterList.length - 1];
-      let lang;
-      if ((lang = await askChapterLang(lastChapter)) === null) {
-        continue;
-      }
-      if (option.target === SignalsCodes.read_chapter) {
-        await terminalReader(
-          info,
-          chapterList,
-          chapterList.length - 1,
-          lang,
-        );
-      } else if (option.target === SignalsCodes.download_chapter) {
-        await downloadSection(
-          info,
-          chapterList,
-          chapterList.length - 1,
-          lang,
-          server
-        )
-      } else if (option.target === SignalsCodes.get_chapters_list) {
-        await loadMangaChapter(server, info, chapterList);
-      }
+      await ChapterSelect(server, targetManga, undefined, onSelect, popularMangaSelectOptions(targetManga.title))
     }
   } catch (e) {
     pushError(e)
   }
 }
-
-async function lastedSection(server: MangaProvider) {
-
+async function sectionLastest(server: MangaProvider) {
   try {
-    loading.start(loading_states.default_loading);
+    LOADER.start(i18nLoadings.default_loading);
     const mangaList = await server.getLastMangas();
-    loading.stop();
+    LOADER.stop();
     if (!mangaList || mangaList.length < 0) {
-      await prompts(voidPrompt(err_messages.no_results.msg));
+      await prompts(voidPrompt(i18nErrors.no_results.msg));
       return;
     }
     const choices = mangaList.map((e, index): Choice => {
@@ -390,107 +309,51 @@ async function lastedSection(server: MangaProvider) {
         value: String(index),
       };
     });
-    
     let memoryChoicePositionLastMangas = 0;
     while (true) {
       const mangaIndex = await prompts(
         lastedSectionPrompt(choices, memoryChoicePositionLastMangas),
-      );
+      )
       if (!mangaIndex.target) {
-
         break;
       }
       memoryChoicePositionLastMangas = Number(mangaIndex.target);
       const targetManga = mangaList[Number(mangaIndex.target)];
-      const chapterList = await server.getChapterList(targetManga.src)
-      const chaptersCount = Math.max(chapterList[0].number, chapterList[chapterList.length -1].number, chapterList.length)
-      const localTrackerProps: LocalTrackerProps = {
-        chapterCount: chaptersCount,
-        chapterIndex: 0,
-        mangaId: targetManga.src
-      }
-      if (!(await localTracker.exists(localTrackerProps))) {
-        await localTracker.regist(localTrackerProps)
-      }
-      const trackerData = await localTracker.getStats(localTrackerProps)
-      if (trackerData.chapterCount < chapterList.length) {
-        await localTracker.update(localTrackerProps)
-      }
-      let memoryChoicePosition = 0;
-      while (true) {
-        const markRead = await localTracker.getStats(localTrackerProps)
-
-        const lastChapterList = chapterList.map(
-          (chapter, index): Choice => {
-            let title = extractTitleByLang(chapter, (lang.meta.lang as Translations))
-            if (markRead.readingMap.has(chapter.number)) {
-              title += ' ⏺ '+ chalk.dim(chalk.green(generics_words.read))
-            }
-            return { 
-              title,
-              value: String(index) };
-          },
-        );
-        const readProgress = ((trackerData.reading*100)/trackerData.chapterCount).toFixed(1)
-
-        let chapterIndex = await prompts(
-          chapterListPrompt(
-            targetManga.title,
-            memoryChoicePosition,
-            lastChapterList,
-            `⏺ Progress: ${readProgress}%`
-          ),
-        );
-        if (!chapterIndex.target) {
-
-          break;
-        }
-        memoryChoicePosition = Number(chapterIndex.target);
-        const chapterTarget = lastChapterList[Number(chapterIndex.target)];
-        const chapterOptions = await prompts(basicChapterOptions());
-
-        if (!chapterOptions.target) {
-
-          continue;
-        }
-
-        loading.start(
-          `${loading_states.default_loading} ${chapterTarget.title} : ${chapterTarget.title}`,
-        );
-        const mangaInfo = await server.getMangaInfo(targetManga.src);
-        let chapterLang: Translations | null;
-        loading.stop();
-        if (!mangaInfo) continue;
-        const index = Number(chapterIndex.target);
-        const chapter = chapterList[index];
-        if ((chapterLang = await askChapterLang(chapter)) === null) {
-          continue;
-        }
-        if (chapterOptions.target === SignalsCodes.read_chapter)
-          await terminalReader(mangaInfo,chapterList, index, chapterLang);
-        else if (chapterOptions.target === SignalsCodes.download_chapter){
-          await downloadSection(mangaInfo,chapterList, index, chapterLang, server)
-          continue;
-        }
-        else if (chapterOptions.target === SignalsCodes.exit) {
-          continue;
-        }
-      }
+        await ChapterSelect(server, targetManga, undefined, async (e)=>{
+          const {chaptersList, chapterIndex, chapterLanguage, chapterActions } = e
+          switch(chapterActions){
+            case SignalsCodes.read_chapter:
+              await terminalReader(
+                targetManga, 
+                chaptersList, 
+                chapterIndex, 
+                chapterLanguage);
+              break
+            case SignalsCodes.download_chapter:
+              await downloadSection(
+                targetManga, 
+                chaptersList, 
+                chapterIndex, 
+                chapterLanguage, 
+                server)
+              break
+          }
+      })
     }
   } catch (e) {
     pushError(e)
   }
 }
-
 export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: Translations, server: MangaProvider) {
   try {
+    const {Downloader} = await import("../functions/downloader.ts")
     let pagesCount = 0;
     const chapterTarget = chapterList[index]
     const chapterTranslate = chapterTarget.translations[lang]
     const downloaderInstace = Downloader.getInstance()
-    loading.start('Getting pages url\'s...')
+    LOADER.start('Getting pages url\'s...')
     const pagesUrls = await server.getChapterPages(chapterTranslate?.id as string)
-    loading.stop()
+    LOADER.stop()
     const downloadProps: DownloadProps = {
       chapterTitle: chapterTranslate?.title ?? chapterTranslate?.title ?? '',
       format: DownloadFormat.pdf,
@@ -501,14 +364,14 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     downloaderInstace.on('download_page', (e) => {
       pagesCount++;
       
-      loading.text = `${loading_states.downloading_pages} #${e + 1} [${pagesCount}/${pagesUrls.length}]`
+      LOADER.text = `${i18nLoadings.downloading_pages} #${e + 1} [${pagesCount}/${pagesUrls.length}]`
     })
     downloaderInstace.on('done', () => {
-      loading.stop()
+      LOADER.stop()
     })
     downloaderInstace.on('state', (state) => {
-      if (loading.isSpinning)
-        loading.text = state + '...'
+      if (LOADER.isSpinning)
+        LOADER.text = state + '...'
     })
     while (true) {
       pagesCount = 0
@@ -518,12 +381,12 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
         break
       }
       downloadProps.format = format.target
-      loading.start('downloading...')
+      LOADER.start('downloading...')
       await downloaderInstace.download(downloadProps)
-      loading.stop()
+      LOADER.stop()
     }
   } catch (e) {
-    if (loading.isSpinning) loading.stop()
+    if (LOADER.isSpinning) LOADER.stop()
     
     pushError(e)
   }

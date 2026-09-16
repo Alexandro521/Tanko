@@ -3,7 +3,7 @@ import fs from 'fs'
 import fsp from 'fs/promises'
 import path from "path";
 import sanitize from "sanitize-filename";
-import type { ChapterLanguage, MangaInfo, ServerName } from "../types/types.js";
+import type { ChapterLanguage, ServerName } from "../types/types.js";
 import { extractChapterNumber } from "../utils.ts";
 export interface LocalTrackerProps {
     mangaId: string | number,

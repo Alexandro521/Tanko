@@ -1,7 +1,7 @@
-import type { HistoryObject } from "../types/types.js";
-import { HISTORY_PATH } from "../const.js";
+import type { HistoryObject } from "../types/types.ts";
+import { HISTORY_PATH } from "../const.ts";
 import fsp from 'node:fs/promises'
-import { Notify } from "./notify.js";
+import { Notify } from "./notify.ts";
 import { Configuration } from "./configuration.ts";
 
 interface HistoryDataStruct {
@@ -29,9 +29,11 @@ export class History {
       })
       return true;
     } catch (e) {
-      if (e instanceof Error) {
-        Notify.pushError(e)
-      }
+      const data = JSON.stringify({
+        last_update: Date.now(),
+        history: []
+      }, null , '\t')
+      await fsp.writeFile(HISTORY_PATH, data, 'utf-8')
       return false
     }
   }

@@ -1,4 +1,4 @@
-import type { ChapterListMangadex } from "../types/mangadex/get_chapters.js";
+import type { ChapterListMangadex } from "../types/mangadex/get_chapters.ts";
 import type {
     MangaProvider,
     Chapter,
@@ -6,10 +6,10 @@ import type {
     Translations,
     ServerName,
     MangaInfo
-} from "../types/types.js";
+} from "../types/types.ts";
 import axios from "axios";
-import type { AltTitles, MangadexMangaInfo, SearchResultMangadex } from "../types/mangadex/search.js";
-import type { Puzzle } from "../types/mangadex/get_pages.js";
+import type { AltTitles, MangadexMangaInfo, SearchResultMangadex } from "../types/mangadex/search.ts";
+import type { Puzzle } from "../types/mangadex/get_pages.ts";
 interface Chapter_ extends Chapter {
     index: number | string
 }

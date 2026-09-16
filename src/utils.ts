@@ -1,4 +1,4 @@
-import type { Chapter, Translations, WSZ } from "./types/types.js";
+import type { Chapter, Translations, WSZ } from "./types/types.ts";
 import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";

@@ -1,5 +1,5 @@
 import EventEmitter from "events"
-import crypto from 'node:crypto'
+import {randomInt} from 'node:crypto'
 
 export type ResponseChecker = (arg0: Response, reject: (reason: string) => void ) => void | Promise<void>
 
@@ -50,7 +50,7 @@ export class RequestPool extends EventEmitter{
         return this.requestMap.get(rawUrl)
     }
     push(url: fetchUrl, requestInit: RequestInit | undefined = undefined){
-        const rid = crypto.randomInt(1048576)
+        const rid = randomInt(1048576)
         const rawUrl = this.getUrlString(url)
 
         if(this.requestMap.has(rawUrl)){

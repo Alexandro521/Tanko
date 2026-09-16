@@ -1,7 +1,7 @@
 import axios from "axios"
 import ansi from 'ansi-escapes'
 import pkgInfo from "../package.json" with {type: 'json'}
-import { Notify, NotifyType } from "./functions/notify.js"
+import { Notify, NotifyType } from "./functions/notify.ts"
 import chalk from "chalk"
 import supportsHyperlinks from "supports-hyperlinks"
 const notify = Notify.getInstace()

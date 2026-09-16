@@ -1,18 +1,15 @@
 import fs from 'fs'
 import fsp from 'fs/promises'
-import sharp from 'sharp';
 import chalk from 'chalk';
 import path from 'path';
 import sanitize from 'sanitize-filename';
 import ansi from 'ansi-escapes'
-import PDFDocument from 'pdfkit'
 import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
 import { Notify, NotifyType } from './notify.js';
 import { makeDir } from '../utils.js';
 import { EventEmitter } from 'events';
 import { DownloadFormat } from '../types/enum.js';
 import type { ChapterPage, DownloadPageProps, DownloadProps, FormatProps, ImgBuffer } from '../types/types.js';
-import { ZipArchive } from "archiver"
 import { Configuration } from './configuration.ts';
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
@@ -36,6 +33,7 @@ export class Downloader extends EventEmitter {
     private imageCaching!: DownloadPageProps[] | undefined
     public lastFetchId!: string | undefined;
     private async getImagesBuffer(images: ChapterPage[]) {
+        const sharp = (await import('sharp')).default
         const contentRexp = new RegExp(/image\/(webp|jpeg|png)/)
         const fetchImage = async (img: ChapterPage, index: number): Promise<DownloadPageProps> => {
             return new Promise(async (resolve, reject) => {
@@ -56,6 +54,7 @@ export class Downloader extends EventEmitter {
     }
     private async pdf({ pages, path }: FormatProps) {
         this.emit('state', 'making pdf file')
+        const PDFDocument = (await import('pdfkit')).default
         const doc = new PDFDocument(PDFOptions)
         doc.pipe(fs.createWriteStream(`${path}.pdf`))
         pages = pages.sort((a, b) => a.index - b.index);
@@ -80,6 +79,7 @@ export class Downloader extends EventEmitter {
     }
     private async zip({ pages, path }: FormatProps, format = 'zip') {
         const writeStream = fs.createWriteStream(`${path}.${format}`)
+        const { ZipArchive } = await import("archiver" )
         const archive = new ZipArchive({
             zlib: { level: 4 },
         })

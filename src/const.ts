@@ -19,7 +19,7 @@ export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.
 export const ISSUES_REPO = "https://github.com/Alexandro521/Tanko/issues"
 export const PRIMARY_COLOR = '#bf78fa'
 
-export const WELCOME_MESSAGE = gradient('#84b7fa', PRIMARY_COLOR).multiline(`
+export const WELCOME_MESSAGE = gradient(['#84b7fa', PRIMARY_COLOR]).multiline(`
   ████████╗ █████╗ ███╗   ██╗██╗  ██╗ ██████╗ 
   ╚══██╔══╝██╔══██╗████╗  ██║██║ ██╔╝██╔═══██╗
      ██║   ███████║██╔██╗ ██║█████╔╝ ██║   ██║
