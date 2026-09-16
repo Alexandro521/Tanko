@@ -143,10 +143,11 @@ export class TermImageGraphics {
          }
          case 'sixel': {
             const imgBuffer = await imgsrgb
+            .removeAlpha()
             .resize(scale.img_pixelWidth, scale.img_pixelHeigth)
             .raw()
-            .toBuffer()
-            output.encodedImg  =  this.sixel(imgBuffer, input)
+            .toUint8Array()
+            output.encodedImg  =  this.sixel(imgBuffer.data, input)
             break
          }
          case 'ascii': {
@@ -216,52 +217,111 @@ export class TermImageGraphics {
       }
       return lines.join('\x1B[1E')
    }
-   static sixel(buffer: Buffer, { imgsz, position }: TermImgProtocolInput) {
+   static sixel(pixelMap: Uint8Array<ArrayBufferLike>, { imgsz, position }: TermImgProtocolInput) {
       /*
-      https://en.wikipedia.org/wiki/Sixel
-      https://www.vt100.net/docs/vt3xx-gp/chapter14.html
-      https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
+      ? https://en.wikipedia.org/wiki/Sixel
+      ? https://www.vt100.net/docs/vt3xx-gp/chapter14.html
+      ? https://www.digiater.nl/openvms/decus/vax90b1/krypton-nasa/all-about-sixels.text
       */
-      const pixelArr = new Uint8ClampedArray(buffer)
-      let imgWidth = imgsz.img_pixelWidth
-      let imgHeight = imgsz.img_pixelHeigth
-      let sixelImgEncoded = ''
-      let grayScaleRegister = ''
-      for (let i = 0; i < 100; i++) {
-         grayScaleRegister += `#${i};2;${(i)};${i};${i};`
-      }
+    //  const pixelMap = new Uint8ClampedArray(buffer)
+      const {img_pixelHeigth:imgHeight, img_pixelWidth: imgWidth} = imgsz
+      
+      const sixelCharVector = Array.from([
+         '?', '@', 'A', 'B', 'C', 'D', 'E', 'F',
+         'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N',
+         'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V',
+         'W', 'X', 'Y', 'Z', '[', '\\', ']', '^',
+         '_', '`', 'a', 'b', 'c', 'd', 'e', 'f',
+         'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n',
+         'o', 'p', 'q', 'r', 's', 't', 'u', 'v',
+         'w', 'x', 'y', 'z', '{', '|', '}', '~','!','?'
+      ])
+      const COLOR_LOOKUP = new Array(100)
+      for(let i = 0; i< 100; i++)
+         COLOR_LOOKUP[i] = '#'+i
+      //? https://vtdn.dev/docs/graphics/sixel/#color-introduction
+      const grayScaleRegister = new Array(100)
+      for (let i = 0; i < 100; i++) 
+         grayScaleRegister[i] = (`#${i};2;${(i)};${i};${i}`)
+      
+      const arrayCount = Math.floor(imgHeight/6)+1
+      const sixelImgEncoded: String[] = new Array(arrayCount)
+      const lastWrittenPosition = new Int32Array(6)
+      const lastRegisteredColor = new Int8Array(6)
+      const lastSixelWritten = new Int8Array(6)
+      const concurrencyAccumulator = new Int32Array(6)
+      const sixelColorRegister = new Uint8Array(100)
+      const sixelMarker = new Int8Array(6)
+      const passes: string[][] = [[],[],[],[],[],[]]
 
       for (let y = 0, i = 0; y < imgHeight; y += 6, i++) {
-         const imageRowIndex = y * imgWidth * 3
+         lastWrittenPosition.fill(-1)
+         lastRegisteredColor.fill(-1)
+         lastSixelWritten.fill(-1)
+         concurrencyAccumulator.fill(-1)
+         for(let i =0; i<6;i++)
+            passes[i].length = 0
+         
+         const sixelRowStartIndex = y * imgWidth * 3
          for (let x = 0; x < imgWidth; x++) {
-            let pixelColumnOffset = imageRowIndex + (x * 3)
-            //let sixelInt = 0x3F
-            let lumen = 0
-            for (let sixelRow = 0; sixelRow < 6; sixelRow++) {
-               const absolutePixelIndex = (imgWidth * sixelRow * 3) + pixelColumnOffset
-               //aproximation
-               let luminance = (
-                  299 * pixelArr[absolutePixelIndex] +  //RED
-                  587 * pixelArr[absolutePixelIndex + 1] + //GREEN
-                  114 * pixelArr[absolutePixelIndex + 2]) //BLUE
-                  >> 10
-               lumen += (luminance * 100) >> 8
+            const sixelColumnPosition = sixelRowStartIndex + x * 3 
+            sixelColorRegister.fill(0)
+            sixelMarker.fill(-1)
+            for (let sixelPixelIndex = 0; sixelPixelIndex < 6; sixelPixelIndex++) {
+               const absolutePixelPosition = (imgWidth * sixelPixelIndex  * 3) + sixelColumnPosition
+               const colorIndex = (((
+                   13933 * pixelMap[absolutePixelPosition    ] //RED
+                  +46871 * pixelMap[absolutePixelPosition + 1] //GREEN
+                  +4732 * pixelMap[absolutePixelPosition + 2] //BLUE
+               ) >> 16) * 100 )>> 8
+               
+               if(sixelColorRegister[colorIndex] < 1){
+                  sixelMarker[sixelPixelIndex] = colorIndex
+               }
+               sixelColorRegister[colorIndex] |= 1 << sixelPixelIndex
             }
-            sixelImgEncoded += `#${(lumen / 6) | 0};~`
+
+            for(let index = 0; index < 6; index++){
+               if(sixelMarker[index] < 0) continue
+               const colorIndex = sixelMarker[index]
+               const sixelInt = sixelColorRegister[colorIndex]
+               const sixelChar = sixelCharVector[sixelInt]
+               const xDiff = x - lastWrittenPosition[index] - 1;
+               if (xDiff) {
+                  passes[index].push('!'+xDiff+'?')
+               }
+               if(lastRegisteredColor[index] !== colorIndex){
+                  passes[index].push(COLOR_LOOKUP[colorIndex], sixelChar)
+                  concurrencyAccumulator[index] = 1
+                  lastSixelWritten[index] = sixelInt
+               }
+               else {
+                  if(xDiff < 1 && lastSixelWritten[index] === sixelInt){
+                     const sixelConcurrency = concurrencyAccumulator[index]
+                     passes[index][ passes[index].length -1 ] = ('!'+(sixelConcurrency+1)+sixelChar)
+                     concurrencyAccumulator[index]++
+                  }else{
+                     passes[index].push(sixelChar)
+                     concurrencyAccumulator[index] = 1
+                     lastSixelWritten[index] = sixelInt
+                  }
+               }
+               lastRegisteredColor[index] = colorIndex
+               lastWrittenPosition[index] = x
+            }
          }
-         sixelImgEncoded += '-'
+         sixelImgEncoded[i] =  passes.join('$')
       }
       /*"Pan;Pad;Ph;Pv */
       const raster = `"2;1;${imgWidth};${imgHeight}`
       const scrollingModeEnabled = '\x1BP?80h'
       const scrollingModeDisabled = '\x1BP?80l'
-      let sixelSequence = `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister}${sixelImgEncoded}\x1B\\${scrollingModeDisabled}`
-      return sixelSequence
+      return `${scrollingModeEnabled}${ansi.cursorTo(position.x, position.y)}\x1BP0;0;0;q${raster};${grayScaleRegister.join('')}${sixelImgEncoded.join('-')}\x1B\\${scrollingModeDisabled}`
    }
+
    static iterm2(base64: string, {imgsz, position}: TermImgProtocolInput) {
       const options = `width=${imgsz.img_pixelWidth}px;height=${imgsz.img_pixelHeigth};preserveAspectRatio=1;inline=1`
       const cursorPosition = ansi.cursorTo(position.x, position.y)
       return `${cursorPosition}\x1b]1337;File=${options}:${base64}\x1b\\`
    }
 }
-
