@@ -1,7 +1,7 @@
 ## Contributions are welcome
 
-### How do I implement my own sleeve supplier?
-How do I set up my own sleeve supplier?
+### How do I implement my own manga supplier?
+How do I set up my own manga supplier?
 
 1. **Basic:**
 Create a file, preferably named after the provider, and create a class implementing the `MangaProvider` interface.
