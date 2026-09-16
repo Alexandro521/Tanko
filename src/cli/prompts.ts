@@ -3,7 +3,7 @@ import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enu
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.ts";
 import { Configuration } from "../functions/configuration.ts";
-import type { Chapter, ChapterLanguage, TrackerNames, Settings, Translations } from "../types/types.ts";
+import type { Chapter, TrackerNames, Settings } from "../types/types.ts";
 import { type Key } from "node:readline";
 import { Notify } from "../functions/notify.ts";
 import ansi from 'ansi-escapes'
@@ -269,7 +269,7 @@ export const basicChapterOptions = () => {
         $.exit,
     ], '', 0, 'select')
 }
-export const historyChapterOptions = (title: string) => {
+export const historyOptionsPropmts = (title: string) => {
     const $ = OptionsFactory()
     return SectionPrompt(configuration.options_title, [
         $.resume_read,
@@ -283,7 +283,7 @@ export const popularMangaSelectOptions = (title: string) => {
     const $ = OptionsFactory()
     return SectionPrompt(configuration.options_title, [
         $.read,
-        $.getChapters,
+    //    $.getChapters,
         $.download,
         $.exit,
 

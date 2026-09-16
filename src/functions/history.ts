@@ -29,9 +29,11 @@ export class History {
       })
       return true;
     } catch (e) {
-      if (e instanceof Error) {
-        Notify.pushError(e)
-      }
+      const data = JSON.stringify({
+        last_update: Date.now(),
+        history: []
+      }, null , '\t')
+      await fsp.writeFile(HISTORY_PATH, data, 'utf-8')
       return false
     }
   }
