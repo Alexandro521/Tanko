@@ -62,7 +62,7 @@ export async function main() {
       const main = await prompts(mainPrompt());
       if (!main?.target || main.target === SignalsCodes.exit){
         //? Check if the history has already been loaded to avoid unwanted overwriting
-        if(isfirstHistoryLoad){
+        if(!isfirstHistoryLoad){
           await History.store()
         }
         break
