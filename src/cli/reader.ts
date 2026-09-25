@@ -7,14 +7,14 @@ import { downloadSection } from "./menu.ts"
 import chalk, { type ColorName } from "chalk"
 import { Notify } from "../functions/notify.ts"
 import { MediaListStatus } from "../types/enum.ts"
-import prompts, { type Choice } from "@alex_521/prompts"
+import prompts  from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
-import { centerX, debounce, virtualWindow, slice, extractTitleByLang} from "../utils.ts"
+import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
-import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
+import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
 import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
-import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
+import { terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
 
@@ -429,34 +429,6 @@ export async function terminalReader(
           return
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
-          // const languageTarget = chapterCtl.getLang()
-          // const localTrackerProps: LocalTrackerProps = {
-          //   chapterCount: 0,
-          //   chapterIndex: 0,
-          //   mangaId: mangaInfo.src
-          // }
-          // const trackData = await localTracker.getStats(localTrackerProps)
-          // const choices: Choice[] = chapters.map((e, index): Choice => {
-          //   let title = extractTitleByLang(e,languageTarget)
-          //   if (trackData.readingMap.has(e.number)) {
-          //     title += ' ⏺ ' + chalk.dim(chalk.green('Read'))
-          //   }
-          //   const props = {
-          //     title: title,
-          //     value: String(index)
-          //   }
-          //   return props
-          // })
-          // const chapterIndex = await prompts(
-          //   chapterListPrompt(mangaInfo.title, chapterCtl.geChapterIndex(), choices)
-          // )
-          // if (!chapterIndex || !chapterIndex.target) {
-          //   TerminalControl.openRawMode(keyPressHandle)
-          //   await render()
-          //   return
-          // }
-          // const targetChapter = chapters[Number(chapterIndex.target)]
-          // const lang = await askChapterLang(targetChapter) ?? languageTarget
           let outputStatus = -1
           await ChapterSelect(mangaProvider, mangaInfo, chapters, async (e, stop)=>{
             const {chapterLanguage, chapterIndex} = e
