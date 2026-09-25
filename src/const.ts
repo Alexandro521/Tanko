@@ -7,6 +7,7 @@ import chalk from "chalk"
 import userAgents from './json/user_agents.json' with {type: "json"}
 import { randomInt } from "crypto"
 import supportsHyperlinks from "supports-hyperlinks"
+import { getRuntimeEnvironment } from "./utils.ts"
 
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
@@ -18,7 +19,8 @@ export const BROWSER_STORAGE_PATH = path.resolve(DATA_DEFAULT_DIR, 'browser')
 export const BROWSER_STORAGE_FILE = path.resolve(BROWSER_STORAGE_PATH, 'storage.json')
 export const ISSUES_REPO = "https://github.com/Alexandro521/Tanko/issues"
 export const PRIMARY_COLOR = '#bf78fa'
-
+export const SQLITE_DATABASE_PATH = path.join(DATA_DEFAULT_DIR, 'tanko_sqlite_database')
+export const RUNTIME_ENV = getRuntimeEnvironment()
 export const WELCOME_MESSAGE = gradient(['#84b7fa', PRIMARY_COLOR]).multiline(`
   ████████╗ █████╗ ███╗   ██╗██╗  ██╗ ██████╗ 
   ╚══██╔══╝██╔══██╗████╗  ██║██║ ██╔╝██╔═══██╗
