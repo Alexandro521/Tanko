@@ -183,3 +183,26 @@ export function fuzzyMatch(s: string, stringComp: string) {
   const finalPercent = Math.min(Math.round(percent * 100) / 100, 100);
   return finalPercent;
 }
+
+export function getRuntimeEnvironment() {
+  //@ts-ignore
+  if (process.isBun || typeof Bun !== 'undefined') {
+    return 'Bun';
+  }
+  //@ts-ignore
+  if (typeof Deno !== 'undefined') {
+    //Deno support many modules from nodejs
+    return 'Node';
+  }
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    return 'Node';
+  }
+  if (typeof importScripts === 'function') {
+    return 'Web Worker';
+  }
+  
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    return 'Browser';
+  }
+  return 'Unknown';
+}
