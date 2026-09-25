@@ -287,3 +287,15 @@ export interface LoadImageProps {
     fit: ObjectFit
     maxWidth: number,
 }
+export interface HistoryInput {
+    chapter_index: number,
+    chapter_src: string,
+    lang_iso: Translations,
+    page_index: number,
+    pages_read: number,
+    read_progress: number,
+    sort_order: 'asc' | 'desc',
+    mangainfo: MangaInfo,
+    provider: ServerName,
+    chapter_title: string
+}
