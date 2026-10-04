@@ -287,7 +287,7 @@ export interface LoadImageProps {
     fit: ObjectFit
     maxWidth: number,
 }
-export interface HistoryInput {
+export interface HistoryObject2 {
     chapter_index: number,
     chapter_src: string,
     lang_iso: Translations,
@@ -298,4 +298,14 @@ export interface HistoryInput {
     mangainfo: MangaInfo,
     provider: ServerName,
     chapter_title: string
+}
+
+export interface UserlistObject {
+    entry_id: number,
+    list_name: string,
+    alias: string,
+    reference_type: string,
+    create_at: string,
+    added_at: string,
+    mangaInfo: MangaInfo
 }
