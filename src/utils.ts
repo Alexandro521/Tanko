@@ -3,8 +3,9 @@ import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";
 import { stdout } from "node:process";
+import type { DateString, DateTimeString, TimeString } from "./types/database.js";
 
-export function getTimeSkip(time: number) {
+export function timeDiff(time: number) {
   const currentTime = new Date();
   const readTime = new Date();
   currentTime.setTime(Date.now())
@@ -37,6 +38,76 @@ export function getTimeSkip(time: number) {
     const timePrefix = hours >= 0 && hours < 12 ? "AM" : "PM";
     const timeString = `${hours.toString().padStart(2, "0")}:${readTime.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
     return `${dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
+  }
+}
+
+interface DateInt {
+  year: number,
+  month: number,
+  day: number,
+}
+interface TimeInt {
+  hour: number,
+  minute: number,
+  second: number
+}
+
+function dateTimeStringParse(dateTime: TimeString): TimeInt
+function dateTimeStringParse(dateTime: DateString): DateInt
+function dateTimeStringParse(dateTime: DateTimeString): DateInt & TimeInt
+function dateTimeStringParse(dateTime: TimeString | DateString | DateTimeString){
+  type Xyz = [number, number, number]
+  const dateAndTimeRaw = dateTime.split(' ')
+  if(dateAndTimeRaw.length < 2){
+    if(dateAndTimeRaw[0].includes('-')){
+      const date = dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
+      return {
+        year: date[0],
+        month: date[1],
+        day: date[2]
+      }
+    }else{
+      const time = dateAndTimeRaw[0].split(':').map(e => parseInt(e)) as Xyz
+      return {
+        hour: time[0],
+        minute: time[1],
+        second: time[2]
+      }
+    }
+  }
+  const date =  dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
+  const time = dateAndTimeRaw[1].split(':').map(e => parseInt(e)) as Xyz
+  return {
+    year: date[0],
+    month: date[1],
+    day: date[2],
+    hour: time[0],
+    minute: time[1],
+    second: time[2]
+  }
+}
+export function parseTimeDiff(timeDiff: DateTimeString, dateTime: DateTimeString) {
+  const {year, month, day, hour, minute, second} = dateTimeStringParse(timeDiff)
+
+  if(year + month > 0){
+    const date = new Date(dateTime)
+    return date.toDateString()
+  }
+  if(day > 0){
+    if(day >= 7){
+      return `${Math.floor(day/7)} Weeks ago`
+    }else {
+      return `${day} Days ago`
+    }
+  }
+  if(hour > 0){
+    return `${hour} Hours ago`
+  }
+  if(minute > 0){
+    return `${minute} Minutes ago`
+  }
+  if(second > 0){
+    return `${second} Seconds ago`
   }
 }
 
