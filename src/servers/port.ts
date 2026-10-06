@@ -13,7 +13,7 @@ export const mangaServerRegister: ServerRegister =
   [
   {
     name: "leercapitulo",
-    need_browser: true,
+    need_browser: false,
     client: async (e: Page) => {
       const {LeerCapitulo} = await import('./leerCapitulo.ts')
       return new LeerCapitulo(e)},
