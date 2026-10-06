@@ -8,7 +8,6 @@ import type {
   TermImgProtocolName,
   TankoTermImgOutput,
   LoadImageProps,
-  ServerName,
   ImgPreloadingStrategy,
 } from "../types/types.js";
 import { ImageLoader } from "./images.ts";
@@ -27,13 +26,13 @@ export class PagesControl {
   private pageIndex = 0;
   private requestPool!:RequestPool
   public imageLoader!:ImageLoader
-  constructor(pages: ChapterPage[]) {
-    this.imageLoader = new ImageLoader();
-    this.pages = pages;
-    this.currenPage = pages[0];
-    this.readCheckList = new Array(pages.length).fill(false);
-    this.requestPool = new RequestPool()
+  constructor() {
 
+    this.imageLoader = new ImageLoader();
+    this.pages = [];
+    this.currenPage = this.pages[0];
+    this.readCheckList = new Array(this.pages.length).fill(false);
+    this.requestPool = new RequestPool()
     this.requestPool.setResponseChecker((response, reject)=>{
       if (response.ok) {
         const contentType = response.headers.get('Content-Type')
@@ -224,6 +223,9 @@ export class PagesControl {
       this.pages.length
     );
   }
+  get readPages(){
+    return (this.readCheckList.filter(e=> e).length)
+  }
   setPages(newPages: ChapterPage[]) {
     this.pages = newPages;
     this.readCheckList = new Array(newPages.length).fill(false);
@@ -234,6 +236,13 @@ export class PagesControl {
   }
   setIndex(newIndex: number) {
     this.pageIndex = newIndex;
+    this.currenPage = this.pages[newIndex]
+  }
+  setProgress(count: number) {
+    const n  =  Math.min(this.readCheckList.length, count)
+    for(let i = 0;  i < n; i++){
+      this.readCheckList[i] = true
+    }
   }
   get PagesLength() {
     return this.pages.length;
@@ -421,21 +430,5 @@ export class ChapterControl {
       : this.index === this.chapters.length - 1
         ? 1
         : 0;
-  }
-  historySave(title: string, mangaSrc: string, serverName: ServerName) {
-    const chapter = this.extractChapterSrcByLang(this.getChapter(), this.lang);
-    import("./history.ts").then(({History})=>{
-      History.save({
-        chapters_length: this.chapters.length,
-        chapterSrc: chapter.id,
-        last_index: this.index,
-        last_lang: this.lang,
-        server: serverName,
-        last_title: chapter.title,
-        mangaSrc: mangaSrc,
-        mangaTitle: title,
-        time: Date.now(),
-      });
-    });
   }
 }
