@@ -63,11 +63,12 @@ export interface ReadHistoryObject {
     page_index: number
     sort_order: 'asc' | 'desc'
     read_progress: number
-    read_time: string
-    read_date: string
+    read_at: DateTimeString
+    time_diff: DateTimeString
     manga_title: string
     manga_status: string
     manga_anilist_id: number | null
     manga_mal_id: number | null
     manga_src: string
 }
+export type ExtractFnType<Fn extends ()=>void> = Awaited<ReturnType<Fn>>
