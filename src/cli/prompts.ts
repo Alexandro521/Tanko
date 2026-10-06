@@ -503,6 +503,7 @@ export const historyConfigurationPrompt = () => {
     const history_filter: PromptObject = {
         type: 'toggle',
         name: 'value',
+        initial: instance.settings.history_filterByProvider,
         message: history.history_filter
     }
     const history_size: PromptObject = {
@@ -510,9 +511,16 @@ export const historyConfigurationPrompt = () => {
         name: 'value',
         min: 32,
         max: 4096,
+        initial: instance.settings.history_maxSize,
         message: history.history_size
     }
-
+    //TODO: i18n
+    const history_groupByManga: PromptObject = {
+        type: 'toggle',
+        name: 'value',
+        initial: instance.settings.history_groupByManga,
+        message: 'Group reading history by manga'
+    }
     const choices: Choice[] = [
         {
             title: history_filter.message as string,
@@ -528,6 +536,14 @@ export const historyConfigurationPrompt = () => {
             value: {
                 target: 'history_maxSize',
                 prompt: history_size
+            } as ConfigurationSettingPrompt
+        },
+        {
+            title: history_groupByManga.message as string,
+            description: instance.settings.history_groupByManga ? 'enabled' : 'disabled',
+            value: {
+                target: 'history_groupByManga',
+                prompt: history_groupByManga
             } as ConfigurationSettingPrompt
         },
         {
