@@ -26,30 +26,36 @@ export class LeerCapitulo implements MangaProvider {
         const req = await fetch(this.baseUrl);
         if (!req.ok) throw new Error(`Error at provider.getLastMangas(): ${req.statusText} http status code: ${req.status}`)
         const $ = cheerio.load( await req.text() );
-        $('section.bodycontainer div.row div.col-md-8 div.row > div.col-md-6').each((_, node) => {
-            const container = $('div.mainpage-manga div.media-body', node)
-            const mangaTtitle = container.find('h4.manga-newest').text()
-            const src = container.find('a').first().attr('href') ?? ''
-            const lastChapter_title = container.find('div.hotup-list > span').first().find('a.xanh').text()
-            mangaList.push({ title: mangaTtitle, src, description: lastChapter_title})
+        $('main#contenido.py-4 div.container div.row.g-4 div.col-12.col-lg-9 div.row.g-3 > div.col-12').each((_, node) => {
+            const root = $('article.lc-release', node)
+            const coverContainer = (root.find('a.lc-release-cover'))
+            const src = coverContainer.attr('href')!
+            const cover = coverContainer.find('img').attr('src')!
+            const title = root.find("div.lc-release-body a.lc-release-title").text()
+            mangaList.push({
+                src,
+                title,
+                coverImage: cover,
+            })
         })
         return mangaList
     }
     async getChapterList(mangaSrc: string): Promise<Chapter[]> {
-        const res = await this.axios.get(this.baseUrl + mangaSrc)
+        const res = await this.axios.get(mangaSrc)
         const $ = cheerio.load(await res.data)
         const chapters: Chapter[] = []
-        $('div.chapter-list ul > li').each((i, node) => {
-            const anchor = $(node).find('a.xanh')
-            const chapter = extractChapterNumber(anchor.attr('title') ?? '')
+        $('div#chapterList > a.lc-chapter-row').each((i, node) => {
+            const anchor = node.attribs['href']!
+            const title = $('span.n', node).text()!
+            const chapter = extractChapterNumber(title)
             chapters.push({
                 number: chapter ?? i,
                 translation_count: 1,
                 translations: {
                     "es-la": { 
                         lang: "es-la",
-                        title: anchor.text(),
-                        id: anchor.attr('href') ?? ''
+                        title,
+                        id: anchor
                     }
                 }
             })
@@ -57,67 +63,61 @@ export class LeerCapitulo implements MangaProvider {
         return sortChapterList(chapters, 'desc')
     }
     async search(query: string): Promise<MangaInfo[]> {
-        const res = await this.axios.get(`/search-autocomplete?term=${query}`,);
+        const res = await this.axios.get(`/search/?q=${query}`,);
         const data:SearchResult[] = JSON.parse(res.data)
         const mangaList = data.map((e):MangaInfo=>{
             return {
-                src: e.link,
-                title: e.label ?? e.value,
-                description: e.value
+                src: e.uri,
+                title: e.name,
+                coverImage: e.cover_uri,
             }
         })
         return mangaList
     }
     async getMangaInfo(mangaSrc: string): Promise<MangaInfo> {
-        const res = await this.axios.get(this.baseUrl + mangaSrc)
+        const res = await this.axios.get(mangaSrc)
         const $ = cheerio.load(await res.data)
-        const title = $('h1.title-manga').text()
+        const root = $('div.container div.row.g-4 div.col-12.col-lg-9 article.lc-panel.p-3.p-md-4.mb-4 div.row.g-4')
+        const title = $(' div.col-7.col-md-9 h1.h3.mb-1', root).text()
+        const description = $('div.col-7.col-md-9 p.small.lc-muted.mb-2', root).text()
+        const coverImage = $('div.col-5.col-md-3 div.lc-cover-lg img', root).attr('src')
         return {
             title,
+            description,
+            coverImage,
             src: mangaSrc
         }
     }
     async getChapterPages(chapterSrc: string): Promise<ChapterPage[]> {
-        const page = this.page
-        const url = this.baseUrl+chapterSrc 
-        await page.goto(url, {waitUntil: 'domcontentloaded'})
-        const body = await  page.innerHTML('html')
+        const html = await this.axios.get(chapterSrc)
+        const $ = cheerio.load(html.data)
         const pages: ChapterPage[] = []
-        if (body) {
-            const $ = cheerio.load(body)
-            const pagesContainer = $('div.each-page div.chapter-content-inner div.comic_wraCon')
-            $(pagesContainer).find('a').each((index, element) => {
-                const imgAttributes = $(element).find('img').attr()
-                const pageAttr = $(element).attr()
-                //@ts-ignore
-                const pageNumber = pageAttr['data-page'] ?? pageAttr['name'] ?? String(index+1)
-                //@ts-ignore
-                const imageSrc = imgAttributes['data-original'] ?? imgAttributes['src'] ?? imgAttributes['data-src']
-                pages.push({
-                    page_index: pageNumber,
-                    src: imageSrc
-                })
+        $('main.lc-pages#lcPages > img').each((index, imgNode)=>{
+            const pageIndex = imgNode.attribs['data-index']
+            pages.push({
+                page_index: pageIndex || index.toString(),
+                src: imgNode.attribs['data-src']
             })
-        }
+        })
         return pages
     }
     async getPopulars(): Promise<MangaInfo[]> {
         const res = await this.axios.get<string>('');
         const $ = cheerio.load( res.data);
         const Populars: MangaInfo[] = []
-        $('div.update-list div div > .hot-manga').each((__, e) => {
-            const titleNode = $(e).find('div.caption a h3.manga-title')
-            const src = $(titleNode.parent()).attr('href') ?? 'null';
-            
+        $('div.container div.lc-slider div.lc-slider-track > div.lc-slide').each((__, e) => {
+            console.log('ads')
+            const titleNode = $('a.lc-slide-name', e)
+            const src = titleNode.attr('href') ?? 'null';
             const title = titleNode.text()
+            const coverImage = $('a.lc-slide-cover img', e).attr('src')!
             Populars.push({
                 title,
-                src
+                src,
+                coverImage: coverImage
             })
         })
         return Populars
     }
 }
-
-
 

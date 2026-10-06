@@ -1,5 +1,5 @@
 import  type { Page } from "playwright"
-import type { keyof } from "zod"
+import type { keyof, string } from "zod"
 import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
@@ -83,10 +83,12 @@ export interface ChapterLanguage {
 }
 
 export interface SearchResult {
-    value: string
-    label: string
-    link: string
-    thumbnail?: string
+name: string
+type: string
+status: string
+cover_uri: string
+uri: string
+last_chapter_name: string
 }
 
 export interface HistoryObject {
