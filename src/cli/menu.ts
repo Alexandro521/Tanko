@@ -1,9 +1,11 @@
 import ora from "ora";
 import prompts, {type Choice } from "@alex_521/prompts";
 import { terminalReader } from "./reader.ts";
+import { SqliteDB } from "../database/sqlite/sqlite.ts";
 import type {
   Chapter,
   DownloadProps,
+  HistoryObject2,
   MangaInfo,
   MangaProvider,
   Translations,
@@ -24,15 +26,18 @@ import {
 import { ChapterSelect, type ChaperSelectOnSelectType } from "./components/chapterList.ts";
 import { Configuration } from "../functions/configuration.ts";
 import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
-import { getTimeSkip } from "../utils.ts";
+import { parseTimeDiff } from "../utils.ts";
 import { Notify } from "../functions/notify.ts";
-import { History } from "../functions/history.js";
+//import { TimeTracker } from "../trackers/local.ts";
+
+const DB = await SqliteDB.getInstance()
+//const TIME_TRACKER = TimeTracker.getInstance()
+//TIME_TRACKER.track('session', 'global', {})
 
 const LOADER = ora();
 const CONF = await Configuration.getInstance()
 
 let 
-isfirstHistoryLoad = true,
 i18nErrors: LanguageErrorMessages,
 i18nLoadings: LanguageLoadingStates,
 i18nGenerics: LanguageGenericsWords,
@@ -61,10 +66,6 @@ export async function main() {
     while (mainLoop) {
       const main = await prompts(mainPrompt());
       if (!main?.target || main.target === SignalsCodes.exit){
-        //? Check if the history has already been loaded to avoid unwanted overwriting
-        if(!isfirstHistoryLoad){
-          await History.store()
-        }
         break
       }
       switch (main.target) {
@@ -155,25 +156,32 @@ async function sectionChapterList(provider: MangaProvider, mangaInfo: MangaInfo,
 }
 async function sectionHistory(provider: MangaProvider) {
   const { settings } = CONF
+  const historyGroupByManga = settings.history_groupByManga
   let memoryChoicePosition = 0;
-
-  if (isfirstHistoryLoad) {
-    await History.load()
-    isfirstHistoryLoad = false
-  }
   try {
     while (true) {
-      const historyParse = History.parseMap()
-      const historyList = settings.history_filterByProvider ? historyParse.filter(e => e.server === provider.name) : historyParse
+      const historyParse = DB.getReadHistory()
+      let historyList = settings.history_filterByProvider ? historyParse.filter(e => e.manga_provider === provider.name) : historyParse
       if (historyList.length < 1) {
         await prompts(voidPrompt(i18nErrors.void_Section.msg));
         break;
       }
+      if(historyGroupByManga){
+        const filterMap: {[key:string]: any} = {}
+        const groupHistory = historyList.filter((e)=>{
+          if(filterMap[e.manga_src]) return false
+          else {
+            filterMap[e.manga_src] = 1
+            return true
+          }
+        })
+        historyList = groupHistory;
+      }
       const historySelect = await prompts(
-        historySectionPrompt( historyList.map(
+        historySectionPrompt(historyList.map(
           (e, i): Choice => ({
-            title: e.mangaTitle,
-            description: `${e.last_title} ⏺ ${e.server} ⏺ ${getTimeSkip(e.time)}`,
+            title: historyGroupByManga ? e.manga_title : e.chapter_title,
+            description: `${historyGroupByManga ? e.chapter_title : e.manga_title} ⏺ ${e.manga_provider} ⏺ ${parseTimeDiff(e.time_diff, e.read_at)}`,
             value: String(i)
           })
         ), memoryChoicePosition)
@@ -184,46 +192,56 @@ async function sectionHistory(provider: MangaProvider) {
       const mangaTarget = historyList[targetIndex];
 
       const optionsSelect = await prompts(
-        historyOptionsPropmts(mangaTarget.mangaTitle)
+        historyOptionsPropmts(mangaTarget.manga_title)
       );
 
       if (!optionsSelect.target || optionsSelect.target === SignalsCodes.exit) {
         continue;
       }
       //dynamic server change
-      if (mangaTarget.server !== provider.name) {
-        LOADER.start(`changing server to: ${mangaTarget.server}`)
-        provider = await CONF.conf_provider.setProviderByName(mangaTarget.server) ?? provider
+      if (mangaTarget.manga_provider !== provider.name) {
+        LOADER.start(`changing server to: ${mangaTarget.manga_provider}`)
+        provider = await CONF.conf_provider.setProviderByName(mangaTarget.manga_provider) ?? provider
         if (LOADER.isSpinning) LOADER.stop()
       }
-
       LOADER.start(i18nLoadings.loading_chapters);
-
-      const chapterList = await provider.getChapterList(mangaTarget.mangaSrc);
+      const chapterList = await provider.getChapterList(mangaTarget.manga_src);
       if (LOADER.isSpinning) LOADER.stop();
       if (!chapterList) continue;
-
+      const historyObject: HistoryObject2 = {
+        chapter_index: mangaTarget.chapter_index,
+        chapter_src: mangaTarget.chapter_src,
+        lang_iso: mangaTarget.lang_iso,
+        page_index: mangaTarget.page_index,
+        pages_read: mangaTarget.pages_read,
+        read_progress: mangaTarget.read_progress,
+        sort_order: mangaTarget.sort_order,
+        mangainfo: {
+          title: mangaTarget.manga_title,
+          src: mangaTarget.manga_src,
+          anilistId: mangaTarget.manga_anilist_id
+        },
+        provider: mangaTarget.manga_provider,
+        chapter_title:mangaTarget.chapter_title
+      }
       switch (optionsSelect.target) {
         case SignalsCodes.resume_read: {
           await terminalReader(
-            {
-              title: mangaTarget.mangaTitle,
-              src: mangaTarget.mangaSrc
-            },
+            historyObject,
             chapterList,
-            mangaTarget.last_index,
-            mangaTarget.last_lang,
+            mangaTarget.chapter_index,
+            mangaTarget.lang_iso,
           );
           break;
         }
         case SignalsCodes.get_chapters_list:
-          await sectionChapterList(provider, { title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc }, chapterList);
+          await sectionChapterList(provider, { title: mangaTarget.manga_title, src: mangaTarget.manga_src }, chapterList);
           break;
         case SignalsCodes.download_chapter:
-          await downloadSection({ title: mangaTarget.mangaTitle, src: mangaTarget.mangaSrc },
+          await downloadSection({ title: mangaTarget.manga_title, src: mangaTarget.manga_src },
             chapterList,
-            mangaTarget.last_index,
-            mangaTarget.last_lang,
+            mangaTarget.chapter_index,
+            mangaTarget.lang_iso,
             provider,
           )
           break;
