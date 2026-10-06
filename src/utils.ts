@@ -10,7 +10,6 @@ import pkgInfo from "../package.json" with {type: 'json'}
 import { Notify, NotifyType } from "./functions/notify.ts"
 import chalk from "chalk"
 import supportsHyperlinks from "supports-hyperlinks"
-const notify = Notify.getInstace()
 
 export function timeDiff(time: number) {
   const currentTime = new Date();
@@ -299,6 +298,8 @@ ${chalk.redBright(pkgInfo.version)} ${chalk.blueBright('→')} ${chalk.greenBrig
 Run: ${chalk.blueBright('$pnpm add -g tanko')} to update to the latest version and enjoy the new features.
 
 Go to ${link} to view the release notes`
+        const notify = Notify.getInstace()
+
             notify.push({
                 title: `Update avalible ${lastVersion}`,
                 type: NotifyType.message,
@@ -308,11 +309,7 @@ Go to ${link} to view the release notes`
         return false
     } catch (e) {
         if (e instanceof Error) {
-            notify.push({
-                title: e.name,
-                type: NotifyType.error,
-                message: e.message
-            })
+            Notify.pushError(e)
         }
     }
 }
