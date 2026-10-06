@@ -1,21 +1,20 @@
 import { SQLITE_DATABASE_PATH, RUNTIME_ENV } from '../../const.ts'
-// import fsp from 'fs/promises'
-// import path from 'path'
+import fs from 'fs'
+import { Notify } from '../../functions/notify.ts'
 import EventEmitter from 'events'
-import type { HistoryObject2, MangaInfo, ServerName, Translations, UserlistObject } from '../../types/types.ts'
-import type { ReadHistoryObject, UserlistsTable, MangaInfoTable } from '../../types/database.ts'
+import type { HistoryObject2, MangaInfo } from '../../types/types.ts'
+import type { 
+    ReadHistoryObject, 
+    UserlistsTable, 
+    MangaInfoTable,
+    ExtractFnType, 
+    DateTimeString
+} from '../../types/database.ts'
 
-type ExtractFnType<Fn extends ()=>void> = Awaited<ReturnType<Fn>>
-type SupporRuntime = keyof typeof databaseMultiplexer
-type DatabaseRuntime = ExtractFnType<typeof databaseMultiplexer[SupporRuntime]>
-type BunDB = ExtractFnType<typeof databaseMultiplexer['Bun']>
-type NodeDB = ExtractFnType<typeof databaseMultiplexer['Node']>
-type strOperators = `${string} ${'='| 'LIKE' | 'NOT LIKE' } '${string}'`
-type numberOperator = `${string} ${'=' | '>' | '<' | '<=' | '>=' | '!=' } ${string | number | `'${string}'`}`
-type InOperator = `${string} ${'IN' | 'NOT IN'} (${string})`
-type BetweenOperator = `${string} ${'NOT BETWEEN' | 'BETWEEN'} ${number} AND ${number}`
-type WhereFilter = strOperators | numberOperator | InOperator | BetweenOperator
-type StringDateTime = `${number}-${number}-${number} ${number}:${number}:${number}:`
+export type SupporRuntime = keyof typeof databaseMultiplexer
+export type DatabaseRuntime = ExtractFnType<typeof databaseMultiplexer[SupporRuntime]>
+export type BunDB = ExtractFnType<typeof databaseMultiplexer['Bun']>
+export type NodeDB = ExtractFnType<typeof databaseMultiplexer['Node']>
 
 const databaseMultiplexer = {
     "Node": async () => {
@@ -86,12 +85,31 @@ export class SqliteDB{
         if(!this.instance){
             const database = await AbstractBind.new()
             this.instance = new SqliteDB(database)
+            this.instance.checkDatabaseExists()
         }
         return this.instance
     }
-    getReadHistory() {
+    checkDatabaseExists(){
+        //verify database schema
+        const statement = this.exists("sqlite_master", "type='table' AND name='read_history'")
+        if(statement.has === 0){
+            this._buildDatabase()
+        }
+    }
+    _buildDatabase() {
+        try {
+            const schemePath = new URL('./scheme.sql', import.meta.url)
+            const schemeBuffer = fs.readFileSync(schemePath, 'utf-8')
+            this.database.run(schemeBuffer)
+        } catch (err) {
+            if (err instanceof Error) {
+                Notify.pushError(err)
+            }
+        }
+    }
+    getReadHistory(order: 'asc' | 'desc' = 'desc') {
         const statement = this.database.prepare(`
-            SELECT 
+        SELECT
             chapter_index,
             chapter_title,
             chapter_src,
@@ -99,18 +117,19 @@ export class SqliteDB{
             manga_provider,
             pages_read,
             page_index,
-            sort_order, 
+            sort_order,
             read_progress,
-            read_time,
-            read_date,
+            datetime(read_at, 'localtime') as read_at,
+            timediff(read_at, datetime('now')) as time_diff,
             other.title AS manga_title,
             other.status AS manga_status,
             other.anilist_id AS manga_anilist_id,
             other.mal_id AS manga_mal_id,
             other.id AS manga_src
-            FROM read_history AS this
-            LEFT JOIN mangainfo AS other
-            ON this.mangainfo_id = other.id;
+        FROM
+            read_history AS this
+            LEFT JOIN mangainfo AS other ON this.mangainfo_id = other.id
+            ORDER BY (this.read_at) ${order === 'asc' ? 'asc' : 'desc'};
             `)
         return statement.all() as ReadHistoryObject[]
     }
@@ -172,12 +191,22 @@ export class SqliteDB{
             alias: string, 
             reference_type: string, 
             create_at: string,
-            added_at: StringDateTime
+            added_at: DateTimeString
         }[]
     }
     // getTimeTracks(){
     // }
+
     insertOnHistory(input: HistoryObject2){
+        const exists = this.exists('read_history', `chapter_src = '${input.chapter_src}'`)
+        const mangaInfoExists = this.exists('mangainfo', `id = '${input.mangainfo.src}'`)
+        if(exists.has){
+            this.updateFromHistory(input)
+            return
+        }
+        if(!mangaInfoExists.has){
+            this.insertOnMangaInfo(input.mangainfo)
+        }
         const statement = this.database.prepare(`
             INSERT INTO read_history 
             (chapter_index, chapter_src, lang_iso, page_index, pages_read, read_progress, sort_order,chapter_title, manga_provider, mangainfo_id)
@@ -197,7 +226,7 @@ export class SqliteDB{
         })
         return results
     }
-    insertOnMangaInfo(mangaInfo: { src: string; status: string; title: string; anilistId?: number }){
+    insertOnMangaInfo(mangaInfo: MangaInfo){
         const statement = this.database.prepare(`
             INSERT INTO mangainfo (id, title, status, anilist_id, mal_id)
             VALUES ($manga_id, $title, $status, $anilist_id, $mal_id)
@@ -205,7 +234,7 @@ export class SqliteDB{
         return statement.run({
             $manga_id: mangaInfo.src,
             $title: mangaInfo.title,
-            $status: mangaInfo.status,
+            $status: 'reading',
             $anilist_id: mangaInfo.anilistId ?? null,
             $mal_id: null,
         })
@@ -238,6 +267,33 @@ export class SqliteDB{
             $visibility: data.visibility,
             $id: data.id
         })
+    }
+    updateFromHistory(input: HistoryObject2) {
+        const statement = this.database.prepare(`
+            UPDATE read_history SET
+            chapter_index= $chapter_index,
+            lang_iso= $lang_iso,
+            page_index= $page_index, 
+            pages_read= $pages_read,
+            read_progress= $read_progress, 
+            sort_order= $sort_order,
+            chapter_title= $chapter_title, 
+            manga_provider= $provider,
+            read_at = CURRENT_TIMESTAMP
+            WHERE chapter_src = $chapter_src AND mangainfo_id = $mangainfo_id`)
+        const results = statement.run({
+            $chapter_index: input.chapter_index,
+            $chapter_src: input.chapter_src,
+            $lang_iso: input.lang_iso,
+            $page_index: input.page_index,
+            $pages_read: input.pages_read,
+            $read_progress: input.read_progress,
+            $sort_order: input.sort_order,
+            $mangainfo_id: input.mangainfo.src,
+            $chapter_title: input.chapter_title,
+            $provider: input.provider
+        })
+
     }
     updateMangaInfo(mangainfoId: MangaInfoTable){
         const statement = this.database.prepare(`
@@ -280,7 +336,7 @@ export class SqliteDB{
             $userlist_id: userListId
         })
     }
-    exists(table: string, where: WhereFilter){
+    exists(table: string, where: string){
         const existStatement = this.database.prepare(`SELECT EXISTS (SELECT 1 FROM ${table} WHERE ${where}) AS has`)
         return existStatement.get() as {has: 1 | 0}
     }
@@ -294,4 +350,3 @@ export class SqliteDB{
 
     }
 }
-
