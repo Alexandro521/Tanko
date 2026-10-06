@@ -13,15 +13,16 @@ import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
-import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
+import type { Chapter, HistoryObject, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
 import { terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
+import {SqliteDB} from "../database/sqlite/sqlite.ts"
 
 const LOADER = ora()
 const CONFIGURATION = await Configuration.getInstance()
 const localTracker = LocalTracker.getInstance()
-
+const DB = await SqliteDB.getInstance()
 let trackerAniList = CONFIGURATION.conf_session.getTracker('anilist')
 let { err_messages, loading_states, reader } = await CONFIGURATION.getLanguageInterface()
 
@@ -36,7 +37,7 @@ CONFIGURATION.on('login', (trackerName) => {
 })
 
 export async function terminalReader(
-  mangaInfo: MangaInfo,
+  context: MangaInfo | HistoryObject2,
   chapters: Chapter[],
   startIndex: number,
   lang: Translations
@@ -47,17 +48,19 @@ export async function terminalReader(
     let IMGFITMODE:ObjectFit = CONFIGURATION.settings.reader_imgFit 
     let TOP_PADDING = 3
     let BOTTOM_PADDING = 1
+    let IS_FIRST_RUN = true
     let RENDER_WSZ = {
       colums: stdout.columns,
       rows: stdout.rows
     }
-    let ANILIST_ID: number | undefined = mangaInfo?.anilistId ? 
-    Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
-    
-    const pagesCtl = new PagesControl([]);
+    const CTX_FROM_HISTORY = 'pages_read' in context
+    const mangaInfo =  CTX_FROM_HISTORY ? context.mangainfo : context
+    let ANILIST_ID: number | undefined = mangaInfo.anilistId ? Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
+    mangaInfo.anilistId = ANILIST_ID
+    const pagesCtl = new PagesControl();
     const mangaProvider = CONFIGURATION.conf_provider.providerInstance
     const chapterCtl = new ChapterControl(chapters, startIndex, lang, mangaProvider);
-    
+
     const SIGWINCH_HANDLER = async () => {
       RENDER_WSZ.colums = stdout.columns
       RENDER_WSZ.rows = stdout.rows
@@ -70,7 +73,6 @@ export async function terminalReader(
         }
       }
     }
-    
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
@@ -284,6 +286,22 @@ export async function terminalReader(
       )
     }
 
+    const saveInHistory = ()=>{
+      const chapterInfo = chapterCtl.getChapterInfo()
+      const historyEntry: HistoryObject2 = {
+        chapter_index: chapterCtl.geChapterIndex(),
+        chapter_src: chapterInfo.chapterTarget.id,
+        lang_iso: chapterInfo.chapterTarget.lang,
+        page_index: pagesCtl.index,
+        pages_read: pagesCtl.readPages,
+        read_progress: pagesCtl.readProgress,
+        sort_order: "desc",
+        provider: mangaProvider.name,
+        chapter_title: chapterInfo.chapterTarget.title,
+        mangainfo: mangaInfo,
+      }
+      DB.insertOnHistory(historyEntry)
+    }
     const render = async (invalidateCache=false, forceReload=false) => {
       if (!process.stdin.isRaw) return;
       process.stdout.write(ansi.clearScreen)
@@ -316,8 +334,12 @@ export async function terminalReader(
         }
         if (isFirstOrLast === 0 || force) {
           const newPages = await chapterCtl.loadChapter()
-          chapterCtl.historySave(mangaInfo.title, mangaInfo.src, mangaProvider.name);
           pagesCtl.setPages(newPages ?? [])
+          if(CTX_FROM_HISTORY && IS_FIRST_RUN){
+            pagesCtl.setIndex(context.page_index)
+            pagesCtl.setProgress(context.pages_read)
+          }
+          saveInHistory()
         }
         if (LOADER.isSpinning)
           LOADER.stop()
@@ -344,6 +366,7 @@ export async function terminalReader(
       const keyEsc = key?.sequence === '\x1B'
 
       if ((keyctrl && keyName === 'c') || keyName === 'q' || keyEsc) {
+        saveInHistory()
         process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
         process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle);
@@ -457,5 +480,6 @@ export async function terminalReader(
     process.stdout.write(ansi.cursorHide)
     process.on('SIGWINCH', SIGWINCH_HANDLER)
     await chapterLoader(undefined, true);
+    IS_FIRST_RUN = false
   })
 }
