@@ -25,7 +25,7 @@ Tanko is a CLI tool for reading and downloading manga directly from your termina
 |Name| Status | Language | Requires a browser | Official site
 |--|---|---|---|---
 | `mangadex` |Good | Multiple | No|[mangadex.org](https://mangadex.org/)
-| `leercapitulo` | Good | Spanish | Yes|[leercapitulo.co](https://www.leercapitulo.co/)
+| `leercapitulo` | Good | Spanish | No |[leercapitulo.co](https://www.leercapitulo.co/)
 | `katana` | Testing | English | No | [manga katana](https://mangakatana.com/)
 | `mangapill` | WIP | English | No | [mangapill.com](https://mangapill.com/)
 
