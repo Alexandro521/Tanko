@@ -13,7 +13,7 @@ import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
-import type { Chapter, HistoryObject, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
+import type { Chapter, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
 import { terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
@@ -43,6 +43,7 @@ export async function terminalReader(
   lang: Translations
 ){
   return new Promise<void>(async (resolve) => {
+    const TIME_TRACKER = TimeTracker.getInstance<{manga_id: string, pages_read: number}>()
     let DEBUG_MODE = false
     let FULLSCREEN_MODE = false
     let IMGFITMODE:ObjectFit = CONFIGURATION.settings.reader_imgFit 
@@ -333,6 +334,20 @@ export async function terminalReader(
             break
         }
         if (isFirstOrLast === 0 || force) {
+          /**
+           * The pages_read field is always zero
+           *  when the current chapter is added to the time_tracker stack,
+           *  so we remove it from the stack and overwrite that value
+           *  with the current pages_read before loading a new chapter.
+           */
+          if(!IS_FIRST_RUN){
+            const current = TIME_TRACKER.get('manga_reader')
+            if(current){
+              current.payload.pages_read = pagesCtl.readPages
+              TIME_TRACKER._overrideTop('manga_reader', current)
+            }
+          }
+          const chapterInfo = chapterCtl.getChapterInfo()
           const newPages = await chapterCtl.loadChapter()
           pagesCtl.setPages(newPages ?? [])
           if(CTX_FROM_HISTORY && IS_FIRST_RUN){
@@ -340,6 +355,15 @@ export async function terminalReader(
             pagesCtl.setProgress(context.pages_read)
           }
           saveInHistory()
+          /**
+           * Run after saving to history to ensure
+           * that the record corresponding to the mangaInfo object's ID exists in the database.
+           * This creates a dependency on this function, but let's trust it.
+           */
+          TIME_TRACKER.track('manga_reader', chapterInfo.chapterTarget.id, {
+            manga_id: mangaInfo.src,
+            pages_read: pagesCtl.readPages
+          })
         }
         if (LOADER.isSpinning)
           LOADER.stop()
@@ -367,6 +391,22 @@ export async function terminalReader(
 
       if ((keyctrl && keyName === 'c') || keyName === 'q' || keyEsc) {
         saveInHistory()
+        /**
+         * This code is a copy of the one already shown in the chapterLoader function,
+         *  and it fulfills the same objective as the previous one,
+         *  overwriting the value of the last chapter read before saving.
+         */
+        const current = TIME_TRACKER.get('manga_reader')
+        if (current) {
+          current.payload.pages_read = pagesCtl.readPages
+          TIME_TRACKER._overrideTop('manga_reader', current)
+        }
+        const readStack = TIME_TRACKER.stop('manga_reader')
+        TIME_TRACKER.drop('manga_reader')
+        if(readStack){
+          DB.insertOnSessionTracker(readStack)
+        }
+        
         process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
         process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle);
