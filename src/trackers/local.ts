@@ -3,9 +3,8 @@ import fs from 'fs'
 import fsp from 'fs/promises'
 import path from "path";
 import sanitize from "sanitize-filename";
-import type { ChapterLanguage, ServerName } from "../types/types.js";
-import { extractChapterNumber } from "../utils.ts";
-import { json } from "stream/consumers";
+import type {ServerName } from "../types/types.js";
+
 export interface LocalTrackerProps {
     mangaId: string | number,
     chapterCount: number,
@@ -134,7 +133,7 @@ interface TrackerStack<T extends Object> {
     stackSize: number,
     stack: TrackerObject<T> []
 }
-interface TrackerObject<T extends Object>{
+export interface TrackerObject<T extends Object>{
     id: string
     startTime: number
     endTime: number
@@ -186,6 +185,7 @@ export class TimeTracker<T extends Object>{
     private readonly createAt: number
     protected trackingMap!: Map<string, Stack<TrackerObject<T>>>
     protected date!: Date
+
     protected getId(){
         return `${this.date.getUTCDay()}-${this.date.getUTCMonth()}-${this.date.getUTCFullYear()}`
     }
@@ -237,23 +237,8 @@ export class TimeTracker<T extends Object>{
             top.enlapsedTime = top.endTime - top.startTime
             stack.pop()
             stack.push(top)
+            return stack.getStack()
         }
-    }
-    async store(){
-        const tableMap:{[key:string]: any} = {
-            startAt: this.createAt
-        }
-        this.trackingMap.entries().forEach((e)=>{
-            const table = e[0]
-            this.stop(table)
-            tableMap[table] = e[1].getStack()
-        })
-        const dirName = this.getId()
-
-        const pathDir = path.join(process.cwd(), dirName)
-        const storeF = path.join(pathDir, this.createAt.toString()+'.json')
-        await fsp.mkdir(pathDir, {recursive: true})
-        await fsp.writeFile(storeF, JSON.stringify(tableMap, null, '\t'))
     }
     each(tableName: string, fn: (value: TrackerObject<T>, index: number) => void){
         const stack = this.trackingMap.get(tableName)
@@ -261,47 +246,17 @@ export class TimeTracker<T extends Object>{
             stack.each(fn) 
         }
     }
-    async parseDay(){
-        const dayDirPath = '/home/alexdev/Documents/js-projects/Tanko/4-8-2026'
-        const dayDirLs = await fsp.readdir(dayDirPath)
-        let dayTotalTime = 0
-        let dayStartTime = Infinity
-        let dayEndTime = 0
-        const map = new Map<string, TrackerObject<any>>()
-        for(let traceIndex = 0; traceIndex<dayDirLs.length; traceIndex++){
-            const readFPath = path.join(dayDirPath, dayDirLs[traceIndex])
-            const readBuffer = await fsp.readFile(readFPath, {encoding: 'utf-8'})
-            const parseJson = JSON.parse(readBuffer)
-            const keys = Object.keys(parseJson)
-            //tiempo de inicio de la aplicacion
-            const sessionStart = parseJson['startAt'] as number
-            const sessionData = parseJson['']
-            if(sessionStart < dayStartTime) dayStartTime = sessionStart
-            dayTotalTime
-            //la primera key siempre es `startAt`, por lo qu la omitimos inicializando keyIndex en 1
-            for(let keyIndex = 1; keyIndex < keys.length; keyIndex++){
-                const stack = parseJson[ keys[ keyIndex ] ] as TrackerObject<any>[]
-                for(let i = 0; i < stack.length; i++){
-                    const trackerObject = stack[i]
-                    //buscar el tiempo final de la session
-                    if(trackerObject.endTime > dayEndTime) dayEndTime = trackerObject.endTime
-                    //JOIN
-                    if(map.has(trackerObject.id)){
-                        let exist = map.get(trackerObject.id)!
-                    }else{
-                        map.set(trackerObject.id, trackerObject)
-                    }
-                    console.log(trackerObject)
-                }
-            }
+    get(tableName: string){
+        return this.trackingMap.get(tableName)?.top
+    }
+    drop(tableName: string){
+        this.trackingMap.delete(tableName)
+    }
+    _overrideTop(tableName: string, data: TrackerObject<T>){
+        const stack = this.trackingMap.get(tableName)
+        if(stack && stack.stackLength > 0){
+            stack.pop()
+            stack.push(data)
         }
     }
 }
-
-interface Example {
-    name: string
-
-}
-/*
-const timeTracker = TimeTracker.getInstance<Example>()
-await timeTracker.parseDay()*/
