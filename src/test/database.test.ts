@@ -34,7 +34,7 @@ describe('Database Basic test', () => {
   })
   test('insertOnHistory', () => {
     const result = db.insertOnHistory(historyRegist)
-    expect(result.changes).toBe(1)
+    expect(result?.changes).toBe(1)
     expect(db.exists('read_history', `chapter_src = '${historyRegist.chapter_src}'`).has).toBe(1)
   })
   test('insertUserList', () => {
