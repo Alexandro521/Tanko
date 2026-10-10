@@ -10,6 +10,7 @@ import type {
     ExtractFnType, 
     DateTimeString
 } from '../../types/database.ts'
+import type { TrackerObject } from '../../trackers/local.ts'
 
 export type SupporRuntime = keyof typeof databaseMultiplexer
 export type DatabaseRuntime = ExtractFnType<typeof databaseMultiplexer[SupporRuntime]>
@@ -138,8 +139,7 @@ export class SqliteDB{
         return statement.run({$chapter_src: chapterSrc})
     }
     deleteAllHistory(){
-        const statement = this.database.prepare(`DELETE FROM read_history`)
-        return statement.run()
+        return this.database.run(`DELETE FROM read_history`)
     }
     getMangaInfoById(mangaId: string){
         const statement = this.database.prepare(`
@@ -267,6 +267,22 @@ export class SqliteDB{
             $visibility: data.visibility,
             $id: data.id
         })
+    }
+    insertOnSessionTracker(data: TrackerObject<{manga_id: string, pages_read: number}>[]){
+        const query = [`
+        INSERT INTO sessiontracker 
+        (date, start_time, end_time, enlapsed_time, pages_read_count, mangainfo_id)
+        VALUES
+        `]
+        const values = data.map((e)=>{
+            const date = `date((${e.startTime}/1000), 'unixepoch')`
+            const startTime  = `time((${e.startTime}/1000), 'unixepoch')`
+            const endTime  = `time((${e.endTime}/1000), 'unixepoch')`
+            return `((${date}), (${startTime}), (${endTime}), ${e.enlapsedTime}, ${e.payload.pages_read}, '${e.payload.manga_id}')`
+        })
+        query.push(values.join(','),';')
+        const statement = this.database.prepare(query.join(' '))
+        return statement.run()
     }
     updateFromHistory(input: HistoryObject2) {
         const statement = this.database.prepare(`
