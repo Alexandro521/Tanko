@@ -38,11 +38,11 @@ id integer PRIMARY KEY AUTOINCREMENT NOT NULL,
 date date NOT NULL DEFAULT CURRENT_DATE,
 start_time time NOT NULL DEFAULT CURRENT_TIME,
 end_time time DEFAULT CURRENT_TIME,
-enlapsed_time time,
+enlapsed_time INTEGER,
 pages_read_count integer DEFAULT 0,
 mangainfo_id text NOT NULL,
 FOREIGN KEY(mangainfo_id) REFERENCES MANGAINFO(id)
-ON DELETE SET NULL
+ON DELETE CASCADE
 ON UPDATE CASCADE
 );
 CREATE INDEX IF NOT EXISTS track_mangainfo_index ON sessiontracker(mangainfo_id);
