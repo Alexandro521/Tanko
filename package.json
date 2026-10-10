@@ -33,7 +33,7 @@
   ],
   "scripts": {
     "build": "tsc && cp ./src/database/sqlite/scheme.sql ./dist/database/sqlite/scheme.sql",
-    "dev": "DEV=1 node run build && node ./dist/index.js",
+    "dev": "DEV=1 npm run build && node ./dist/index.js",
     "dev:bun": "DEV=1 bun run ./src/index.ts",
     "start": "DEV=0 node ./dist/index.js",
     "type-check": "tsc --noEmit",
