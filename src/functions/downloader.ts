@@ -1,16 +1,12 @@
 import fs from 'fs'
 import fsp from 'fs/promises'
-import chalk from 'chalk';
 import path from 'path';
 import sanitize from 'sanitize-filename';
-import ansi from 'ansi-escapes'
 import { DOWNLOADS_DEFAULT_DIR } from '../const.js';
-import { Notify, NotifyType } from './notify.js';
 import { makeDir } from '../utils.js';
 import { EventEmitter } from 'events';
 import { DownloadFormat } from '../types/enum.js';
 import type { ChapterPage, DownloadPageProps, DownloadProps, FormatProps, ImgBuffer } from '../types/types.js';
-import { Configuration } from './configuration.ts';
 
 const PDFOptions: PDFKit.PDFDocumentOptions = {
     margin: '0',
@@ -140,14 +136,6 @@ export class Downloader extends EventEmitter {
                 await this.images(fprops)
                 break
         }
-        const noti = Notify.getInstace()
-        const conf = await Configuration.getInstance()
-        const {configuration} = await conf.getLanguageInterface()
-        noti.push({
-            title: configuration.downloads.complete,
-            type: NotifyType.event,
-            message:
-                `${props.mangaTitle} chapter, ${ansi.link(chalk.underline.blueBright(props.chapterTitle), downloadDir)} downloaded`
-        })
+        
     }
 }
