@@ -7,21 +7,22 @@ import { downloadSection } from "./menu.ts"
 import chalk, { type ColorName } from "chalk"
 import { Notify } from "../functions/notify.ts"
 import { MediaListStatus } from "../types/enum.ts"
-import prompts, { type Choice } from "@alex_521/prompts"
+import prompts  from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
-import { centerX, debounce, virtualWindow, slice, extractTitleByLang} from "../utils.ts"
+import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
-import { LocalTracker, type LocalTrackerProps } from "../trackers/local.ts"
+import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
-import type { Chapter, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
-import { askChapterLang, chapterListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
+import type { Chapter, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
+import { terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
+import {SqliteDB} from "../database/sqlite/sqlite.ts"
 
 const LOADER = ora()
 const CONFIGURATION = await Configuration.getInstance()
 const localTracker = LocalTracker.getInstance()
-
+const DB = await SqliteDB.getInstance()
 let trackerAniList = CONFIGURATION.conf_session.getTracker('anilist')
 let { err_messages, loading_states, reader } = await CONFIGURATION.getLanguageInterface()
 
@@ -36,28 +37,31 @@ CONFIGURATION.on('login', (trackerName) => {
 })
 
 export async function terminalReader(
-  mangaInfo: MangaInfo,
+  context: MangaInfo | HistoryObject2,
   chapters: Chapter[],
   startIndex: number,
   lang: Translations
 ){
   return new Promise<void>(async (resolve) => {
+    const TIME_TRACKER = TimeTracker.getInstance<{manga_id: string, pages_read: number}>()
     let DEBUG_MODE = false
     let FULLSCREEN_MODE = false
     let IMGFITMODE:ObjectFit = CONFIGURATION.settings.reader_imgFit 
     let TOP_PADDING = 3
     let BOTTOM_PADDING = 1
+    let IS_FIRST_RUN = true
     let RENDER_WSZ = {
       colums: stdout.columns,
       rows: stdout.rows
     }
-    let ANILIST_ID: number | undefined = mangaInfo?.anilistId ? 
-    Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
-    
-    const pagesCtl = new PagesControl([]);
+    const CTX_FROM_HISTORY = 'pages_read' in context
+    const mangaInfo =  CTX_FROM_HISTORY ? context.mangainfo : context
+    let ANILIST_ID: number | undefined = mangaInfo.anilistId ? Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
+    mangaInfo.anilistId = ANILIST_ID
+    const pagesCtl = new PagesControl();
     const mangaProvider = CONFIGURATION.conf_provider.providerInstance
     const chapterCtl = new ChapterControl(chapters, startIndex, lang, mangaProvider);
-    
+
     const SIGWINCH_HANDLER = async () => {
       RENDER_WSZ.colums = stdout.columns
       RENDER_WSZ.rows = stdout.rows
@@ -70,7 +74,6 @@ export async function terminalReader(
         }
       }
     }
-    
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
@@ -284,6 +287,22 @@ export async function terminalReader(
       )
     }
 
+    const saveInHistory = ()=>{
+      const chapterInfo = chapterCtl.getChapterInfo()
+      const historyEntry: HistoryObject2 = {
+        chapter_index: chapterCtl.geChapterIndex(),
+        chapter_src: chapterInfo.chapterTarget.id,
+        lang_iso: chapterInfo.chapterTarget.lang,
+        page_index: pagesCtl.index,
+        pages_read: pagesCtl.readPages,
+        read_progress: pagesCtl.readProgress,
+        sort_order: "desc",
+        provider: mangaProvider.name,
+        chapter_title: chapterInfo.chapterTarget.title,
+        mangainfo: mangaInfo,
+      }
+      DB.insertOnHistory(historyEntry)
+    }
     const render = async (invalidateCache=false, forceReload=false) => {
       if (!process.stdin.isRaw) return;
       process.stdout.write(ansi.clearScreen)
@@ -315,9 +334,36 @@ export async function terminalReader(
             break
         }
         if (isFirstOrLast === 0 || force) {
+          /**
+           * The pages_read field is always zero
+           *  when the current chapter is added to the time_tracker stack,
+           *  so we remove it from the stack and overwrite that value
+           *  with the current pages_read before loading a new chapter.
+           */
+          if(!IS_FIRST_RUN){
+            const current = TIME_TRACKER.get('manga_reader')
+            if(current){
+              current.payload.pages_read = pagesCtl.readPages
+              TIME_TRACKER._overrideTop('manga_reader', current)
+            }
+          }
+          const chapterInfo = chapterCtl.getChapterInfo()
           const newPages = await chapterCtl.loadChapter()
-          chapterCtl.historySave(mangaInfo.title, mangaInfo.src, mangaProvider.name);
           pagesCtl.setPages(newPages ?? [])
+          if(CTX_FROM_HISTORY && IS_FIRST_RUN){
+            pagesCtl.setIndex(context.page_index)
+            pagesCtl.setProgress(context.pages_read)
+          }
+          saveInHistory()
+          /**
+           * Run after saving to history to ensure
+           * that the record corresponding to the mangaInfo object's ID exists in the database.
+           * This creates a dependency on this function, but let's trust it.
+           */
+          TIME_TRACKER.track('manga_reader', chapterInfo.chapterTarget.id, {
+            manga_id: mangaInfo.src,
+            pages_read: pagesCtl.readPages
+          })
         }
         if (LOADER.isSpinning)
           LOADER.stop()
@@ -344,6 +390,23 @@ export async function terminalReader(
       const keyEsc = key?.sequence === '\x1B'
 
       if ((keyctrl && keyName === 'c') || keyName === 'q' || keyEsc) {
+        saveInHistory()
+        /**
+         * This code is a copy of the one already shown in the chapterLoader function,
+         *  and it fulfills the same objective as the previous one,
+         *  overwriting the value of the last chapter read before saving.
+         */
+        const current = TIME_TRACKER.get('manga_reader')
+        if (current) {
+          current.payload.pages_read = pagesCtl.readPages
+          TIME_TRACKER._overrideTop('manga_reader', current)
+        }
+        const readStack = TIME_TRACKER.stop('manga_reader')
+        TIME_TRACKER.drop('manga_reader')
+        if(readStack){
+          DB.insertOnSessionTracker(readStack)
+        }
+        
         process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
         process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle);
@@ -429,34 +492,6 @@ export async function terminalReader(
           return
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
-          // const languageTarget = chapterCtl.getLang()
-          // const localTrackerProps: LocalTrackerProps = {
-          //   chapterCount: 0,
-          //   chapterIndex: 0,
-          //   mangaId: mangaInfo.src
-          // }
-          // const trackData = await localTracker.getStats(localTrackerProps)
-          // const choices: Choice[] = chapters.map((e, index): Choice => {
-          //   let title = extractTitleByLang(e,languageTarget)
-          //   if (trackData.readingMap.has(e.number)) {
-          //     title += ' ⏺ ' + chalk.dim(chalk.green('Read'))
-          //   }
-          //   const props = {
-          //     title: title,
-          //     value: String(index)
-          //   }
-          //   return props
-          // })
-          // const chapterIndex = await prompts(
-          //   chapterListPrompt(mangaInfo.title, chapterCtl.geChapterIndex(), choices)
-          // )
-          // if (!chapterIndex || !chapterIndex.target) {
-          //   TerminalControl.openRawMode(keyPressHandle)
-          //   await render()
-          //   return
-          // }
-          // const targetChapter = chapters[Number(chapterIndex.target)]
-          // const lang = await askChapterLang(targetChapter) ?? languageTarget
           let outputStatus = -1
           await ChapterSelect(mangaProvider, mangaInfo, chapters, async (e, stop)=>{
             const {chapterLanguage, chapterIndex} = e
@@ -485,5 +520,6 @@ export async function terminalReader(
     process.stdout.write(ansi.cursorHide)
     process.on('SIGWINCH', SIGWINCH_HANDLER)
     await chapterLoader(undefined, true);
+    IS_FIRST_RUN = false
   })
 }

@@ -4,6 +4,7 @@ import type { AvalibleLangs } from "./lang.js"
 import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
 import type { SharpInput } from "sharp"
+import type { DateTimeString } from "./database.js"
 
 
 export interface ChapterPage  {
@@ -90,7 +91,9 @@ cover_uri: string
 uri: string
 last_chapter_name: string
 }
-
+/**
+ * @deprecated
+ */
 export interface HistoryObject {
   mangaTitle: string,
   mangaSrc: string,
@@ -169,6 +172,7 @@ export interface Settings {
     languageISO: AvalibleLangs,
     preferedLanguageISO: Translations | 'any',
     /* Read History */
+    history_groupByManga:  boolean,
     history_filterByProvider: boolean,
     history_maxSize: number,
     /* Downloader */
@@ -288,4 +292,27 @@ export interface LoadImageProps {
     imgPreloadingStrategy: ImgPreloadingStrategy
     fit: ObjectFit
     maxWidth: number,
+}
+export interface HistoryObject2 {
+    chapter_index: number,
+    chapter_src: string,
+    lang_iso: Translations,
+    page_index: number,
+    pages_read: number,
+    read_progress: number,
+    sort_order: 'asc' | 'desc',
+    mangainfo: MangaInfo,
+    provider: ServerName,
+    chapter_title: string,
+    dateTime?: number
+}
+
+export interface UserlistObject {
+    entry_id: number,
+    list_name: string,
+    alias: string,
+    reference_type: string,
+    create_at: string,
+    added_at: string,
+    mangaInfo: MangaInfo
 }

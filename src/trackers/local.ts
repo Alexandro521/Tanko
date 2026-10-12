@@ -3,8 +3,8 @@ import fs from 'fs'
 import fsp from 'fs/promises'
 import path from "path";
 import sanitize from "sanitize-filename";
-import type { ChapterLanguage, ServerName } from "../types/types.js";
-import { extractChapterNumber } from "../utils.ts";
+import type {ServerName } from "../types/types.js";
+
 export interface LocalTrackerProps {
     mangaId: string | number,
     chapterCount: number,
@@ -128,104 +128,135 @@ interface TimeTrackerStruct {
     date: string,
     reads: Map<string, TimeReadObject>
 }
+interface TrackerStack<T extends Object> {
+    stackIndex: number
+    stackSize: number,
+    stack: TrackerObject<T> []
+}
+export interface TrackerObject<T extends Object>{
+    id: string
+    startTime: number
+    endTime: number
+    enlapsedTime: number
+    payload: T
+}
 
-export class TimeTracker{
-    static trackerMap = new Map<string, TimeTrackerStruct>()
-    private mid!: string
-    private provider!: ServerName
-    private key!: string
-    private date!: string
-    private ArrayReadObjects!: TimeReadObject[]
-    private currentObjectRegister!: TimeReadObject | undefined
+class Stack<T>{
+    protected stackIndex!: number
+    protected stackSize!: number
+    protected stack!: T []
+    constructor(...stackInit:T[]){
+        this.stack = new Array(...stackInit)
+        this.stackIndex = Math.min(stackInit.length -1, 0)
+        this.stackSize = stackInit.length
+    }
+    push(payload: T){
+        this.stack.push(payload)
+        this.stackIndex++
+        this.stackSize++
+    }
+    pop(): T | undefined {
+        if(this.stackSize > 0){
+            this.stackIndex--
+            this.stackSize--
+            return this.stack.pop()
+        }
+        return undefined
+    }
+    get top(): T | undefined {
+        return this.stack[this.stackIndex]
+    }
+    get stackLength() {
+        return this.stackSize
+    }
+    get stackPointer(){
+        return this.stackIndex
+    }
+    each(fn: (value: T, index: number)=>void){
+        this.stack.forEach(fn)
+    }
+    getStack(){
+        return this.stack
+    }
 
-    constructor(mid: string, provider: ServerName) {
-        this.mid = mid,
-        this.provider = provider
-        this.ArrayReadObjects = new Array()
-        const date = (new Date()).toDateString()
-        const key =  date
-        const has = TimeTracker.trackerMap.has(key)
-        this.key = key
-        this.date = date
-        const mangaTimeStruct: TimeTrackerStruct = has ? <TimeTrackerStruct> TimeTracker.trackerMap.get(mid) : {
-            totalReadTime: 0,
-            date,
-            reads: new Map()
-        }
-        if (!has) {
-            TimeTracker.trackerMap.set(mid, mangaTimeStruct)
-        }
+}
+export class TimeTracker<T extends Object>{ 
+    static instance: TimeTracker<any> 
+    private readonly createAt: number
+    protected trackingMap!: Map<string, Stack<TrackerObject<T>>>
+    protected date!: Date
+
+    protected getId(){
+        return `${this.date.getUTCDay()}-${this.date.getUTCMonth()}-${this.date.getUTCFullYear()}`
     }
-    static store() {
-        this.trackerMap.forEach((value, key) => {
-            const filename = sanitize(key)
-            const pathUrl = path.join(process.cwd(), filename)
-            const object = {
-                totalReadTime: value.totalReadTime,
-                date: value.date,
-                reads: value.reads.values()
-            }
-            fs.writeFile(pathUrl, JSON.stringify(object, null, '\t'), () => console.log('Error on write'))
-        })
+
+    static getInstance<T extends Object>(){
+        if(!this.instance){
+            this.instance = new TimeTracker<T>()
+        }
+        return this.instance as TimeTracker<T>
     }
-    initTrack(chapterInfo: ChapterLanguage) {
-        const readObject: TimeReadObject = {
-            chapterNumber: extractChapterNumber(chapterInfo.title) || -1,
-            chapterTitle: chapterInfo.title,
-            cid: chapterInfo.id,
-            mid: this.mid,
-            providerName: this.provider,
-            readTime: Infinity,
+    
+    private constructor(){
+        this.trackingMap = new Map()
+        this.date = new Date()
+        this.createAt = Date.now()
+    }
+    track(table: string, id: string, payload: T){
+        const map = this.trackingMap
+        const trackerObject: TrackerObject<T> = {
+            id,
             startTime: Date.now(),
+            endTime: Infinity, 
+            enlapsedTime: Infinity,
+            payload: payload
         }
-
-        if (this.currentObjectRegister === undefined) {
-            this.currentObjectRegister = readObject
+        if(!map.has(table)){
+            map.set(table, new Stack( trackerObject ))
             return
         }
-        if (this.currentObjectRegister.cid === chapterInfo.id) {
-            if (this.currentObjectRegister.readTime === Infinity) {
-                this.currentObjectRegister =  readObject
+        const trackerTableStack = map.get(table)!
+        if(trackerTableStack?.top?.id === id) return
+        if(trackerTableStack.stackLength > 0){
+            const top = trackerTableStack.top!
+            if(top.endTime === Infinity || top.enlapsedTime === Infinity){
+                top.endTime = Date.now()
+                top.enlapsedTime = top.endTime - top.startTime
+                trackerTableStack.pop()
+                trackerTableStack.push(top)
             }
-            return
         }
-
-        const index = this.ArrayReadObjects.findIndex( e => e.cid === chapterInfo.id )
-        if (index) {
-            const existsObject = this.ArrayReadObjects[index]
-            if (
-                this.currentObjectRegister.readTime > existsObject.readTime
-                && this.currentObjectRegister.readTime !== Infinity
-            ) {
-                this.ArrayReadObjects[index] = this.currentObjectRegister
-            }
-        } else {
-            this.ArrayReadObjects.push(this.currentObjectRegister)
-            this.currentObjectRegister = undefined
+        trackerTableStack.push(trackerObject)
+    }
+    stop(table:string){
+        const stack = this.trackingMap.get(table)
+        if(stack && stack.stackLength > 0){
+            const top =  stack.top!
+            if(top.endTime < Infinity || top.enlapsedTime < Infinity) return
+            top.endTime = Date.now()
+            top.enlapsedTime = top.endTime - top.startTime
+            stack.pop()
+            stack.push(top)
+            return stack.getStack()
         }
-        this.currentObjectRegister = readObject
     }
-    endTrack() {
-        if (this.currentObjectRegister === undefined) return
-        const readTime = Math.abs(Date.now() - this.currentObjectRegister.startTime)
-        this.currentObjectRegister.readTime = readTime
-        this.ArrayReadObjects.push(this.currentObjectRegister)
-        this.currentObjectRegister = undefined
+    each(tableName: string, fn: (value: TrackerObject<T>, index: number) => void){
+        const stack = this.trackingMap.get(tableName)
+        if(stack){
+            stack.each(fn) 
+        }
     }
-
-    regist() {
-        const registObject = TimeTracker.trackerMap.get(this.key)
-        if (registObject) {
-            this.ArrayReadObjects.forEach((e) => {
-                const exists = registObject.reads.get(e.cid)
-                if (exists) {
-                    exists.readTime += e.readTime
-                } else {
-                    registObject.reads.set(e.cid, e)
-                }
-                registObject.totalReadTime += e.readTime
-            })
-            TimeTracker.trackerMap.set(this.key, registObject)
+    get(tableName: string){
+        return this.trackingMap.get(tableName)?.top
+    }
+    drop(tableName: string){
+        this.trackingMap.delete(tableName)
+    }
+    _overrideTop(tableName: string, data: TrackerObject<T>){
+        const stack = this.trackingMap.get(tableName)
+        if(stack && stack.stackLength > 0){
+            stack.pop()
+            stack.push(data)
         }
     }
 }

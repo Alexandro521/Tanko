@@ -12,7 +12,7 @@ import {
 } from './const.ts'
 import { Configuration } from './functions/configuration.ts';
 import { Notify, NotifyType } from './functions/notify.ts';
-import { versionChecker } from './scripts.ts';
+import { versionChecker } from './utils.ts';
 import { TerminalControl } from './functions/reader.ts';
 import { stdout } from 'process';
 import ora from 'ora';

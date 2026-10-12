@@ -3,8 +3,15 @@ import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";
 import { stdout } from "node:process";
+import type { DateString, DateTimeString, TimeString } from "./types/database.js";
+import axios from "axios"
+import ansi from 'ansi-escapes'
+import pkgInfo from "../package.json" with {type: 'json'}
+import { Notify, NotifyType } from "./functions/notify.ts"
+import chalk from "chalk"
+import supportsHyperlinks from "supports-hyperlinks"
 
-export function getTimeSkip(time: number) {
+export function timeDiff(time: number) {
   const currentTime = new Date();
   const readTime = new Date();
   currentTime.setTime(Date.now())
@@ -37,6 +44,76 @@ export function getTimeSkip(time: number) {
     const timePrefix = hours >= 0 && hours < 12 ? "AM" : "PM";
     const timeString = `${hours.toString().padStart(2, "0")}:${readTime.getMinutes().toString().padStart(2, "0")} ${timePrefix}`;
     return `${dayDiff < 1 ? 'Today' : 'Yesterday'} ${timeString}`
+  }
+}
+
+interface DateInt {
+  year: number,
+  month: number,
+  day: number,
+}
+interface TimeInt {
+  hour: number,
+  minute: number,
+  second: number
+}
+
+function dateTimeStringParse(dateTime: TimeString): TimeInt
+function dateTimeStringParse(dateTime: DateString): DateInt
+function dateTimeStringParse(dateTime: DateTimeString): DateInt & TimeInt
+function dateTimeStringParse(dateTime: TimeString | DateString | DateTimeString){
+  type Xyz = [number, number, number]
+  const dateAndTimeRaw = dateTime.split(' ')
+  if(dateAndTimeRaw.length < 2){
+    if(dateAndTimeRaw[0].includes('-')){
+      const date = dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
+      return {
+        year: date[0],
+        month: date[1],
+        day: date[2]
+      }
+    }else{
+      const time = dateAndTimeRaw[0].split(':').map(e => parseInt(e)) as Xyz
+      return {
+        hour: time[0],
+        minute: time[1],
+        second: time[2]
+      }
+    }
+  }
+  const date =  dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
+  const time = dateAndTimeRaw[1].split(':').map(e => parseInt(e)) as Xyz
+  return {
+    year: date[0],
+    month: date[1],
+    day: date[2],
+    hour: time[0],
+    minute: time[1],
+    second: time[2]
+  }
+}
+export function parseTimeDiff(timeDiff: DateTimeString, dateTime: DateTimeString) {
+  const {year, month, day, hour, minute, second} = dateTimeStringParse(timeDiff)
+
+  if(year + month > 0){
+    const date = new Date(dateTime)
+    return date.toDateString()
+  }
+  if(day > 0){
+    if(day >= 7){
+      return `${Math.floor(day/7)} Weeks ago`
+    }else {
+      return `${day} Days ago`
+    }
+  }
+  if(hour > 0){
+    return `${hour} Hours ago`
+  }
+  if(minute > 0){
+    return `${minute} Minutes ago`
+  }
+  if(second > 0){
+    return `${second} Seconds ago`
   }
 }
 
@@ -182,4 +259,57 @@ export function fuzzyMatch(s: string, stringComp: string) {
   }
   const finalPercent = Math.min(Math.round(percent * 100) / 100, 100);
   return finalPercent;
+}
+
+export function getRuntimeEnvironment() {
+  //@ts-ignore
+  if (process.isBun || typeof Bun !== 'undefined') {
+    return 'Bun';
+  }
+  //@ts-ignore
+  if (typeof Deno !== 'undefined') {
+    //Deno support many modules from nodejs
+    return 'Node';
+  }
+  if (typeof process !== 'undefined' && process.versions && process.versions.node) {
+    return 'Node';
+  }
+  if (typeof importScripts === 'function') {
+    return 'Web Worker';
+  }
+  
+  if (typeof window !== 'undefined' && typeof window.document !== 'undefined') {
+    return 'Browser';
+  }
+  return 'Unknown';
+}
+
+export async function versionChecker() {
+    try {
+        const res = await axios.get('https://registry.npmjs.org/tanko')
+        const versions = Object.keys(res.data.versions)
+        const lastVersion = versions[versions.length - 1]
+        const releaseUrl = 'https://github.com/Alexandro521/Tanko/releases'
+        const link = supportsHyperlinks.stdout ? ansi.link(chalk.underline.blueBright('releases'), releaseUrl) : chalk.underline.blueBright(releaseUrl)
+        if (pkgInfo.version !== lastVersion) {
+            const message = `
+A new version of Tanko is available!
+${chalk.redBright(pkgInfo.version)} ${chalk.blueBright('→')} ${chalk.greenBright(lastVersion)}
+Run: ${chalk.blueBright('$pnpm add -g tanko')} to update to the latest version and enjoy the new features.
+
+Go to ${link} to view the release notes`
+        const notify = Notify.getInstace()
+
+            notify.push({
+                title: `Update avalible ${lastVersion}`,
+                type: NotifyType.message,
+                message
+            })
+        }
+        return false
+    } catch (e) {
+        if (e instanceof Error) {
+            Notify.pushError(e)
+        }
+    }
 }

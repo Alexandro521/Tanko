@@ -1,4 +1,4 @@
-import {LocalTracker, type LocalTrackerProps} from '../trackers/local'
+import {LocalTracker, type LocalTrackerProps} from '../trackers/local.ts'
 import chalk from 'chalk'
 import fs from 'fs/promises'
 import { stdout } from 'process'
