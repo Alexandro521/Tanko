@@ -15,8 +15,13 @@ import { Notify, NotifyType } from './functions/notify.ts';
 import { versionChecker } from './utils.ts';
 import { TerminalControl } from './functions/reader.ts';
 import { stdout } from 'process';
+import { program } from './cli/commander.ts';
 import ora from 'ora';
 
+if(process.argv.length > 2){
+  await program.parseAsync()
+  process.exit()
+}
 const loader = ora()
 await TerminalControl.getWindowDimension()
 stdout.write(ansi.enterAlternativeScreen);
