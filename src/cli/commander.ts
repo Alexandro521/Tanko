@@ -5,11 +5,10 @@ import { Downloader } from "../functions/downloader.ts";
 import { DOWNLOADS_DEFAULT_DIR } from "../const.ts";
 import { sortChapterList, extractChapterSrcByLang,  } from "../utils.ts";
 import ora from 'ora'
-import { page } from "pdfkit";
 
 const LOADER = ora()
 const avaliblesProviders = mangaServerRegister.map(e => e.name ) 
-const program = new Command()
+export const program = new Command()
 
 const providerOption = new Option('-p,--provider <string>', 'The manga provider to use, the default value is mangadex').choices(avaliblesProviders).default('mangadex') 
 const sortOrderOption = new Option('-s,--sort <string>', 'order of results').choices(['asc', 'desc']).default('desc')
@@ -77,7 +76,7 @@ program.command('chapter')
 .addOption(sortOrderOption)
 .addOption(offsetOption)
 .option('-t,--lang <string>', 'preferred language', 'en')
-.option('-d,--download')
+.option('-d,--download', 'download the results')
 .addOption(new Option('-f,--format <sring>', 'download format').choices(['pdf', 'cbz', 'zip', 'imgs']).default('pdf'))
 .addOption(new Option('-x,--output <path>', 'save path').default(DOWNLOADS_DEFAULT_DIR))
 .action(async (str, opts)=>{
@@ -108,6 +107,7 @@ program.command('chapter')
         let pagesCount = 0
         let pagesLength  = 0
         let currentChapter = 0
+        process.on('SIGKILL', process.exit)
         dw.on('download_page', () => {
             pagesCount++;
             let info = translatedChapters[currentChapter]
@@ -148,6 +148,3 @@ program.command('chapter')
         }
     }
 })
-
-
-await program.parseAsync()
