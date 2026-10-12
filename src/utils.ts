@@ -1,4 +1,4 @@
-import type { Chapter, Translations, WSZ } from "./types/types.ts";
+import type { Chapter, ChapterLanguage, Translations, WSZ } from "./types/types.ts";
 import path from "path";
 import fs from "fs/promises"
 import sanitize from "sanitize-filename";
@@ -313,3 +313,9 @@ Go to ${link} to view the release notes`
         }
     }
 }
+export function extractChapterSrcByLang(chapter: Chapter, lang: Translations): ChapterLanguage {
+    if(!(chapter?.translations)) throw new Error('invalid input')
+    if (chapter.translations[lang]) return chapter.translations[lang];
+    const avalibelTranslations = Object.keys(chapter.translations) as Translations[]
+    return chapter.translations[avalibelTranslations[0]] as ChapterLanguage
+  }
