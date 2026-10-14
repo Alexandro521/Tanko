@@ -12,6 +12,7 @@ import type {
 } from "../types/types.ts";
 import { DownloadFormat, SignalsCodes} from "../types/enum.ts";
 import {
+  createUserListPropmt,
   downloadFormatOptions,
   historyOptionsPropmts,
   historySectionPrompt,
@@ -21,6 +22,7 @@ import {
   popularSectionPrompt,
   searchPrompt,
   searchResultPrompt,
+  UserListPropmt,
   voidPrompt,
 } from "./prompts.ts";
 import { ChapterSelect, type ChaperSelectOnSelectType } from "./components/chapterList.ts";
@@ -77,6 +79,9 @@ export async function main() {
           break;
         case SignalsCodes.popular_section:
           await sectionPopulars(mangaProvider);
+          break;
+        case SignalsCodes.user_list_section:
+          await userListSection()
           break;
         case SignalsCodes.configuration_section: 
         {
@@ -407,5 +412,20 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     if (LOADER.isSpinning) LOADER.stop()
     
     pushError(e)
+  }
+}
+
+async function userListSection(){
+  let loop = true
+  while(loop){
+    const options = await prompts(UserListPropmt())
+    if(!options.target || (options.target === SignalsCodes.exit)){
+      break
+    }
+    else if(options.target === SignalsCodes.list_create){
+      await createUserListPropmt()
+      continue;
+    }else {
+    }
   }
 }
