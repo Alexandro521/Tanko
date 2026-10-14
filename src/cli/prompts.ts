@@ -11,6 +11,8 @@ import prompts from "@alex_521/prompts";
 import supportsTerminalGraphics from "supports-terminal-graphics";
 import { LANGUAGE_REGISTER, type LangIso } from "../functions/lang.ts";
 import { fuzzyMatch } from "../utils.ts";
+import { UserLists } from "../functions/userlists.ts";
+import sanitize from "sanitize-filename";
 
 const instance = await Configuration.getInstance()
 const notify = Notify.getInstace()
@@ -25,11 +27,13 @@ instance.on('updatelanguage', async (langInterface) => {
 })
 
 export const clearScreen = () => {
-    console.log(ansi.clearViewport);
-    console.log(WELCOME_MESSAGE);
+    process.stdout.write(ansi.cursorTo(0,0) + '\x1b[0J')
+    process.stdout.write(WELCOME_MESSAGE);
 };
 function onRender() {
+    process.stdout.write('\x1B[0J' + ansi.cursorSavePosition)
     notify.render()
+    process.stdout.write(ansi.cursorRestorePosition)
 }
 function onKeyPress(this: any, key: Key): void {
     if (key.ctrl && key.name === 'q') {
@@ -148,6 +152,47 @@ const OptionsFactory = () => {
         accout_logout: {
             title: configuration.accouts.logout,
             value: SignalsCodes.logout_accout
+        },
+        //TODO: i18n
+        list_add: {
+            title: 'add to list',
+            value: SignalsCodes.list_add
+        },
+        list_remove: {
+            title: 'remove from the list',
+            value: SignalsCodes.list_remove
+        },
+        list_sync: {
+            title: 'sync list with',
+            value: SignalsCodes.list_sync
+        },
+        list_delete: {
+            title: 'delete user list',
+            value: SignalsCodes.list_delete
+        },
+        list_create: {
+            title: 'create a list',
+            value: SignalsCodes.list_create
+        },
+        list_conf: {
+            title: 'list settings',
+            value: SignalsCodes.list_conf
+        },
+        list_create_name: {
+            title: 'Name',
+            value: SignalsCodes.list_create_name
+        },
+        list_create_visibility: {
+            title: 'Visibility',
+            value: SignalsCodes.list_create_visibility
+        },
+        cancel: {
+            title: 'Cancel',
+            value: SignalsCodes.exit
+        },
+        save: {
+            title: 'list settings',
+            value: SignalsCodes.list_opt_save
         }
     }
 }
@@ -196,12 +241,13 @@ const SectionPrompt = (title: string, choices: Choice[], hint = '', index: numbe
 }
 // [Principal Sections]
 export const mainPrompt = (): PromptObject<'target'> => {
-
+    //TODO: i18n
     const choices: Choice[] = [
         { title: main_sections.search.title, value: SignalsCodes.search_section },
         { title: main_sections.popular.title, value: SignalsCodes.popular_section },
         { title: main_sections.recent.title, value: SignalsCodes.lasted_section },
         { title: main_sections.history.title, value: SignalsCodes.history_section },
+        { title: 'My lists', value: SignalsCodes.user_list_section },
         { title: main_sections.config.title, value: SignalsCodes.configuration_section },
         { title: main_sections.exit.title, value: SignalsCodes.exit },
     ]
@@ -265,6 +311,7 @@ export const basicChapterOptions = () => {
     return SectionPrompt(configuration.options_title, [
         $.read,
         $.download,
+        $.list_add,
         //ChapterAccessOptions.suscribe,
         $.exit,
     ], '', 0, 'select')
@@ -274,6 +321,7 @@ export const historyOptionsPropmts = (title: string) => {
     return SectionPrompt(configuration.options_title, [
         $.resume_read,
         $.getChapters,
+        $.list_add,
         $.download,
         //ChapterAccessOptions.suscribe,
         $.exit,
@@ -284,6 +332,7 @@ export const popularMangaSelectOptions = (title: string) => {
     return SectionPrompt(configuration.options_title, [
         $.read,
     //    $.getChapters,
+        $.list_add,
         $.download,
         $.exit,
 
@@ -296,6 +345,7 @@ export const terminalReaderChapterOptions = () => {
         $.next_chapter,
         $.download,
         $.getChapters,
+        $.list_add,
         $.exit,
     ], '', 0, 'select')
 }
@@ -498,6 +548,73 @@ export interface ConfigurationSettingPrompt {
     prompt: PromptObject<'value'>
 }
 
+export const UserListPropmt = () => {
+    const lists = UserLists.getUserList()
+    const choices = lists.map((e): Choice =>({
+        title: e.name,
+        value: e
+    }))
+    const temp = choices[0]
+
+    choices[0] = {
+        title: chalk.magenta('> Create a list'),
+        value: SignalsCodes.list_create
+    }
+    choices.push(temp)
+    return SectionPrompt('My lists', choices, '', 0, 'select')
+}
+export const createUserListPropmt = async () => {
+    let listName = ''
+    let visibility: 'public' | 'private' = 'public'
+    let userLists = UserLists.getUserList()
+    
+    while(true){
+        clearScreen()
+        const askName = await prompts<'name'>({
+            type: 'text',
+            hint: 'enter the list name',
+            message: 'list name',
+            name: 'name',
+            clearFirst: true,
+            onKeyPress,
+            onRender,
+        })
+        if(!askName.name) break
+        const safeName = sanitize(askName.name)
+        if(safeName.length < 3){
+            Notify.pushMessage('The list name must have a minimum of 3 letters and not contain special characters.')
+            continue;
+        }
+        const exists = userLists.findIndex((e)=> e.name === safeName)
+        if(exists > -1){
+            Notify.pushMessage('A list with the same name already exists.')
+            continue;
+        }else{
+            listName = safeName
+            break
+        }
+    }
+    if(listName.length < 3){
+        return
+    }
+    while(true){
+        const opt = await prompts<'visibility'>({
+            type: 'toggle',
+            name: 'visibility',
+            active: 'public',
+            inactive: 'private',
+            message: 'Visibility',
+            onKeyPress,
+            onRender,
+        })
+        if(opt.visibility !== undefined){
+            visibility = opt.visibility ? 'public' : 'private'
+        }
+        break
+    }
+    UserLists.createList(listName, visibility)
+}
+
 export const historyConfigurationPrompt = () => {
     const { history } = configuration
     const history_filter: PromptObject = {
@@ -553,3 +670,5 @@ export const historyConfigurationPrompt = () => {
     ]
     return SectionPrompt(main_sections.history.title, choices, '', 0, 'select')
 }
+
+//await createUserListPropmt()
