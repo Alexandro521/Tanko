@@ -1,0 +1,54 @@
+import { SqliteDB } from "../database/sqlite/sqlite.ts";
+import type { UserlistsTable } from "../types/database.js";
+import type { MangaInfo } from "../types/types.js";
+
+const DB  = await SqliteDB.getInstance()
+export class UserLists {
+    private constructor(){}
+    static cache: UserlistsTable[]
+    static validateCache = false
+    static createList(name: string, visibility: 'public' | 'private' = 'public'){
+        this.validateCache = false
+        return DB.insertOnUserLists(name, visibility)
+    }
+    static getUserList(){
+        if(this.validateCache) return this.cache
+        const lists = DB.getUserLists()
+        this.cache = lists
+        this.validateCache = true
+        return lists
+    }
+    static getUserListEntries(listId: number){
+        return DB.getUserListEntries(listId)
+    }
+    static updateUserList(listId: number, name: string, visibility: 'public' | 'private' = 'public'){
+        const res = DB.updateUserList({
+            id: listId,
+            create_at: '0-0-0 0:0:0',
+            name,
+            visibility,
+        })
+        if(res.changes > 0){
+            this.validateCache = false
+        }
+    }
+    static updateUserListEntrie(){
+    }
+    static deleteList(listId: number){
+        if((DB.deleteUserList(listId)).changes > 0){
+            this.validateCache = false
+        }
+    }
+    static removeFromList(listId: number, mangaId: string){
+        DB.deleteFromUserList(listId, mangaId)
+    }
+    static addToList(listId: number, mangaInfo: MangaInfo ){
+        if(!(DB.exists('mangainfo', `id = '${mangaInfo.src}'`)).has){
+            DB.insertOnMangaInfo(mangaInfo)
+        }
+        DB.addToUserList(listId, mangaInfo.src, 'manga')
+    }
+    async syncWithAnilist(){
+
+    }
+}
