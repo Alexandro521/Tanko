@@ -131,14 +131,12 @@ export class Notify extends EventEmitter{
         const box = this.getf()
         if(!box) return
         const quitText = chalk.bgGray(' ^Q ') + 'quit ' + `${this.stackIndex > 1 ?['⏺', this.stackIndex, 'Left'].join(' ') : ''}`
-
-        process.stdout.write('\x1B[0J'+ box?.strBox)
+        process.stdout.write(box?.strBox)
         process.stdout.write(
-            ansi.cursorSavePosition + '\r' +
+            '\r' +
             ansi.cursorUp(1) + 
             ansi.cursorForward(Math.abs(box.width - quitText.length -2)) +
             quitText +
-            ansi.cursorRestorePosition +
             ansi.cursorUp(box.height -1)
         )
     } 
