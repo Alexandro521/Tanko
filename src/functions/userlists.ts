@@ -42,11 +42,16 @@ export class UserLists {
     static removeFromList(listId: number, mangaId: string){
         DB.deleteFromUserList(listId, mangaId)
     }
+    static has(listId: number, mangaSrc: string){
+        return DB.exists('userlistlink', `userlist_id=${listId} AND mangainfo_id='${mangaSrc}'`).has
+    }
     static addToList(listId: number, mangaInfo: MangaInfo ){
         if(!(DB.exists('mangainfo', `id = '${mangaInfo.src}'`)).has){
             DB.insertOnMangaInfo(mangaInfo)
         }
-        DB.addToUserList(listId, mangaInfo.src, 'manga')
+        if(!this.has(listId, mangaInfo.src)){
+            DB.addToUserList(listId, mangaInfo.src, 'manga')
+        }
     }
     async syncWithAnilist(){
 
