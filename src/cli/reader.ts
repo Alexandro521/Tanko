@@ -1,6 +1,6 @@
 import ora from "ora"
 import boxen, { type Options } from "boxen"
-import ansi from "ansi-escapes"
+import ansi, { beep } from "ansi-escapes"
 import { memoryUsage, stdout } from "node:process"
 import type { Key } from "node:readline"
 import { downloadSection } from "./menu.ts"
@@ -14,7 +14,7 @@ import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
 import type { Chapter, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
-import { terminalReaderChapterOptions } from "./prompts.ts"
+import { addToUserListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
 import {SqliteDB} from "../database/sqlite/sqlite.ts"
@@ -474,8 +474,13 @@ export async function terminalReader(
         process.stdout.write(ansi.clearViewport)
         process.stdout.write(ansi.cursorShow)
         TerminalControl.exitRawMode(keyPressHandle)
-
-        const optionsPrompt = await prompts(terminalReaderChapterOptions())
+        let optionsPrompt = {target: SignalsCodes.exit}
+        while(true){
+          optionsPrompt = await prompts(terminalReaderChapterOptions())
+          if(optionsPrompt.target === SignalsCodes.list_add){
+            await addToUserListPrompt(mangaInfo)
+          }else break
+        }
         if (!optionsPrompt?.target) {
           TerminalControl.openRawMode(keyPressHandle)
           await render()

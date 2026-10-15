@@ -7,7 +7,7 @@ import { getIi8n, type LangIso } from "../../functions/lang.ts";
 import { Configuration } from "../../functions/configuration.ts";
 import ora from "ora";
 import prompts from "@alex_521/prompts";
-import { basicChapterOptions, chapterListPrompt, askChapterLang } from "../prompts.ts";
+import { basicChapterOptions, chapterListPrompt, askChapterLang, addToUserListPrompt } from "../prompts.ts";
 import { SignalsCodes } from "../../types/enum.ts";
 import { Notify } from "../../functions/notify.ts";
 import { extractTitleByLang } from "../../utils.ts";
@@ -107,7 +107,19 @@ export async function ChapterSelect(
       if ((chapterLanguage = await askChapterLang(targetChapter)) === null) {
         continue;
       }
-      const chapterActions = await prompts(options || basicChapterOptions());
+      let chapterActions = {target: SignalsCodes.exit}
+      while (true) {
+        //@ts-ignore
+        chapterActions = await prompts(options || basicChapterOptions());
+        if (chapterActions.target === SignalsCodes.list_add) {
+          await addToUserListPrompt({
+            src: mangaInfo.src,
+            title: mangaInfo.title
+          })
+        } else {
+          break
+        }
+      }
 
       if (!chapterActions.target || chapterActions.target === SignalsCodes.exit) {
         continue;

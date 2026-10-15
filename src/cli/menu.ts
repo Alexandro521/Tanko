@@ -12,6 +12,7 @@ import type {
 } from "../types/types.ts";
 import { DownloadFormat, SignalsCodes} from "../types/enum.ts";
 import {
+  addToUserListPrompt,
   createUserListPropmt,
   downloadFormatOptions,
   historyOptionsPropmts,
@@ -22,6 +23,7 @@ import {
   popularSectionPrompt,
   searchPrompt,
   searchResultPrompt,
+  UserListEntriesPrompt,
   UserListPropmt,
   voidPrompt,
 } from "./prompts.ts";
@@ -30,6 +32,7 @@ import { Configuration } from "../functions/configuration.ts";
 import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
 import { parseTimeDiff } from "../utils.ts";
 import { Notify } from "../functions/notify.ts";
+import type { UserlistsTable } from "../types/database.js";
 //import { TimeTracker } from "../trackers/local.ts";
 
 const DB = await SqliteDB.getInstance()
@@ -195,11 +198,21 @@ async function sectionHistory(provider: MangaProvider) {
       const targetIndex = parseInt(historySelect.target)
       memoryChoicePosition = targetIndex
       const mangaTarget = historyList[targetIndex];
-
-      const optionsSelect = await prompts(
-        historyOptionsPropmts(mangaTarget.manga_title)
-      );
-
+      let optionsSelect = {target: SignalsCodes.exit}
+      
+      while(true){
+        optionsSelect = await prompts(
+          historyOptionsPropmts(mangaTarget.manga_title)
+        );
+        if(optionsSelect.target === SignalsCodes.list_add){
+          await addToUserListPrompt({ 
+            src: mangaTarget.manga_src,
+            title: mangaTarget.manga_title
+          })
+        }else {
+          break
+        }
+      }
       if (!optionsSelect.target || optionsSelect.target === SignalsCodes.exit) {
         continue;
       }
@@ -209,12 +222,8 @@ async function sectionHistory(provider: MangaProvider) {
         provider = await CONF.conf_provider.setProviderByName(mangaTarget.manga_provider) ?? provider
         if (LOADER.isSpinning) LOADER.stop()
       }
-      LOADER.start(i18nLoadings.loading_chapters);
-      const chapterList = await provider.getChapterList(mangaTarget.manga_src);
-      if (LOADER.isSpinning) LOADER.stop();
-      if (!chapterList) continue;
       const historyObject: HistoryObject2 = {
-        chapter_index: mangaTarget.chapter_index,
+      chapter_index: mangaTarget.chapter_index,
         chapter_src: mangaTarget.chapter_src,
         lang_iso: mangaTarget.lang_iso,
         page_index: mangaTarget.page_index,
@@ -229,6 +238,10 @@ async function sectionHistory(provider: MangaProvider) {
         provider: mangaTarget.manga_provider,
         chapter_title:mangaTarget.chapter_title
       }
+      LOADER.start(i18nLoadings.loading_chapters);
+      const chapterList = await provider.getChapterList(mangaTarget.manga_src);
+      if (LOADER.isSpinning) LOADER.stop();
+      if (!chapterList) continue;
       switch (optionsSelect.target) {
         case SignalsCodes.resume_read: {
           await terminalReader(
@@ -426,6 +439,20 @@ async function userListSection(){
       await createUserListPropmt()
       continue;
     }else {
+      const listInfo = options.target as UserlistsTable
+      let loop2 = true
+      while(loop2){
+        const entriesPropmt = await prompts(UserListEntriesPrompt(listInfo))
+        if(!entriesPropmt.target || entriesPropmt.target === SignalsCodes.exit){
+          loop2 = false
+          continue
+        }else if(entriesPropmt.target === SignalsCodes.list_conf){
+          Notify.pushMessage('WIP')
+          continue
+        }
+        Notify.pushMessage('WIP')
+        loop2 = false
+      }
     }
   }
 }
