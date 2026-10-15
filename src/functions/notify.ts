@@ -14,7 +14,7 @@ export enum NotifyType {
     update = 2321,
     event = 1341
 }
-
+type NotifyTypeUnion = keyof typeof NotifyType
 export interface NotifyProps {
     type: NotifyType,
     title: string,
@@ -152,10 +152,11 @@ export class Notify extends EventEmitter{
         }
         notify.push(props)
     }
-    static pushMessage(message: string, title = '') {
+    static pushMessage(message: string, title = '', type:NotifyTypeUnion = 'message') {
+        const ntype = NotifyType[type]
         const notify = Notify.getInstace()
             const props: NotifyProps = {
-                type: NotifyType.message,
+                type: ntype,
                 message,
                 title,
             }
