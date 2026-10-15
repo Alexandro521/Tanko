@@ -3,7 +3,7 @@ import { SignalsCodes, ConfigurationOptions, DownloadFormat } from "../types/enu
 import chalk from "chalk";
 import { PRIMARY_COLOR, WELCOME_MESSAGE } from "../const.ts";
 import { Configuration } from "../functions/configuration.ts";
-import type { Chapter, TrackerNames, Settings } from "../types/types.ts";
+import type { Chapter, TrackerNames, Settings, MangaInfo } from "../types/types.ts";
 import { type Key } from "node:readline";
 import { Notify } from "../functions/notify.ts";
 import ansi from 'ansi-escapes'
@@ -13,6 +13,7 @@ import { LANGUAGE_REGISTER, type LangIso } from "../functions/lang.ts";
 import { fuzzyMatch } from "../utils.ts";
 import { UserLists } from "../functions/userlists.ts";
 import sanitize from "sanitize-filename";
+import type { UserlistsTable } from "../types/database.js";
 
 const instance = await Configuration.getInstance()
 const notify = Notify.getInstace()
@@ -554,15 +555,56 @@ export const UserListPropmt = () => {
         title: e.name,
         value: e
     }))
-    const temp = choices[0]
-
-    choices[0] = {
+    choices.push({
         title: chalk.magenta('> Create a list'),
         value: SignalsCodes.list_create
+    })
+    if(choices.length > 1){
+        const temp = choices[0]
+        choices[0] = choices[choices.length-1]
+        choices[choices.length-1] = temp
     }
-    choices.push(temp)
     return SectionPrompt('My lists', choices, '', 0, 'select')
 }
+
+export const UserListEntriesPrompt = (list: UserlistsTable) => {
+    const entries = UserLists.getUserListEntries(list.id)
+    const choices = entries.map((e): Choice =>({
+        title: e.title,
+        description: e.alias,
+        value: e
+    }))
+    choices.push({
+        title: chalk.magenta('> Edit List'),
+        value: SignalsCodes.list_conf
+    })
+    if(choices.length > 1){
+        const temp = choices[0]
+        choices[0] = choices[choices.length-1]
+        choices[choices.length-1] = temp
+    }
+    return SectionPrompt(`My lists > ${list.name}`, choices, '', 0, 'select')
+}
+export const addToUserListPrompt = async (mangainfo: MangaInfo) => {
+    while(true){
+        const listTarget = await prompts(UserListPropmt());
+        if(!listTarget.target || listTarget.target === SignalsCodes.exit){
+            break
+        }
+        if(listTarget.target === SignalsCodes.list_create){
+            await createUserListPropmt()
+            continue;
+        }
+        const listData = <UserlistsTable> listTarget.target 
+        if(!UserLists.has(listData.id, mangainfo.src)){
+            UserLists.addToList(listData.id, mangainfo)
+            Notify.pushMessage(`${mangainfo.title} added to list ${listData.name}`,'', 'event')
+        }else{
+            Notify.pushMessage('this entry already exists', listData.name, 'error')
+        }
+    }
+}
+
 export const createUserListPropmt = async () => {
     let listName = ''
     let visibility: 'public' | 'private' = 'public'
