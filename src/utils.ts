@@ -58,62 +58,87 @@ interface TimeInt {
   second: number
 }
 
-function dateTimeStringParse(dateTime: TimeString): TimeInt
-function dateTimeStringParse(dateTime: DateString): DateInt
-function dateTimeStringParse(dateTime: DateTimeString): DateInt & TimeInt
-function dateTimeStringParse(dateTime: TimeString | DateString | DateTimeString){
-  type Xyz = [number, number, number]
-  const dateAndTimeRaw = dateTime.split(' ')
-  if(dateAndTimeRaw.length < 2){
-    if(dateAndTimeRaw[0].includes('-')){
-      const date = dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
-      return {
-        year: date[0],
-        month: date[1],
-        day: date[2]
-      }
+const validateTimeFormat = new RegExp(/\+{0,1}(?:\d{4}-\d{2}-\d{2}(?:[\sT]\d{2}:\d{2}(?:\:\d{2}(?:\.\d+)?)?)?|\d{2}:\d{2}(?:\:\d{2}(?:\.\d+)?)?|now|\d{10})/)
+const captureDate = new RegExp(/\+{0,1}(\d{4})-(\d{2})-(\d{2})/)
+const captureTime = new RegExp(/(\d{2}):(\d{2})(?::(\d{2})(\.\d+)?)?/)
+
+export function timeStringToInt(str: string, utc = true){
+  if(validateTimeFormat.test(str)){
+  if(str.startsWith('+') || str.startsWith('-')) str = str.slice(1)
+  const timeObj = {
+    year: 0,
+    month: 0,
+    day: 0,
+    hour: 0,
+    minute: 0,
+    second: 0,
+  }
+    if(str === 'now'){
+      return timeStringToInt(new Date(Date.now()).toISOString(), utc)
+    }
+    else if((/\d{10}/).test(str)){
+      //multiply by 1000 for scale from seconds unixpoch to milisecond
+      const f = new Date((parseInt(str) * 1000))
+      return timeStringToInt(f.toISOString(), utc)
+    }
+    else if(str[10] === ' ' || str[10] === 'T'){
+        const cdate = captureDate.exec(str.slice(0,10))
+        const ctime = captureTime.exec(str.slice(11))
+        timeObj.year =  parseInt(cdate![1])
+        timeObj.month =  parseInt(cdate![2])
+        timeObj.day =  parseInt(cdate![3])
+        timeObj.hour =  parseInt(ctime![1])
+        timeObj.minute =  parseInt(ctime![2])
+        if(ctime?.[3]){
+          const seconds = ctime?.[4] ? parseFloat(ctime[3].concat(ctime[4])) : parseInt(ctime[3])
+          timeObj.second = seconds;
+        }
+    }
+    else if(captureDate.test(str.slice(0,10))){
+        const cdate = captureDate.exec(str.slice(0,10))
+        timeObj.year =  parseInt(cdate![1])
+        timeObj.month =  parseInt(cdate![2])
+        timeObj.day =  parseInt(cdate![3])
     }else{
-      const time = dateAndTimeRaw[0].split(':').map(e => parseInt(e)) as Xyz
-      return {
-        hour: time[0],
-        minute: time[1],
-        second: time[2]
+      const ctime = captureTime.exec(str)
+      timeObj.hour = parseInt(ctime![1])
+      timeObj.minute = parseInt(ctime![2])
+      if (ctime?.[3]) {
+        const seconds = ctime?.[4] ? parseFloat(ctime[3].concat(ctime[4])) : parseInt(ctime[3])
+        timeObj.second = seconds;
       }
     }
+    return timeObj
   }
-  const date =  dateAndTimeRaw[0].split('-').map(e => parseInt(e)) as Xyz
-  const time = dateAndTimeRaw[1].split(':').map(e => parseInt(e)) as Xyz
-  return {
-    year: date[0],
-    month: date[1],
-    day: date[2],
-    hour: time[0],
-    minute: time[1],
-    second: time[2]
-  }
+  throw new Error('invalid time or date format, see https://sqlite.org/lang_datefunc.html#time_values for valids formats')
 }
-export function parseTimeDiff(timeDiff: DateTimeString, dateTime: DateTimeString) {
-  const {year, month, day, hour, minute, second} = dateTimeStringParse(timeDiff)
 
-  if(year + month > 0){
-    const date = new Date(dateTime)
-    return date.toDateString()
+export function timeSkipFormater(timeDiff: string) {
+  const {day,hour,minute,month,second,year} = timeStringToInt(timeDiff)
+  const plural = (str:string, n:number)=> n > 1 ? Math.floor(n) + ' ' + str+'s' : 'One ' + str
+  if(year > 0){
+    return `${plural('Year', year)} ago`
+  }
+  if(month > 0){
+    return `${plural('Month', month)} ago`
   }
   if(day > 0){
     if(day >= 7){
-      return `${Math.floor(day/7)} Weeks ago`
+      return `${plural('Week', Math.floor(day/7))} ago`
     }else {
-      return `${day} Days ago`
+      return `${plural('Day', day)} ago`
     }
   }
   if(hour > 0){
-    return `${hour} Hours ago`
+    return `${plural('Hour', hour)} ago`
   }
   if(minute > 0){
-    return `${minute} Minutes ago`
+    return `${plural('Minute', minute)} ago`
   }
-  if(second > 0){
-    return `${second} Seconds ago`
+  if(second >= 1){
+    return `${plural('Second', second)} ago`
+  }else {
+    return 'Now'
   }
 }
 
