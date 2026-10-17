@@ -30,7 +30,7 @@ import {
 import { ChapterSelect, type ChaperSelectOnSelectType } from "./components/chapterList.ts";
 import { Configuration } from "../functions/configuration.ts";
 import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
-import { parseTimeDiff } from "../utils.ts";
+import { timeSkipFormater } from "../utils.ts";
 import { Notify } from "../functions/notify.ts";
 import type { UserlistsTable } from "../types/database.js";
 //import { TimeTracker } from "../trackers/local.ts";
@@ -186,10 +186,11 @@ async function sectionHistory(provider: MangaProvider) {
         historyList = groupHistory;
       }
       const historySelect = await prompts(
-        historySectionPrompt(historyList.map(
+        historySectionPrompt(historyList.slice(0, Math.min(historyList.length-1,settings.history_maxSize))
+        .map(
           (e, i): Choice => ({
             title: historyGroupByManga ? e.manga_title : e.chapter_title,
-            description: `${historyGroupByManga ? e.chapter_title : e.manga_title} ⏺ ${e.manga_provider} ⏺ ${parseTimeDiff(e.time_diff, e.read_at)}`,
+            description: `${historyGroupByManga ? e.chapter_title : e.manga_title} ⏺ ${e.manga_provider} ⏺ ${timeSkipFormater(e.time_diff)}`,
             value: String(i)
           })
         ), memoryChoicePosition)
