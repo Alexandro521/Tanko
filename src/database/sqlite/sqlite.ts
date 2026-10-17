@@ -121,7 +121,7 @@ export class SqliteDB{
             sort_order,
             read_progress,
             datetime(read_at, 'localtime') as read_at,
-            timediff(read_at, datetime('now')) as time_diff,
+            timediff('now', read_at) as time_diff,
             other.title AS manga_title,
             other.status AS manga_status,
             other.anilist_id AS manga_anilist_id,
