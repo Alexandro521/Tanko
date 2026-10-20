@@ -23,6 +23,7 @@ import {
   popularSectionPrompt,
   searchPrompt,
   searchResultPrompt,
+  UserlistConfigPrompt,
   UserListEntriesPrompt,
   UserListPropmt,
   voidPrompt,
@@ -33,6 +34,7 @@ import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, L
 import { timeSkipFormater } from "../utils.ts";
 import { Notify } from "../functions/notify.ts";
 import type { UserlistsTable } from "../types/database.js";
+import { UserLists } from "../functions/userlists.ts";
 //import { TimeTracker } from "../trackers/local.ts";
 
 const DB = await SqliteDB.getInstance()
@@ -440,7 +442,7 @@ async function userListSection(){
       await createUserListPropmt()
       continue;
     }else {
-      const listInfo = options.target as UserlistsTable
+      let listInfo = options.target as UserlistsTable
       let loop2 = true
       while(loop2){
         const entriesPropmt = await prompts(UserListEntriesPrompt(listInfo))
@@ -448,7 +450,13 @@ async function userListSection(){
           loop2 = false
           continue
         }else if(entriesPropmt.target === SignalsCodes.list_conf){
-          Notify.pushMessage('WIP')
+          await UserlistConfigPrompt(listInfo)
+          //verifying that the list has not been deleted
+          if(UserLists.exists(listInfo.id)){
+            listInfo = UserLists.getUserList(listInfo.id)!
+          }else{
+            loop2 = false
+          }
           continue
         }
         Notify.pushMessage('WIP')
