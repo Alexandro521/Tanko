@@ -43,14 +43,14 @@ describe('Database Basic test', () => {
     expect(db.exists('userlists', `name = 'test list'`).has).toBe(1)
   })
   test('addToUserList', ()=>{
-    const userList = (db.getUserLists().find(list => list.name === 'test list'))!
+    const userList = ((<UserlistsTable[]>db.getUserLists()).find(list => list.name === 'test list'))!
     expect(userList).toBeDefined()
     const result = db.addToUserList(userList.id, mangaInfo.src, 'manga', 'test alias')
     expect(result.changes).toBe(1)
     expect(db.exists('userlistlink', `userlist_id = ${userList.id} AND mangainfo_id = '${mangaInfo.src}'`).has).toBe(1)
   })
   test('getUserListEntries', () => {
-    const userList = (db.getUserLists().find(list => list.name === 'test list'))!
+    const userList = ((<UserlistsTable[]>db.getUserLists()).find(list => list.name === 'test list'))!
     expect(userList).toBeDefined()
     const entries = db.getUserListEntries(userList.id)
     expect(entries.length).toBeGreaterThan(0)
@@ -74,7 +74,7 @@ describe('Database Basic test', () => {
     expect(updatedRecord?.status).toBe('completed')
   })
   test('updateUserList', () => {
-    const userList = (db.getUserLists().find(list => list.name === 'test list'))!
+    const userList = ((<UserlistsTable[]>db.getUserLists()).find(list => list.name === 'test list'))!
     expect(userList).toBeDefined()
     const updatedUserList: UserlistsTable = {
       id: userList.id,
@@ -84,19 +84,19 @@ describe('Database Basic test', () => {
     }
     const result = db.updateUserList(updatedUserList)
     expect(result.changes).toBe(1)
-    const updatedRecord = db.getUserLists().find(l => l.id === userList.id)
+    const updatedRecord = (<UserlistsTable[]>db.getUserLists()).find(l => l.id === userList.id)
     expect(updatedRecord?.name).toBe('updated test list')
     expect(updatedRecord?.visibility).toBe('private')
   })
   test('deleteFromUserList after update', () => {
-    const userList = (db.getUserLists().find(list => list.name === 'updated test list'))!
+    const userList = ((<UserlistsTable[]>db.getUserLists()).find(list => list.name === 'updated test list'))!
     expect(userList).toBeDefined()
     const result = db.deleteFromUserList(userList.id, mangaInfo.src)
     expect(result.changes).toBe(1)
     expect(db.exists('userlistlink', `userlist_id = ${userList.id} AND mangainfo_id = '${mangaInfo.src}'`).has).toBe(0)
   })
   test('deleteUserList after update', () => {
-    const userList = (db.getUserLists().find(list => list.name === 'updated test list'))!
+    const userList = ((<UserlistsTable[]>db.getUserLists()).find(list => list.name === 'updated test list'))!
     expect(userList).toBeDefined()
     const result = db.deleteUserList(userList.id)
     expect(result.changes).toBe(1)
