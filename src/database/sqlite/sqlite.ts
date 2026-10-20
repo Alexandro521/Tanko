@@ -147,9 +147,14 @@ export class SqliteDB{
         `)
         return statement.get({$manga_id: mangaId}) as MangaInfoTable | undefined
     }
-    getUserLists(){
-        const statement = this.database.prepare(`SELECT id, name, visibility, create_at FROM userlists;`)
-        return statement.all() as UserlistsTable[]
+    getUserLists(listId?: number){
+        if(listId){
+            const statement = this.database.prepare(`SELECT id, name, visibility, create_at FROM userlists WHERE id = $id;`)
+            return statement.get({$id: listId}) as UserlistsTable
+        }else{
+            const statement = this.database.prepare(`SELECT id, name, visibility, create_at FROM userlists;`)
+            return statement.all() as UserlistsTable[]
+        }
     }
     getMangaInfo() {
         const statement = this.database.prepare(`
