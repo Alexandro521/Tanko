@@ -71,12 +71,15 @@ export const voidPrompt = (message: string): PromptObject<'void'> => {
         message: `${message}\n  ESC  para volver al menu anterior`
     }
 }
-export const confirmPrompt = (message: string): PromptObject<'confirm'> => {
-    return {
+export const confirmPrompt = async (message: string) => {
+  const opt = await prompts({
         type: 'confirm',
         name: 'confirm',
         message: message,
-    }
+    } 
+  )
+  if (!opt.confirm) return false;
+  return true
 }
 const OptionsFactory = () => {
     return {
@@ -550,7 +553,7 @@ export interface ConfigurationSettingPrompt {
 }
 
 export const UserListPropmt = () => {
-    const lists = UserLists.getUserList()
+    const lists = UserLists.getAllUserList()
     const choices = lists.map((e): Choice =>({
         title: e.name,
         value: e
@@ -605,40 +608,60 @@ export const addToUserListPrompt = async (mangainfo: MangaInfo) => {
     }
 }
 
+const userListNamePrompt = async () => {
+  let listName = ''
+  let userLists = UserLists.getAllUserList()
+  while(true){
+      clearScreen()
+      const askName = await prompts<'name'>({
+          type: 'text',
+          hint: 'enter the list name',
+          message: 'list name',
+          name: 'name',
+          clearFirst: true,
+          onKeyPress,
+          onRender,
+      })
+      if(!askName.name) break
+      const safeName = sanitize(askName.name)
+      if(safeName.length < 3){
+          Notify.pushMessage('The list name must have a minimum of 3 letters and not contain special characters.')
+          continue;
+      }
+      const exists = userLists.findIndex((e)=> e.name === safeName)
+      if(exists > -1){
+          Notify.pushMessage('A list with the same name already exists.')
+          continue;
+      }else{
+          listName = safeName
+          break
+      }
+  }
+  return listName
+}
+export const togglePrompt = async (msg: string, opts: [string, string], initial: boolean) => {
+  const opt = await prompts({
+    type: 'toggle',
+    name: 'target',
+    message: msg,
+    active: opts[1],
+    inactive: opts[0],
+    initial: initial,
+    onKeyPress,
+    onRender
+  })
+  if (opt.target === undefined) {
+    return undefined
+  }
+  return {
+    label: opt.target ? opts[1] : opts[0],
+    value: opt.target
+  }
+}
 export const createUserListPropmt = async () => {
-    let listName = ''
     let visibility: 'public' | 'private' = 'public'
-    let userLists = UserLists.getUserList()
-    
-    while(true){
-        clearScreen()
-        const askName = await prompts<'name'>({
-            type: 'text',
-            hint: 'enter the list name',
-            message: 'list name',
-            name: 'name',
-            clearFirst: true,
-            onKeyPress,
-            onRender,
-        })
-        if(!askName.name) break
-        const safeName = sanitize(askName.name)
-        if(safeName.length < 3){
-            Notify.pushMessage('The list name must have a minimum of 3 letters and not contain special characters.')
-            continue;
-        }
-        const exists = userLists.findIndex((e)=> e.name === safeName)
-        if(exists > -1){
-            Notify.pushMessage('A list with the same name already exists.')
-            continue;
-        }else{
-            listName = safeName
-            break
-        }
-    }
-    if(listName.length < 3){
-        return
-    }
+    let listName = await userListNamePrompt()
+    if (listName.length < 2) return;
     while(true){
         const opt = await prompts<'visibility'>({
             type: 'toggle',
@@ -713,4 +736,70 @@ export const historyConfigurationPrompt = () => {
     return SectionPrompt(main_sections.history.title, choices, '', 0, 'select')
 }
 
-//await createUserListPropmt()
+export const UserlistConfigPrompt = async (list: UserlistsTable) => {
+  const choices: Choice[] = [
+    {
+      title: 'Name',
+      value: SignalsCodes.list_create_name,
+      description: 'Update the list name'
+    },
+    {
+      title: 'Visibility',
+      value: SignalsCodes.list_create_visibility,
+      description: list.visibility ? 'public' : 'private'
+    },
+    {
+      title: 'Sync',
+      value: SignalsCodes.list_sync,
+      description: 'Synchronize the list with anillist'
+    },
+    {
+      title: 'Delete',
+      value: SignalsCodes.list_delete,
+      description: 'Delete this list'
+    },
+    {
+      title: 'Exit',
+      value: SignalsCodes.exit
+    }
+    ]
+  let loop = true
+  while (loop) {
+    const options = await prompts(SectionPrompt(`My lists > ${list.name} > settings`, choices, 'Options', 0, 'select'))
+    if (!options.target) {
+      break;
+    }
+    switch (options.target) {
+      case SignalsCodes.list_create_name: {
+        const newListName = await userListNamePrompt()
+        if (newListName.length > 2) {
+          UserLists.updateUserList(list.id, newListName, list.visibility)
+          Notify.pushMessage(`The ${list.name} list has been renamed to ${newListName}`, '', 'event')
+          list.name = newListName
+        }
+        break
+      }
+      case SignalsCodes.list_create_visibility: {
+        const visibility = await togglePrompt('List visibility', ['private', 'public'], list.visibility === 'public')
+        if(visibility){
+            //@ts-ignore
+            UserLists.updateUserList(list.id, list.name, visibility.label)
+            //@ts-ignore
+            list.visibility = visibility.label
+            choices[1].description = visibility.label
+            Notify.pushMessage(`The visibility of list  ${list.name} has changed to ${visibility.label}`, '', 'event')
+        }
+        break
+      }
+      case SignalsCodes.list_delete: {
+        const confirmation = await confirmPrompt('Are you sure? This is an irreversible action!')
+        if(confirmation){
+            UserLists.deleteList(list.id)
+            Notify.pushMessage(`the list ${list.name} has been deleted`)
+            loop = false;
+        }
+        break
+      }
+    }
+  }
+}
