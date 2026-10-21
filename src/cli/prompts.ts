@@ -167,12 +167,14 @@ const OptionsFactory = () => {
             value: SignalsCodes.list_remove
         },
         list_sync: {
-            title: 'sync list with',
+            title: 'Sync',
+            description: 'Synchronize the list with anillist',
             value: SignalsCodes.list_sync
         },
         list_delete: {
-            title: 'delete user list',
-            value: SignalsCodes.list_delete
+            title: 'Delete',
+            value: SignalsCodes.list_delete,
+            description: 'Delete this list'
         },
         list_create: {
             title: 'create a list',
@@ -193,10 +195,6 @@ const OptionsFactory = () => {
         cancel: {
             title: 'Cancel',
             value: SignalsCodes.exit
-        },
-        save: {
-            title: 'list settings',
-            value: SignalsCodes.list_opt_save
         }
     }
 }
@@ -340,6 +338,16 @@ export const popularMangaSelectOptions = (title: string) => {
         $.download,
         $.exit,
 
+    ], title, 0, 'select')
+}
+export const listRecordSelectOptions = (title: string) => {
+    const $ = OptionsFactory()
+    return SectionPrompt(configuration.options_title, [
+        $.resume_read,
+        $.getChapters,
+        $.list_add,
+        $.list_remove,
+        $.exit,
     ], title, 0, 'select')
 }
 export const terminalReaderChapterOptions = () => {
@@ -623,7 +631,7 @@ const userListNamePrompt = async () => {
           onRender,
       })
       if(!askName.name) break
-      const safeName = sanitize(askName.name)
+      const safeName = sanitize(askName.name).replaceAll('\'', '')
       if(safeName.length < 3){
           Notify.pushMessage('The list name must have a minimum of 3 letters and not contain special characters.')
           continue;
