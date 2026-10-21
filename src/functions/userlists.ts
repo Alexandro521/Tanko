@@ -1,5 +1,5 @@
 import { SqliteDB } from "../database/sqlite/sqlite.ts";
-import type { UserlistsTable } from "../types/database.js";
+import type { ListRecord, UserlistsTable } from "../types/database.js";
 import type { MangaInfo } from "../types/types.js";
 
 const DB  = await SqliteDB.getInstance()
@@ -21,7 +21,7 @@ export class UserLists {
     static getUserList(listID: number){
         return DB.getUserLists(listID) as UserlistsTable | undefined
     }
-    static getUserListEntries(listId: number){
+    static getUserListEntries(listId: number): ListRecord[]{
         return DB.getUserListEntries(listId)
     }
     static updateUserList(listId: number, name: string, visibility: 'public' | 'private' = 'public'){
