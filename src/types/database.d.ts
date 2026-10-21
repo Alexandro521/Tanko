@@ -71,4 +71,17 @@ export interface ReadHistoryObject {
     manga_mal_id: number | null
     manga_src: string
 }
+export interface ListRecord {
+ entry_id: number;
+ title: string;
+ list_name: string;
+ manga_id: string;
+ status: string;
+ anilist_id: number;
+ mal_id: number;
+ alias: string;
+ reference_type: string;
+ create_at: string;
+ added_at: `${number}-${number}-${number} ${number}:${number}:${number}`;
+}
 export type ExtractFnType<Fn extends ()=>void> = Awaited<ReturnType<Fn>>
