@@ -8,6 +8,7 @@ import type {
   HistoryObject2,
   MangaInfo,
   MangaProvider,
+  ServerName,
   Translations,
 } from "../types/types.ts";
 import { DownloadFormat, SignalsCodes} from "../types/enum.ts";
@@ -18,6 +19,7 @@ import {
   historyOptionsPropmts,
   historySectionPrompt,
   lastedSectionPrompt,
+  listRecordSelectOptions,
   mainPrompt,
   popularMangaSelectOptions,
   popularSectionPrompt,
@@ -33,7 +35,7 @@ import { Configuration } from "../functions/configuration.ts";
 import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
 import { timeSkipFormater } from "../utils.ts";
 import { Notify } from "../functions/notify.ts";
-import type { UserlistsTable } from "../types/database.js";
+import type { ListRecord, ReadHistoryObject, UserlistsTable } from "../types/database.js";
 import { UserLists } from "../functions/userlists.ts";
 //import { TimeTracker } from "../trackers/local.ts";
 
@@ -144,6 +146,7 @@ async function sectionSearch(server: MangaProvider) {
   }
 }
 async function sectionChapterList(provider: MangaProvider, mangaInfo: MangaInfo, memoizedChapters: Chapter[] | undefined = undefined) {
+  try{
   await ChapterSelect(provider, mangaInfo, memoizedChapters, async (e) => {
     const { chapterActions, chapterIndex, chapterLanguage, chaptersList } = e
     if (chapterActions === SignalsCodes.read_chapter) {
@@ -163,6 +166,38 @@ async function sectionChapterList(provider: MangaProvider, mangaInfo: MangaInfo,
       )
     }
   })
+  }catch(e){
+    if(e instanceof Error)
+      Notify.pushError(e)
+  }
+}
+function castHistoryObject($: ReadHistoryObject): HistoryObject2 {
+       return {
+      chapter_index: $.chapter_index,
+        chapter_src: $.chapter_src,
+        lang_iso: $.lang_iso,
+        page_index: $.page_index,
+        pages_read: $.pages_read,
+        read_progress: $.read_progress,
+        sort_order: $.sort_order,
+        mangainfo: {
+          title: $.manga_title,
+          src: $.manga_src,
+          anilistId: $.manga_anilist_id
+        },
+        provider: $.manga_provider,
+        chapter_title:$.chapter_title
+      }
+}
+async function loadProviderByName(newProvider: ServerName) {
+  const currentProvider = CONF.conf_provider.settings.name
+  let provInstance = CONF.conf_provider.providerInstance
+  if (newProvider !== currentProvider) {
+    LOADER.start(`changing provider to: ${newProvider}`)
+    provInstance = await CONF.conf_provider.setProviderByName(newProvider) || provInstance
+    if (LOADER.isSpinning) LOADER.stop()
+  }
+  return provInstance
 }
 async function sectionHistory(provider: MangaProvider) {
   const { settings } = CONF
@@ -219,28 +254,9 @@ async function sectionHistory(provider: MangaProvider) {
       if (!optionsSelect.target || optionsSelect.target === SignalsCodes.exit) {
         continue;
       }
-      //dynamic server change
-      if (mangaTarget.manga_provider !== provider.name) {
-        LOADER.start(`changing server to: ${mangaTarget.manga_provider}`)
-        provider = await CONF.conf_provider.setProviderByName(mangaTarget.manga_provider) ?? provider
-        if (LOADER.isSpinning) LOADER.stop()
-      }
-      const historyObject: HistoryObject2 = {
-      chapter_index: mangaTarget.chapter_index,
-        chapter_src: mangaTarget.chapter_src,
-        lang_iso: mangaTarget.lang_iso,
-        page_index: mangaTarget.page_index,
-        pages_read: mangaTarget.pages_read,
-        read_progress: mangaTarget.read_progress,
-        sort_order: mangaTarget.sort_order,
-        mangainfo: {
-          title: mangaTarget.manga_title,
-          src: mangaTarget.manga_src,
-          anilistId: mangaTarget.manga_anilist_id
-        },
-        provider: mangaTarget.manga_provider,
-        chapter_title:mangaTarget.chapter_title
-      }
+      provider = await loadProviderByName(mangaTarget.manga_provider)
+
+      const historyObject = castHistoryObject(mangaTarget)
       LOADER.start(i18nLoadings.loading_chapters);
       const chapterList = await provider.getChapterList(mangaTarget.manga_src);
       if (LOADER.isSpinning) LOADER.stop();
@@ -431,37 +447,100 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
   }
 }
 
-async function userListSection(){
+async function userListSection() {
   let loop = true
-  while(loop){
+  /** displays all user lists */
+  while (loop) {
     const options = await prompts(UserListPropmt())
-    if(!options.target || (options.target === SignalsCodes.exit)){
+    if (!options.target || (options.target === SignalsCodes.exit)) {
       break
     }
-    else if(options.target === SignalsCodes.list_create){
+    if (options.target === SignalsCodes.list_create) {
       await createUserListPropmt()
       continue;
-    }else {
-      let listInfo = options.target as UserlistsTable
-      let loop2 = true
-      while(loop2){
-        const entriesPropmt = await prompts(UserListEntriesPrompt(listInfo))
-        if(!entriesPropmt.target || entriesPropmt.target === SignalsCodes.exit){
-          loop2 = false
-          continue
-        }else if(entriesPropmt.target === SignalsCodes.list_conf){
-          await UserlistConfigPrompt(listInfo)
-          //verifying that the list has not been deleted
-          if(UserLists.exists(listInfo.id)){
-            listInfo = UserLists.getUserList(listInfo.id)!
-          }else{
-            loop2 = false
-          }
-          continue
-        }
-        Notify.pushMessage('WIP')
-        loop2 = false
-      }
     }
+    await displayUserList(<UserlistsTable> options.target)
+  }
+}
+
+async function displayUserList(list: UserlistsTable) {
+  let mainLoop = true
+  const history = DB.getReadHistory()
+  while (mainLoop) {
+    const entriesPropmt = await prompts(UserListEntriesPrompt(list))
+
+    if (
+      !entriesPropmt.target || 
+      entriesPropmt.target === SignalsCodes.exit
+    ) break
+
+    /**
+     * verifying that the list has not been deleted.
+     * If the list has already been deleted,
+     * continuing in the loop causes an error that crashes the program.
+     */
+    if (entriesPropmt.target === SignalsCodes.list_conf) {
+      await UserlistConfigPrompt(list)
+      if (UserLists.exists(list.id)) {
+        list = UserLists.getUserList(list.id)!
+      } else {
+        break
+      }
+      continue
+    } 
+      const target = <ListRecord>entriesPropmt.target
+      let childLoop = true
+      const historyIndex = history.findIndex((e)=> e.manga_src === target.manga_id)
+      while (childLoop) {
+        let promptObject = listRecordSelectOptions(`${list.name} > ${target.title}`)
+        /**
+         * If the selected manga is not in the reading history,
+         *  we remove the first element from the options array 
+         * so that the option with the code 'resume_read' is not visible.
+         */
+        if(historyIndex < 0){
+          (<Choice[]>promptObject.choices).shift()
+        }
+        const options = await prompts(promptObject)
+        if (!options.target || options.target === SignalsCodes.exit) {
+          break
+        }
+        switch (options.target) {
+          case SignalsCodes.resume_read: {
+            try{
+              const historyObject = history[historyIndex]
+              const provider = await loadProviderByName(historyObject.manga_provider)
+              if(!LOADER.isSpinning) LOADER.start(i18nLoadings.loading_chapters)
+              const chapters = await provider.getChapterList(historyObject.manga_src)
+              if(LOADER.isSpinning) LOADER.stop()
+              await terminalReader(castHistoryObject(historyObject), chapters, historyObject.chapter_index, historyObject.lang_iso)
+              break
+            }catch(e){
+              if(LOADER.isSpinning) LOADER.stop()
+              if(e instanceof Error){
+                Notify.pushError(e)
+              }
+            }
+            break
+          }
+          case SignalsCodes.list_add: {
+            await addToUserListPrompt({src: target.manga_id, title: target.title})
+            break
+          }
+          case SignalsCodes.list_remove: {
+            UserLists.removeFromList(list.id, target.manga_id)
+            Notify.pushMessage(`${target.title} has been removed from the ${list.name} list`)
+            childLoop = false
+            break
+          }
+          case SignalsCodes.get_chapters_list: {
+            if(historyIndex > -1){
+              await loadProviderByName(history[historyIndex].manga_provider)
+            }
+            await sectionChapterList(CONF.conf_provider.providerInstance, {src: target.manga_id, title: target.title})
+            break
+          }
+        }
+      }
   }
 }
