@@ -33,8 +33,11 @@ import {
 import { ChapterSelect, type ChaperSelectOnSelectType } from "./components/chapterList.ts";
 import { Configuration } from "../functions/configuration.ts";
 import type { LanguageInterface, LanguageErrorMessages, LanguageLoadingStates, LanguageGenericsWords} from "../functions/lang.ts";
-import { timeSkipFormater } from "../utils.ts";
-import { Notify } from "../functions/notify.ts";
+import { timeSkipFormater, extractChapterSrcByLang } from "../utils.ts";
+import { Notify, NotifyType } from "../functions/notify.ts";
+import ansi from 'ansi-escapes'
+import chalk from "chalk";
+import { DOWNLOADS_DEFAULT_DIR } from "../const.ts";
 import type { ListRecord, ReadHistoryObject, UserlistsTable } from "../types/database.js";
 import { UserLists } from "../functions/userlists.ts";
 //import { TimeTracker } from "../trackers/local.ts";
@@ -404,13 +407,13 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     const {Downloader} = await import("../functions/downloader.ts")
     let pagesCount = 0;
     const chapterTarget = chapterList[index]
-    const chapterTranslate = chapterTarget.translations[lang]
+    const chapterTranslate = extractChapterSrcByLang(chapterTarget, lang)
     const downloaderInstace = Downloader.getInstance()
     LOADER.start('Getting pages url\'s...')
-    const pagesUrls = await server.getChapterPages(chapterTranslate?.id as string)
+    const pagesUrls = await server.getChapterPages(chapterTranslate.id as string)
     LOADER.stop()
     const downloadProps: DownloadProps = {
-      chapterTitle: chapterTranslate?.title ?? chapterTranslate?.title ?? '',
+      chapterTitle: chapterTranslate.title,
       format: DownloadFormat.pdf,
       mangaTitle: mangaInfo.title,
       serverName: server.name,
@@ -423,6 +426,13 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     })
     downloaderInstace.on('done', () => {
       LOADER.stop()
+      const noti = Notify.getInstace()
+      noti.push({
+        title: i18nLanguage.configuration.downloads.complete,
+        type: NotifyType.event,
+        message:
+          `${mangaInfo.title} chapter, ${ansi.link(chalk.underline.blueBright(chapterTranslate.title), DOWNLOADS_DEFAULT_DIR)} downloaded`
+      })
     })
     downloaderInstace.on('state', (state) => {
       if (LOADER.isSpinning)
