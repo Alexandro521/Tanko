@@ -1,8 +1,7 @@
 allowBuilds:
   sharp: set this to true or false
 minimumReleaseAgeExclude:
-  - '@alex_521/prompts@0.2.0'
-  - '@alex_521/prompts@0.2.2'
+  - '@alex_521/prompts@0.2.0 || 0.2.2'
   - '@img/sharp-darwin-arm64@0.35.1'
   - '@img/sharp-darwin-x64@0.35.1'
   - '@img/sharp-freebsd-wasm32@0.35.1'
@@ -22,3 +21,4 @@ minimumReleaseAgeExclude:
   - sharp@0.35.1
   - axios@1.18.1
   - ora@9.4.1
+  - '@types/bun@1.4.4'
