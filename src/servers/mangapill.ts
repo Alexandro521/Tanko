@@ -5,18 +5,20 @@ import * as cheerio from "cheerio"
 import { extractChapterNumber } from "../utils.ts";
 
 export class MangaPill implements MangaProvider {
+    readonly customHeaders!: Headers;
     public name: ServerName = 'mangapill';
     private axios!: Axios
     constructor() {
-        const headers = new AxiosHeaders()
+        const headers = new Headers()
         headers.set('Host', 'mangapill.com')
         headers.set('Accept-Encoding', 'gzip, deflate, br, zstd')
-        headers.setAccept('text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
+        headers.set('Accept','text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8')
         headers.set('Referer', 'https://mangapill.com/')
-        headers.setUserAgent(GET_USER_AGENT())
+        headers.set('User-Agent',GET_USER_AGENT())
+        this.customHeaders = headers
         this.axios = new Axios({
             baseURL: 'https://mangapill.com/',
-            headers: headers
+            headers: headers.toJSON()
         })
     }
     async search(query: string): Promise<MangaInfo[]> {

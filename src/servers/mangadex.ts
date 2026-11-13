@@ -41,6 +41,7 @@ interface GetProps {
     maxChapterRequest: number
 }
 export class MangaDex implements MangaProvider {
+    readonly customHeaders!: Headers;
     public name: ServerName = "mangadex"
     private baseUrl = 'https://api.mangadex.org'
     private chapterOrder: Object;
@@ -48,9 +49,8 @@ export class MangaDex implements MangaProvider {
         this.chapterOrder = this.serializeOrderObject({
             chapter: MangaOrderEnum.desc,
         })
-        
+        this.customHeaders = new Headers()
     }
-    
     async search(query: string): Promise<MangaInfo[]> {
 
         const { data } = await axios.get<SearchResultMangadex>(`${this.baseUrl}/manga`, {
