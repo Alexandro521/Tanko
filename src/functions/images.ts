@@ -1,134 +1,126 @@
 import { TermImageGraphics } from "./graphics.protocol.ts";
-import { Configuration } from "./configuration.ts";
-import { Notify, NotifyType, type NotifyProps } from "./notify.ts";
-import type { ChapterPage, LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
-import type { SharpInput } from "sharp";
+import { Notify } from "./notify.ts";
+import type { LoadImageProps, TankoTermImgOutput, WSZ } from "../types/types.ts";
 import supportsTerminalGraphics from "supports-terminal-graphics";
+import { Storage, type StorageOptions } from "../shared.ts";
+import { randomInt } from "crypto";
+import { UNITS } from "../types/enum.ts";
 
-export class ImageCache extends Map {
-    private MAX_CACHE_SIZE = 64 * 1024
-    private byteLength = 0;
-    private pointer = 0;
-    private fifo!: string[];
+export interface ImageStorageOptions {
+    maxByteLength: number,
+    maxCacheLength: number
+}
 
-    constructor() {
-        super();
-        Configuration.getInstance().then(conf => {
-            this.MAX_CACHE_SIZE = conf.settings.image_maxCacheByteLength;
-            this.fifo = new Array(conf.settings.image_maxCacheLength)
-        })
-            .catch(err => {
-                const notify = Notify.getInstace()
-                if (err instanceof Error) {
-                    const props: NotifyProps = {
-                        type: NotifyType.error,
-                        message: 'from Image Cache: ' + err.message,
-                        title: err.name,
-                    }
-                    notify.push(props)
-                }
-            })
+export class ImageStorage{
+    private codedImageMap!: Map<string, number>
+    private bufferImageMap!: Map<string, number>
+    readonly storage!: Storage<TankoTermImgOutput | ArrayBuffer >
+    constructor(options: StorageOptions) {
+       this.storage = new Storage(options)
+       this.codedImageMap = new Map()
+       this.bufferImageMap = new Map()
     }
-    pop() {
-        const key = this.fifo[0];
-        if (!super.has(key) || this.pointer <= 0) return;
-        const buffer = <Buffer>super.get(key);
-        this.byteLength = Math.max(0, this.byteLength - buffer.byteLength);
-        this.pointer = Math.max(0, this.pointer - 1);
-        super.delete(key)
-        this.fifo.shift()
+    add(url: string, data: TankoTermImgOutput | ArrayBuffer, ttl?: number){
+        let size: number
+        const key = randomInt(9000) + 1000
+        if('byteLength' in data ){
+            if(this.bufferImageMap.has(url)){
+                const id = this.bufferImageMap.get(url)!
+                this.storage.delete(id)
+            }
+            this.bufferImageMap.set(url, key)
+            size =  data.byteLength
+        } else {
+            if (this.codedImageMap.has(url)) {
+                const id = this.codedImageMap.get(url)!
+                this.storage.delete(id)
+            }
+            this.codedImageMap.set(url, key)
+            size = data.encodedImg.length
+        }
+        this.storage.add(key, data, size, ttl || UNITS.MINUTE_MILISECONDS * 10)
     }
-    free() {
-        super.keys().forEach((key) => {
-            super.delete(key as string)
-        })
-        this.pointer = 0;
-        this.byteLength = 0;
-    }
-    push(key: string, value: TankoTermImgOutput, size: number) {
-        if (
-            this.pointer >= this.fifo.length ||
-            this.byteLength + size >= this.MAX_CACHE_SIZE
-        ) this.pop()
-        super.set(key, value);
-        this.byteLength += size;
-        this.fifo[this.pointer++] = key;
+
+    delete(url: string){
+        const buffer = this.bufferImageMap.get(url)
+        const coded = this.codedImageMap.get(url)
+        if(coded){
+            this.codedImageMap.delete(url)
+            this.storage.delete(coded)
+        }
+        if(buffer){
+            this.bufferImageMap.delete(url)
+            this.storage.delete(buffer)
+        }
     }
     getStats() {
         return {
-            size: this.byteLength,
-            length: this.pointer,
+            size: 0,
+            length: this.codedImageMap.size,
         }
     }
-}
-
-export class ImageLoader extends ImageCache {
-    AbortCtl!: AbortController
-    constructor() {
-        super()
-        this.AbortCtl = new AbortController()
+    free(){
+        this.bufferImageMap.clear()
+        this.codedImageMap.clear()
+        this.storage.free()
     }
-    cacheHit(page: ChapterPage) {
-        const key =  `${page.src}_request` 
-        return this.has(page.src) || this.has(key)
+    has(url: string) { 
+        return {
+            codec: this.codedImageMap.get(url),
+            buffer: this.bufferImageMap.get(url)
+        }
     }
-    async loadImage(imgUrl: string, props: LoadImageProps) {
-        const settings = (await Configuration.getInstance()).settings
-        if (this.has(imgUrl) && !props.forceReload) {
-            const cache = <TankoTermImgOutput>this.get(imgUrl)
-            let bakeWsz = cache.wsz
-            let newWsz = props.cotainerSize
-            
-            let keyList = Object.keys(bakeWsz)
+    getImg(url: string){
+        const id = this.codedImageMap.get(url)
+        if(id){
+            return this.storage.get(id) as TankoTermImgOutput
+        }
+    }
+    getBuffer(url: string){
+        const id = this.bufferImageMap.get(url)
+        if(id){
+            return this.storage.get(id) as ArrayBuffer
+        }
+    }
+    async makeImage(imgUrl: string, props: LoadImageProps) {
+        const has = this.has(imgUrl)
+        if (has.codec && !props.forceReload) {
+            const cache = <TankoTermImgOutput> this.storage.get(has.codec)!
+            let keyList = Object.keys(cache.wsz)
             let index = 0
             let hasDiff = false;
-            
             while (!hasDiff && index < keyList.length) {
                 const keyName = keyList[index++] as keyof WSZ
-                hasDiff = (bakeWsz[keyName]) !== (newWsz[keyName])
+                hasDiff = (cache.wsz[keyName]) !== (props.wsz[keyName])
             }
             if(!hasDiff) return
-            else if(supportsTerminalGraphics.stdout.kitty){
-                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.cotainerSize, props.fit, props.maxWidth)
-                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.cotainerSize)    
-                const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.cotainerSize, position: imgPosition})
+            //special case
+            if(supportsTerminalGraphics.stdout.kitty){
+                const imgScale = TermImageGraphics.scaleImg(cache.imgsz.img_originalWidth,cache.imgsz.img_originalHeight, props.wsz, props.imageFit || 'cover', props.maxImgWidth)
+                const imgPosition = TermImageGraphics.calcPosition(props.position, imgScale, props.wsz)    
+                const kittyEncodedImg =  TermImageGraphics.kitty(cache.encodedImg, {imgsz: imgScale, wsz: props.wsz, position: imgPosition})
                 const output: TankoTermImgOutput = {
                     encodedImg: kittyEncodedImg,
                     imgsz: imgScale,
                     position: imgPosition,
-                    wsz: props.cotainerSize
+                    wsz: props.wsz
                 }
-                this.set(imgUrl, output)
+                this.add(imgUrl, output)
             }
-            else {
-                const key = `${imgUrl}_request`
-                const imgBuffer = this.get(key) as SharpInput
-                const newImg = TermImageGraphics.make(imgBuffer, {
-                        position: props.position,
-                        wsz: props.cotainerSize,
-                        forceAscii: settings.reader_forceAscii,
-                        imageFit: props.fit,
-                        forceProtocol: settings.reader_forceImgProtocol,
-                        maxImgWidth: props.maxWidth
-                    })
-                this.set(imgUrl, newImg)
+            else if(has.buffer){
+                const imgBuffer = this.storage.get(has.buffer) as ArrayBuffer
+                const newImg = await TermImageGraphics.make(imgBuffer, props)
+                this.add(imgUrl, newImg)
             }
         }
         try {
-            const key = `${imgUrl}_request`
-            const  buffer: ArrayBuffer | undefined = this.get(key)
-            if(!buffer) throw new Error('invalid image buffer')
-            const imgObject = await TermImageGraphics.make(buffer, {
-                wsz: props.cotainerSize,
-                position: props.position,
-                forceAscii: settings.reader_forceAscii,
-                imageFit: props.fit,
-                forceProtocol: settings.reader_forceImgProtocol,
-                maxImgWidth: props.maxWidth
-            })
-
-            this.set(key, buffer)
-            this.push(imgUrl, imgObject, buffer.byteLength)
+            if(has.buffer){
+                const  buffer = <ArrayBuffer> this.storage.get(has.buffer)
+                const imgObject = await TermImageGraphics.make(buffer, props)
+                this.add(imgUrl, imgObject)
+                return
+            }
+            throw new Error('invalid image buffer')
         } catch (e) {
             if (e instanceof Error)
                 Notify.pushError(e)
