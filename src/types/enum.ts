@@ -109,3 +109,10 @@ export enum MediaSort {
   Volumes = 'VOLUMES',
   VolumesDesc = 'VOLUMES_DESC'
 }
+
+export enum UNITS {
+    KB = 1024,
+    MB = 1048576,
+    MINUTE_MILISECONDS = 60000,
+    SECOND_MILISECONDS = 1000
+}

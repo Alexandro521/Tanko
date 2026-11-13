@@ -12,13 +12,15 @@ import type {
 } from "../types/types.ts"
 
 export class LeerCapitulo implements MangaProvider {
+    readonly customHeaders!: Headers;
     private page: Page
     private axios = new Axios({baseURL: "https://www.leercapitulo.co", method: 'GET'})
     public name: ServerName = "leercapitulo";
     private baseUrl = "https://www.leercapitulo.co"
 
     constructor(pageContext: Page) {
-        this.page = pageContext
+        this.page = pageContext    
+        this.customHeaders = new Headers()
     }
 
     async getLastMangas(): Promise<MangaInfo[]> {

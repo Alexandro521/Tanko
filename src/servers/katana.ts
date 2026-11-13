@@ -1,20 +1,25 @@
-import axios, { AxiosHeaders } from "axios";
+import { Axios, AxiosHeaders } from "axios";
 import * as cheerio from "cheerio";
 import type { Chapter, ChapterLanguage, ChapterPage, MangaInfo, MangaProvider, ServerName } from "../types/types.ts";
 import { GET_USER_AGENT } from "../const.ts";
 import { extractChapterNumber, sortChapterList } from "../utils.ts";
 
 export class MangaKatana implements MangaProvider {
+  readonly customHeaders!: Headers;
   public name: ServerName = 'katana';
-  private axioHeaders!:AxiosHeaders
   private baseUrl = 'https://mangakatana.com/'
+  private axios!: Axios
   constructor() {
-    const headers = new AxiosHeaders()
+    const headers = new Headers()
     const agent = GET_USER_AGENT()
     headers.set('User-Agent', agent)
     headers.set('Origin', 'https://mangakatana.com')
     headers.set('Host', 'mangakatana.com')
-    this.axioHeaders = headers
+    this.customHeaders = headers;
+    this.axios = new Axios({
+      baseURL: this.baseUrl,
+      headers: headers.toJSON()
+    })
   }
   async search(query: string): Promise<MangaInfo[]> {
     const headers = new Headers()
@@ -50,9 +55,7 @@ export class MangaKatana implements MangaProvider {
     return searchResults
   }
   async getLastMangas(): Promise<MangaInfo[]> {
-    const res = await axios.get(`${this.baseUrl}/latest`, {
-      headers: this.axioHeaders,
-    })
+    const res = await this.axios.get('/latest')
     const results: MangaInfo[] = new Array()
     const $ = cheerio.load(res.data)
     const resultsContainer = 'div#wrap_content div#book_list'
@@ -83,9 +86,7 @@ export class MangaKatana implements MangaProvider {
     return results
   }
   async getChapterList(mangaSrc: string): Promise<Chapter[]> {
-    const res = await axios.get(`${this.baseUrl}/manga/${mangaSrc}`, {
-      headers: this.axioHeaders
-    })
+    const res = await this.axios.get(`/manga/${mangaSrc}`)
     const $ = cheerio.load(res.data)
     const container = 'div#wrap_content div#single_book div.chapters table.uk-table.uk-table-striped tbody tr'
     const chapters: Chapter[] = new Array()
@@ -112,9 +113,7 @@ export class MangaKatana implements MangaProvider {
     return sortChapterList(chapters, 'desc')
   } 
   async getChapterPages(mangaSrc: string): Promise<ChapterPage[]> {
-    const res = await axios.get(`${this.baseUrl}/manga/${mangaSrc}`, {
-      headers: this.axioHeaders
-    })
+    const res = await this.axios.get(`/manga/${mangaSrc}`)
     const $ = cheerio.load(res.data)
     const script = $('script').toString()
     const findVariable = 'var thzq='
@@ -153,9 +152,7 @@ export class MangaKatana implements MangaProvider {
     return pages
   }
   async getMangaInfo(mangaSrc: string): Promise<MangaInfo> {
-    const res = await axios.get(`${this.baseUrl}/manga/${mangaSrc}`, {
-      headers: this.axioHeaders
-    })
+    const res = await this.axios.get(`/manga/${mangaSrc}`)
     const $ = cheerio.load(res.data)
     const title = $('h1.heading').text()
     const description = $('div#wrap_content div#single_book div.summary p').text()
@@ -166,9 +163,7 @@ export class MangaKatana implements MangaProvider {
     }
   }
   async getPopulars():Promise<MangaInfo[]> {
-    const res = await axios.get(`${this.baseUrl}`, {
-      headers: this.axioHeaders,
-    })
+    const res = await this.axios.get('/')
     const results: MangaInfo[] = new Array()
     const $ = cheerio.load(res.data)
     const resultsContainer = 'div#wrap_content div#hot_book div.widget-body'
