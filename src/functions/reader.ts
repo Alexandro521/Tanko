@@ -6,17 +6,17 @@ import type {
   ChapterLanguage,
   WSZ,
   TermImgProtocolName,
-  TankoTermImgOutput,
   LoadImageProps,
   ImgPreloadingStrategy,
 } from "../types/types.js";
-import { ImageLoader } from "./images.ts";
+import { ImageStorage } from "./images.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
-import { RequestPool, type RequestStruct } from "./request.ts";
+import { Net, RequestStatus } from "./net.ts";
 import { centerX } from "../utils.ts";
 import type { LangIso } from "./lang.ts";
 import { Configuration } from "./configuration.ts";
+import { UNITS } from "../types/enum.ts";
 
 const CONF = await Configuration.getInstance()
 export class PagesControl {
@@ -24,95 +24,76 @@ export class PagesControl {
   private currenPage!: ChapterPage;
   private readCheckList!: boolean[];
   private pageIndex = 0;
-  private requestPool!:RequestPool
-  public imageLoader!:ImageLoader
-  constructor() {
+  private net!:Net
+  public imgStorage!:ImageStorage
 
-    this.imageLoader = new ImageLoader();
+  constructor() {
+    this.imgStorage = new ImageStorage({
+      maxSize: UNITS.MB * 1024, 
+      maxLength: 256, 
+      TTL: 0
+    });
     this.pages = [];
     this.currenPage = this.pages[0];
     this.readCheckList = new Array(this.pages.length).fill(false);
-    this.requestPool = new RequestPool()
-    this.requestPool.setResponseChecker((response, reject)=>{
-      if (response.ok) {
-        const contentType = response.headers.get('Content-Type')
-        if (!contentType || (!contentType.startsWith('image') && contentType !== ('application/octet-stream') )){
+    this.net = new Net({
+      requestMaxRetries: 5,
+      storage: {
+        maxLength: 24,
+        maxSize: UNITS.MB * 512,
+        TTL: UNITS.MINUTE_MILISECONDS * 2
+      }
+    })
+    this.net.appendMiddleWare((headers, reject)=>{
+        const contentType = headers.get('Content-Type')
+        if (!contentType || (!contentType.startsWith('image') && contentType !== ('application/octet-stream'))){
           const reason = `Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`
-          reject(reason)
-        }
-      }else{
-        reject(`Invalid HTTP response. Status: ${response.status} ${response.statusText}`)
+          reject(false, reason)    
       }
     })
-
-    this.requestPool.on('resolve', async (e: {url: string, rid: number})=>{
-      const key =  `${e.url}_request`
-      const res = this.requestPool.read(e.url, false)
-      if(res instanceof Response){  
-        const buffer = await res.arrayBuffer()
-        this.imageLoader.set(key, buffer)
+    this.net.event.on('resolve', async rid =>{
+      const {url} = this.net.get(rid)!
+      const res = this.net.read(rid, false)
+      if(res instanceof Response){
+          const exists = this.imgStorage.has(url)
+          if(!exists.buffer){
+            this.imgStorage.add(url, ( await res.arrayBuffer()))
+          }
       }
     })
-
   }
-  preLoader(limit = 5, estrategy: ImgPreloadingStrategy){
-    const srsc: string[] = []
-
+  pagePreFetch(range = 5, estrategy: ImgPreloadingStrategy){
+    let candidates: ChapterPage[];
     switch(estrategy){
       case 'around':{
-        const pageIndex = this.pageIndex
-        for(let i = 1; i <= limit; i++){
-
-          const srcPageLeft = this.pages[ Math.max(pageIndex - i, 0) ].src
-          const srcPageRight = this.pages[ Math.min(pageIndex + i, this.PagesLength -1) ].src
-
-          const imageLoaderKeyLeft = `${srcPageLeft}_request`
-          const imageLoaderKeyRight = `${srcPageRight}_request`
-
-          if(!this.requestPool.has(srcPageLeft)  && !this.imageLoader.has(imageLoaderKeyLeft))
-          {
-            srsc.push(srcPageLeft)
-          }
-          if(!this.requestPool.has(srcPageRight)  && !this.imageLoader.has(imageLoaderKeyRight)){
-            srsc.push(srcPageRight)
-          }
-        }
+        let start = Math.max(0, this.pageIndex - range)
+        let end = Math.min(this.PagesLength, this.pageIndex + range)
+        candidates = this.pages.slice(start, end)
+        break
       }
       case 'forward':{
-        for(let i = 1; i <= limit; i++){
-          const srcPage = this.pages[(this.pageIndex + i, this.PagesLength -1)].src
-          const imageLoaderKey = `${srcPage}_request`
-          if(!this.requestPool.has(srcPage)  && !this.imageLoader.has(imageLoaderKey)){
-            srsc.push(srcPage)
-          }
-        }
+        let end = Math.min(this.PagesLength, this.pageIndex + range)
+        candidates = this.pages.slice(this.pageIndex, end)
+        break
       }
       case 'fill':{
-        let i = 0;
-        while(i < this.pages.length && srsc.length < limit){
-          const pageSrc = this.pages[i].src
-          const key = `${pageSrc}_request`
-          const isRead = this.readCheckList[i]
-          if(!isRead && !this.requestPool.has(pageSrc) && !this.imageLoader.has(key)){
-            srsc.push(pageSrc)
+        candidates = []
+        for(let i = 0, n = range; i < this.PagesLength && n > 0; i++){
+          if(!this.readCheckList[i]){
+              candidates.push(this.pages[i])
+              n--;
           }
-          i++
         }
+        break
       }
     }
-    const currentProvider = CONF.conf_provider.provider.name
-    const mangapillPatch = {
-      Referer: 'https://mangapill.com/',
-      Host: 'https://mangapill.com/',
-    }
-
-    for (const src of srsc) {
-      if (currentProvider === 'mangapill') {
-        this.requestPool.push(src, {headers: mangapillPatch})
-      } else {
-        this.requestPool.push(src)
-      }
-    }
+    const {customHeaders} = CONF.conf_provider.provider
+    candidates.filter(({src})=> {
+      const st  = this.imgStorage.has(src)
+      return !(st.buffer || st.codec || this.net.has(src))
+    }).forEach(e=>{
+      this.net.pushRequest(e.src, {headers: customHeaders})
+    })
   }
   nextPage() {
     if (this.pageIndex < this.pages.length - 1) {
@@ -129,88 +110,87 @@ export class PagesControl {
   reset() {
     this.pageIndex = 0;
     this.currenPage = this.pages[0];
-    this.imageLoader.free();
-    this.requestPool.free()
+    this.imgStorage.free();
+    this.net.free()
   }
-  cacheHit(page: ChapterPage) {
-    return this.imageLoader.cacheHit(page);
+  storageHit(page: ChapterPage) {
+    const has = this.imgStorage.has(page.src)
+    return has.buffer || has.codec;
   }
   //@ts-ignore
-  async loadPage(props: LoadImageProps) {
+  async loadPage(props: LoadImageProps): Promise<boolean> {
     try {
-      const imgUrl = this.currenPage.src
-      const imageLoaderKey = `${imgUrl}_request`
-      const hasImageBuffer = this.imageLoader.has(imageLoaderKey)
-      let hasRequest = this.requestPool.has(imgUrl)
-      const { invalidateCache } = props
+      const imageSrc = this.currenPage.src
+      const isImageInStorage = this.imgStorage.has(imageSrc)
 
-      if(!(hasRequest && hasImageBuffer) || invalidateCache){
-        this.requestPool.push(imgUrl)
-        hasRequest =  this.requestPool.has(imgUrl)
-      }
-
-      if ((hasRequest && !hasImageBuffer) || invalidateCache) {
-        const promiseStatus = await this.requestPool.waitFor(imgUrl)
-        let request = this.requestPool.get(imgUrl) as RequestStruct
-        if (!promiseStatus) {
-          const currentProvider = CONF.conf_provider.provider.name
-
-          const mangapillPatch = {
-              Referer: 'https://mangapill.com/',
-              Host: 'https://mangapill.com/',
-          }
-          
-          for (let retrieve = 0; retrieve < 3; retrieve++){
-            if (currentProvider === 'mangapill') {
-              this.requestPool.push(imgUrl, {headers: mangapillPatch})
-            } else {
-              this.requestPool.push(imgUrl)
-            }
-            await this.requestPool.waitFor(imgUrl)
-            request = this.requestPool.get(imgUrl) as RequestStruct
-            if(request.status === 'resolve') break
-          }
-          if(request.status !== 'resolve'){
-            throw new Error(`--Page ${this.pageIndex +1}--\n${request.messageError} - 3 retrieves`)
-          }
+      if (!isImageInStorage.buffer || props.invalidateCache) {
+        if (!this.net.has(imageSrc) || props.invalidateCache){
+          this.net.pushRequest(imageSrc)
         }
-        const response = this.requestPool.read(imgUrl, true)
-        if(response){
-          const arrayBuffer = await response.arrayBuffer()
-          this.imageLoader.set(imageLoaderKey, arrayBuffer)
-        } else{
-          throw new Error(`Invalid HTTP response`)
+        const rid = this.net.getRid(imageSrc)!
+        
+        if ( await this.net.waitFor(rid) && this.net.getStatus(rid)! === RequestStatus.resolve) {
+          const arrayBuffer = await (this.net.read(rid, false)).arrayBuffer()
+          this.imgStorage.add(imageSrc, arrayBuffer)
+        } else {
+          throw new Error(`--Page ${this.pageIndex + 1}--\n${''} - fail to fetch`)
         }
       }
-      await this.imageLoader.loadImage(imgUrl, props);
-      if (!this.readCheckList[this.pageIndex]) {
-        this.readCheckList[this.pageIndex] = true;
+      const has = this.imgStorage.has(imageSrc)
+      if(has.buffer){
+        await this.imgStorage.makeImage(imageSrc, props);
+        if ( this.readCheckList[this.pageIndex] === false ) {
+          this.readCheckList[this.pageIndex] = true;
+        }
+        if(props.enableImgPreloading){
+          this.pagePreFetch(props.maxImagePreloading, props.imgPreloadingStrategy)
+        }
       }
-      if(props.enableImgPreloading){
-        this.preLoader(props.maxImagePreloading, props.imgPreloadingStrategy)
-      }
+      return true
     } catch (e) {
-      if (e instanceof Error) Notify.pushError(e);
+      if (e instanceof Error) {
+        if(e.message !== 'abort'){
+          Notify.pushError(e);
+          return true
+        }
+        return false
+      }
     }
   }
-  render() {
-    let page = this.currenPage;
-    if (!page?.src) return;
-    if (this.imageLoader.has(page.src)) {
-      const image = this.imageLoader.get(page.src) as TankoTermImgOutput;
-      if(!image?.encodedImg) return;
-      process.stdout.write(
-        ansi.cursorShow + image.encodedImg + ansi.cursorHide,
-      );
+  aborLoading(){
+    try{
+      const info = this.net.getByUrl(this.currenPage.src)
+      if(info){
+        if(info.status === RequestStatus.pendding){
+          this.net.abort(info.rid)
+        }
+      }
+    }catch(e){
+
     }
-    else {
-      const noti = Notify.getInstace()
-      const box = noti.getf()
-      if(box){
-        const position = centerX(box.width, process.stdout.columns)
-        box.strBox.split('\n').forEach(line=>{
-            process.stdout.write(ansi.cursorForward(position) + line + '\n')
-        })
+  }
+  renderPage(pageIndex: number) {
+    try{
+      const page = this.pages[pageIndex]
+      const has = this.imgStorage.has(page.src)
+      if (has.codec) {
+        const image = this.imgStorage.getImg(this.currenPage.src);
+        if(image?.encodedImg){
+          process.stdout.write(
+            image.encodedImg + ansi.cursorHide,
+          );
+        } else throw new Error('Error: image buffer loss')
+      }
+    }catch(err){
+      if(err instanceof Error){
+        const nofify = Notify.getInstace()
+        const box = nofify.getf()
+        if(box){
+          const position = centerX(box.width, process.stdout.columns)
+          box.strBox.split('\n').forEach(line=>{
+              process.stdout.write(ansi.cursorForward(position) + line + '\n')
+          })
+        }
       }
     }
   }
@@ -243,6 +223,10 @@ export class PagesControl {
     for(let i = 0;  i < n; i++){
       this.readCheckList[i] = true
     }
+  }
+  free(){
+    this.net.free()
+    this.imgStorage.free()
   }
   get PagesLength() {
     return this.pages.length;
