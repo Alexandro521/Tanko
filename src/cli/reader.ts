@@ -1,6 +1,6 @@
 import ora from "ora"
 import boxen, { type Options } from "boxen"
-import ansi, { beep } from "ansi-escapes"
+import ansi from "ansi-escapes"
 import { memoryUsage, stdout } from "node:process"
 import type { Key } from "node:readline"
 import { downloadSection } from "./menu.ts"
@@ -18,6 +18,7 @@ import { addToUserListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
 import {SqliteDB} from "../database/sqlite/sqlite.ts"
+import EventEmitter from "node:events"
 
 const LOADER = ora()
 const CONFIGURATION = await Configuration.getInstance()
@@ -35,7 +36,9 @@ CONFIGURATION.on('updatelanguage', (lang) => {
 CONFIGURATION.on('login', (trackerName) => {
   trackerAniList = CONFIGURATION.conf_session.getTracker(trackerName)
 })
-
+type EventMap = {
+  'render': [pageIndex: number, chapterIndex: number]
+}
 export async function terminalReader(
   context: MangaInfo | HistoryObject2,
   chapters: Chapter[],
@@ -43,6 +46,10 @@ export async function terminalReader(
   lang: Translations
 ){
   return new Promise<void>(async (resolve) => {
+    const GLOBAL = {
+      ACTION_LOCK: false,
+      EVENT: new EventEmitter<EventMap>()
+    }
     const TIME_TRACKER = TimeTracker.getInstance<{manga_id: string, pages_read: number}>()
     let DEBUG_MODE = false
     let FULLSCREEN_MODE = false
@@ -74,6 +81,18 @@ export async function terminalReader(
         }
       }
     }
+    GLOBAL.EVENT.on('render', (candidatePageIndex, candidateChapterIndex)=>{
+      if (LOADER.isSpinning)
+          LOADER.stop()
+      const currentChapterIndex = chapterCtl.geChapterIndex()
+      const currentPageIndex = pagesCtl.index
+      if(currentChapterIndex === candidateChapterIndex && currentPageIndex === candidatePageIndex){
+        pagesCtl.renderPage(candidatePageIndex)
+      }else {
+        pagesCtl.renderPage(currentPageIndex)
+      }
+      trackerCtl()
+    })
     const trackerCtl = async () => {
       if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
         const chapterInfo = chapterCtl.getChapterInfo()
@@ -105,7 +124,6 @@ export async function terminalReader(
         y: FULLSCREEN_MODE ? 0 : (stdout.rows - RENDER_WSZ.rows) + (TOP_PADDING), 
         x: FULLSCREEN_MODE ? 0 : stdout.columns - RENDER_WSZ.colums 
       }
-
       const imageContainer = virtualWindow({
         cellPxHeigth: TerminalControl.wsz.w_cellPxHeight,
         cellPxWidth: TerminalControl.wsz.w_cellPxWidth,
@@ -113,16 +131,17 @@ export async function terminalReader(
         rows: FULLSCREEN_MODE ? stdout.rows :  RENDER_WSZ.rows - (TOP_PADDING + BOTTOM_PADDING),
         position: imgPosition,
       })
-
       const imageLoaderAttr: LoadImageProps = {
-        cotainerSize: imageContainer,
+        wsz: imageContainer,
         invalidateCache,
         forceReload,
+        forceProtocol: CONFIGURATION.settings.reader_forceImgProtocol,
+        forceAscii: CONFIGURATION.settings.reader_forceAscii,
         maxImagePreloading: CONFIGURATION.settings.reader_maxImagePreloading,
         enableImgPreloading: CONFIGURATION.settings.reader_enableImgPreloading,
         imgPreloadingStrategy: CONFIGURATION.settings.reader_imgPreloadingStrategy,
-        fit: IMGFITMODE,
-        maxWidth: CONFIGURATION.settings.reader_maxImgWidth,
+        imageFit: IMGFITMODE,
+        maxImgWidth: CONFIGURATION.settings.reader_maxImgWidth,
         position: {
           x: 'center',
           y: 'center',
@@ -134,24 +153,22 @@ export async function terminalReader(
       if(LOADER.isSpinning)
         LOADER.stop()
       
+      const candidatePage = pagesCtl.index
+      const candidateChapter = chapterCtl.geChapterIndex()
       LOADER.prefixText = ansi.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
       if(!DEBUG_MODE)
         LOADER.start(loading_states.default_loading)
-      
-      await pagesCtl.loadPage(imageLoaderAttr)
-
-      if(LOADER.isSpinning)
-        LOADER.stop()
-
-      pagesCtl.render()
-      await trackerCtl()
+      pagesCtl.loadPage(imageLoaderAttr).then(()=>{
+        GLOBAL.EVENT.emit('render', candidatePage, candidateChapter)
+      })
     }, 300)
 
     const debugModeRendeer = async () => {
       const pages = pagesCtl.getPages()
       const index = pagesCtl.index
-      const cacheHit= pagesCtl.imageLoader.cacheHit(pages[index])
-      const cacheStats = pagesCtl.imageLoader.getStats()
+      const cacheHit= pagesCtl.storageHit(pages[index])
+      const storageSize = pagesCtl.imgStorage.storage.byteLength / 1024 / 1024
+      const storaMaxSize = pagesCtl.imgStorage.storage.constrains.maxByteLength / 1024 / 1024
       const wsz = TerminalControl.wsz
       const forl = chapterCtl.isFirstOrLast()
       const forlStr = (forl < 0)  ? 'last' : (forl > 0) ? 'first' : 'none'
@@ -164,20 +181,21 @@ export async function terminalReader(
       } = memoryUsage()
 
       const rows = [
-        `cache hit:${cacheHit}:${cacheHit ? 'green' : 'red'}`,
-        `Is it the first or the last? :${forlStr}:blue`,
-        `cache alloc size:${cacheStats.size} MB:yellow`,
-        `cache length:${pagesCtl.imageLoader.size}:green`,
-        `chapters length:${chapters.length}:gray`,
-        `chapter index:${chapterCtl.geChapterIndex()}:gray`,
-        `image protocol:${TerminalControl.graphicalProtocol}:blue`,
-        `window width:${wsz.w_width}:blue`,
-        `window height:${wsz.w_height}:blue`,
-        `window colums:${wsz.w_colums}:blue`,
-        `window rows:${wsz.w_rows}:blue`,
-        `window cell width:${wsz.w_cellPxWidth}:blue`,
-        `window cell height:${wsz.w_cellPxHeight}:blue`,
-        `window ratio:${wsz.w_ratio}:blue`,
+        `Is it the first or the last? :${forlStr}:blueBright`,
+        `storage hit:${cacheHit}:${cacheHit ? 'green' : 'red'}`,
+        `image storage size:${storageSize.toFixed(1)} MB:blueBright`,
+        `image storage max size:${storaMaxSize.toFixed(1)} MB:blueBright`,
+        `image storage length:${pagesCtl.imgStorage.storage.size}:blueBright`,
+        `chapters length:${chapters.length}:blue`,
+        `chapter index:${chapterCtl.geChapterIndex()}:blue`,
+        `image protocol:${CONFIGURATION.settings.reader_forceImgProtocol}:blueBright`,
+        `window width:${wsz.w_width}:blueBright`,
+        `window height:${wsz.w_height}:blueBright`,
+        `window colums:${wsz.w_colums}:blueBright`,
+        `window rows:${wsz.w_rows}:blueBright`,
+        `window cell width:${wsz.w_cellPxWidth}:blueBright`,
+        `window cell height:${wsz.w_cellPxHeight}:blueBright`,
+        `window ratio:${wsz.w_ratio}:blueBright`,
       ]
       const memoryUse = [
         `Rss:${(rss/1024/1024).toFixed(2)}:MB`,
@@ -188,7 +206,7 @@ export async function terminalReader(
       ]
       const str = rows.map((e)=>{
         const s = e.split(':')
-        const key =  chalk.yellow(s[0])
+        const key =  chalk.yellowBright(s[0])
         const value = chalk[s[2] as ColorName](s[1])
         return `${key}:${value}`
       }).join('\n')
@@ -303,7 +321,10 @@ export async function terminalReader(
       }
       DB.insertOnHistory(historyEntry)
     }
+    
     const render = async (invalidateCache=false, forceReload=false) => {
+      if (LOADER.isSpinning)
+          LOADER.stop()
       if (!process.stdin.isRaw) return;
       process.stdout.write(ansi.clearScreen)
       if (!FULLSCREEN_MODE && IMGFITMODE !== 'cover') {
@@ -324,12 +345,14 @@ export async function terminalReader(
             if (isFirstOrLast === 1) {
               isFirstOrLast = 0;
             }
+            pagesCtl.free()
             await chapterCtl.nextChapter()
             break
           case SignalsCodes.previous_chapter:
             if (isFirstOrLast === -1) {
               isFirstOrLast = 0
             }
+            pagesCtl.free()
             await chapterCtl.prevChapter()
             break
         }
@@ -422,6 +445,7 @@ export async function terminalReader(
         }
         process.stdout.write(ansi.clearScreen)
         pagesCtl.reset()
+        pagesCtl.free()
         resolve();
       } 
       else if (keyName === 'left' || keyName === 'right') {
