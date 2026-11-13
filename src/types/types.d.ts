@@ -134,6 +134,7 @@ export type TrackerInterface = {
 
 export declare class MangaProvider{
     constructor(context: Page)
+    readonly public customHeaders: Headers
     public name:ServerName
     search(query: string ) : Promise<MangaInfo[]>
     getMangaInfo(mangaSrc: string): Promise<MangaInfo>
@@ -282,16 +283,12 @@ export interface TankoTermImgOutput{
     imgsz: IMGSZ,
     wsz: WSZ
 }
-export interface LoadImageProps {
-    cotainerSize: WSZ,
-    position: StructImgPosition,
+export interface LoadImageProps extends TankoTermImgInput{
     invalidateCache?: boolean,
     forceReload?: boolean,
     maxImagePreloading: number
     enableImgPreloading: boolean
     imgPreloadingStrategy: ImgPreloadingStrategy
-    fit: ObjectFit
-    maxWidth: number,
 }
 export interface HistoryObject2 {
     chapter_index: number,
