@@ -37,7 +37,7 @@ import { timeSkipFormater, extractChapterSrcByLang } from "../utils.ts";
 import { Notify, NotifyType } from "../functions/notify.ts";
 import ansi from 'ansi-escapes'
 import chalk from "chalk";
-import { DOWNLOADS_DEFAULT_DIR } from "../const.ts";
+import { DOWNLOADS_DEFAULT_DIR, GLOBAL_STORAGE } from "../const.ts";
 import type { ListRecord, ReadHistoryObject, UserlistsTable } from "../types/database.js";
 import { UserLists } from "../functions/userlists.ts";
 //import { TimeTracker } from "../trackers/local.ts";
@@ -402,7 +402,7 @@ async function sectionLastest(server: MangaProvider) {
     pushError(e)
   }
 }
-export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: Translations, server: MangaProvider) {
+export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter[], index: number, lang: Translations, server: MangaProvider, basePath?: string) {
   try {
     const {Downloader} = await import("../functions/downloader.ts")
     let pagesCount = 0;
@@ -419,12 +419,11 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
       serverName: server.name,
       pages: pagesUrls,
     }
-    downloaderInstace.on('download_page', (e) => {
+    downloaderInstace.event.on('received', (e) => {
       pagesCount++;
-      
       LOADER.text = `${i18nLoadings.downloading_pages} #${e + 1} [${pagesCount}/${pagesUrls.length}]`
     })
-    downloaderInstace.on('done', () => {
+    downloaderInstace.event.on('done', () => {
       LOADER.stop()
       const noti = Notify.getInstace()
       noti.push({
@@ -434,10 +433,8 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
           `${mangaInfo.title} chapter, ${ansi.link(chalk.underline.blueBright(chapterTranslate.title), DOWNLOADS_DEFAULT_DIR)} downloaded`
       })
     })
-    downloaderInstace.on('state', (state) => {
-      if (LOADER.isSpinning)
-        LOADER.text = state + '...'
-    })
+
+    const cacheKey = 1445
     while (true) {
       pagesCount = 0
       const format = await prompts(downloadFormatOptions())
@@ -447,9 +444,27 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
       }
       downloadProps.format = format.target
       LOADER.start('downloading...')
-      await downloaderInstace.download(downloadProps)
+      let cacheFlag = false
+      const storageProps = <DownloadProps> GLOBAL_STORAGE.get(cacheKey)
+      if(storageProps){
+        let matchCounter = 0
+        const keys = Object.keys(downloadProps).filter(e => e !== 'format' && e !== 'pages')
+        keys.forEach( e =>{
+            const k = e as keyof DownloadProps
+            if(storageProps[k] === downloadProps[k]) matchCounter++
+        })
+        if(matchCounter >= 3)  cacheFlag = true
+        else  {
+          GLOBAL_STORAGE.delete(cacheKey)
+          await downloaderInstace.free()
+        }
+      }
+      await downloaderInstace.download(downloadProps, cacheFlag, server.customHeaders, basePath)
+      GLOBAL_STORAGE.add(cacheKey, downloadProps, 1)
       LOADER.stop()
     }
+    GLOBAL_STORAGE.delete(cacheKey)
+    await downloaderInstace.free()
   } catch (e) {
     if (LOADER.isSpinning) LOADER.stop()
     
