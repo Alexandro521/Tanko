@@ -344,3 +344,8 @@ export function extractChapterSrcByLang(chapter: Chapter, lang: Translations): C
     const avalibelTranslations = Object.keys(chapter.translations) as Translations[]
     return chapter.translations[avalibelTranslations[0]] as ChapterLanguage
   }
+
+  export function isAcceptedContentTypeImage(header: string){
+    return new RegExp(/image\/(png|avif|webp|jpeg)|application\/octet-stream/)
+    .test(header)
+  }
