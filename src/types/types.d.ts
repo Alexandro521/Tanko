@@ -5,6 +5,7 @@ import type { Query } from "./anilist-schema.js"
 import type { AltTitles } from "./mangadex/search.js"
 import type { SharpInput } from "sharp"
 import type { DateTimeString } from "./database.js"
+import type { DownloadFormat } from "./enum.ts"
 
 
 export interface ChapterPage  {
@@ -208,11 +209,9 @@ export interface DownloadProps {
 }
 export interface FormatProps {
     path: string,
-    pages: DownloadPageProps[],
+    pages: {url: string, index: number}[],
 }
-export interface DownloadPageProps {
-    index: number, data: ImgBuffer
-}
+
 export interface  ImgBuffer {
     data: Buffer<ArrayBufferLike>;
     info: sharp.OutputInfo;
