@@ -39,7 +39,7 @@ export enum NET_MESSAGE_CODES {
     DELETE = 7
 }
 type NetEvent = {
-    'resolve': [rid: number],
+    'resolve': [rid: number, contentlength: number],
     'reject': [rid: number, message?: string],
     'abort': [rid: number],
     'sending': [rid: number],
@@ -47,7 +47,7 @@ type NetEvent = {
 type NetInternalEvent = {
     'push_queu': [],
     'push_queu_atemporal': [],
-    'request_resolve': [rid: number],
+    'request_resolve': [rid: number, contentLength: number],
     'request_reject': [rid: number, message: string]
 }
 /**
@@ -72,7 +72,7 @@ export interface NetStorageOptions {
 }
 export interface NetOptions{
     requestMaxRetries?: number;
-    
+    queuRequestLength?: number
     storage?: NetStorageOptions
 }
 
@@ -108,7 +108,7 @@ export class NetRegister {
             requestInit: requestInit,
             abortCtl: abortCtl,
             status:  status  || RequestStatus.pendding,
-            method: requestInit.method || 'GET'
+            method: requestInit.method || 'GET',
         }
 
         this.requestMap.set(rid, req)
@@ -196,6 +196,7 @@ export class Net{
     private internalEvent!: EventEmitter<NetInternalEvent>
     private state: NetState = NetState.IDLE
     private maxRetries = 3
+    private queuWindowLenght = 8
     constructor(options?: NetOptions){
         this.temporal = new Alarm()
         this.register = new NetRegister()
@@ -206,6 +207,9 @@ export class Net{
         this.event = new EventEmitter()
         this.internalEvent = new EventEmitter()
         this.maxRetries = options?.requestMaxRetries || 3
+        if(options?.queuRequestLength) {
+            this.queuWindowLenght = options.queuRequestLength
+        }
         this.internalEvent.on('push_queu', () => {
             if(this.state === NetState.IDLE){
                 this.state = NetState.WORKING
@@ -220,7 +224,7 @@ export class Net{
                 this.event.emit('abort', rid)
             }
         })
-        this.internalEvent.on('request_resolve', (rid)=>{
+        this.internalEvent.on('request_resolve', (rid, cl)=>{
             const resHeader = this.storage.getHeader(rid)!
             let _retry = false
             try{
@@ -231,7 +235,7 @@ export class Net{
                     })
                 }
                 this.register.setStatus(rid, 'resolve')
-                this.event.emit('resolve', rid)
+                this.event.emit('resolve', rid, cl)
             }catch(e){
                 if(_retry){
                     this.requestRetrieve(rid)
@@ -258,7 +262,7 @@ export class Net{
     private async _processQueue(){
         while(this.requestQueue.length > 0 && this.state !== NetState.PAUSED){
             const readyQueu = []
-            for(let i =0; i < 8 && this.requestQueue.length > 0; i++){
+            for(let i =0; i < this.queuWindowLenght && this.requestQueue.length > 0; i++){
                 readyQueu.push(this.requestQueue.shift()!)
             }
             await this._processRequest(readyQueu)
@@ -304,7 +308,7 @@ export class Net{
                             contentLenght = (await res.clone().bytes()).byteLength
                         }
                         this.storage.add(rid, res, contentLenght)
-                        this.internalEvent.emit('request_resolve', rid)
+                        this.internalEvent.emit('request_resolve', rid, contentLenght)
                         resolve(rid)
                     })
                     .catch((err)=>{

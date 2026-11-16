@@ -47,7 +47,7 @@ export enum SignalsCodes {
 
 export enum DownloadFormat {
     pdf = 'pdf',
-    img = 'jpeg',
+    img = 'images',
     zip = 'zip',
     cbz = 'cbz'
 }
