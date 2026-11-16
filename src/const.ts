@@ -8,7 +8,7 @@ import userAgents from './json/user_agents.json' with {type: "json"}
 import { randomInt } from "crypto"
 import supportsHyperlinks from "supports-hyperlinks"
 import { getRuntimeEnvironment } from "./utils.ts"
-
+import { Storage } from "./shared.ts"
 export const BASE_DIR = path.resolve(os.homedir(), 'tanko')
 export const DOWNLOADS_DEFAULT_DIR = path.resolve(BASE_DIR, 'downloads')
 export const CONFIG_FILE_PATH = path.resolve(BASE_DIR, 'config_v2.json')
@@ -77,3 +77,4 @@ This is just a small preview of my progress. Thanks for using Tanko!
 If you find any errors, it would help me a lot if you opened an ${link} in the GitHub repository.
 
 P.S.: Press Ctrl+Q to close this message`
+export const GLOBAL_STORAGE = new Storage({TTL: 0, maxSize: 10, maxLength: 10})
