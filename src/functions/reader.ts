@@ -13,7 +13,7 @@ import { ImageStorage } from "./images.ts";
 import { Notify } from "./notify.ts";
 import ansi from "ansi-escapes";
 import { Net, RequestStatus } from "./net.ts";
-import { centerX } from "../utils.ts";
+import { centerX, isAcceptedContentTypeImage } from "../utils.ts";
 import type { LangIso } from "./lang.ts";
 import { Configuration } from "./configuration.ts";
 import { UNITS } from "../types/enum.ts";
@@ -46,7 +46,7 @@ export class PagesControl {
     })
     this.net.appendMiddleWare((headers, reject)=>{
         const contentType = headers.get('Content-Type')
-        if (!contentType || (!contentType.startsWith('image') && contentType !== ('application/octet-stream'))){
+        if (!contentType || !isAcceptedContentTypeImage(contentType)){
           const reason = `Invalid http header: Content-Type, \n expected: \"image/*\" ~ received: ${contentType}`
           reject(false, reason)    
       }
