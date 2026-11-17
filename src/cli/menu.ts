@@ -40,6 +40,8 @@ import chalk from "chalk";
 import { DOWNLOADS_DEFAULT_DIR, GLOBAL_STORAGE } from "../const.ts";
 import type { ListRecord, ReadHistoryObject, UserlistsTable } from "../types/database.js";
 import { UserLists } from "../functions/userlists.ts";
+import { dowloadProgress } from "./indicators.ts";
+import { stdout } from "node:process";
 //import { TimeTracker } from "../trackers/local.ts";
 
 const DB = await SqliteDB.getInstance()
@@ -419,12 +421,7 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
       serverName: server.name,
       pages: pagesUrls,
     }
-    downloaderInstace.event.on('received', (e) => {
-      pagesCount++;
-      LOADER.text = `${i18nLoadings.downloading_pages} #${e + 1} [${pagesCount}/${pagesUrls.length}]`
-    })
     downloaderInstace.event.on('done', () => {
-      LOADER.stop()
       const noti = Notify.getInstace()
       noti.push({
         title: i18nLanguage.configuration.downloads.complete,
@@ -437,13 +434,13 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     const cacheKey = 1445
     while (true) {
       pagesCount = 0
+      process.stdout.write(ansi.clearViewport)
       const format = await prompts(downloadFormatOptions())
       if (!format?.target) {
         downloaderInstace.free()
         break
       }
       downloadProps.format = format.target
-      LOADER.start('downloading...')
       let cacheFlag = false
       const storageProps = <DownloadProps> GLOBAL_STORAGE.get(cacheKey)
       if(storageProps){
@@ -459,9 +456,10 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
           await downloaderInstace.free()
         }
       }
+      stdout.write(ansi.cursorDown(6) + ansi.eraseDown)
+      dowloadProgress(downloaderInstace, mangaInfo.title, chapterTranslate.title, pagesUrls.length)
       await downloaderInstace.download(downloadProps, cacheFlag, server.customHeaders, basePath)
       GLOBAL_STORAGE.add(cacheKey, downloadProps, 1)
-      LOADER.stop()
     }
     GLOBAL_STORAGE.delete(cacheKey)
     await downloaderInstace.free()
