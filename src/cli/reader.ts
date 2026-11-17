@@ -158,7 +158,7 @@ export async function terminalReader(
       LOADER.prefixText = ansi.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
       if(!DEBUG_MODE)
         LOADER.start(loading_states.default_loading)
-      pagesCtl.loadPage(imageLoaderAttr).then(()=>{
+      pagesCtl.loadPage(imageLoaderAttr, CONFIGURATION.conf_provider.provider.customHeaders ).then(()=>{
         GLOBAL.EVENT.emit('render', candidatePage, candidateChapter)
       })
     }, 300)

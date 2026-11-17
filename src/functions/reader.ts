@@ -15,10 +15,8 @@ import ansi from "ansi-escapes";
 import { Net, RequestStatus } from "./net.ts";
 import { centerX, isAcceptedContentTypeImage } from "../utils.ts";
 import type { LangIso } from "./lang.ts";
-import { Configuration } from "./configuration.ts";
 import { UNITS } from "../types/enum.ts";
 
-const CONF = await Configuration.getInstance()
 export class PagesControl {
   private pages!: ChapterPage[];
   private currenPage!: ChapterPage;
@@ -62,7 +60,7 @@ export class PagesControl {
       }
     })
   }
-  pagePreFetch(range = 5, estrategy: ImgPreloadingStrategy){
+  pagePreFetch(range = 5, estrategy: ImgPreloadingStrategy, headers: Headers){
     let candidates: ChapterPage[];
     switch(estrategy){
       case 'around':{
@@ -87,12 +85,11 @@ export class PagesControl {
         break
       }
     }
-    const {customHeaders} = CONF.conf_provider.provider
     candidates.filter(({src})=> {
       const st  = this.imgStorage.has(src)
       return !(st.buffer || st.codec || this.net.has(src))
     }).forEach(e=>{
-      this.net.pushRequest(e.src, {headers: customHeaders})
+      this.net.pushRequest(e.src, {headers: headers})
     })
   }
   nextPage() {
@@ -118,14 +115,14 @@ export class PagesControl {
     return has.buffer || has.codec;
   }
   //@ts-ignore
-  async loadPage(props: LoadImageProps): Promise<boolean> {
+  async loadPage(props: LoadImageProps, headers: Headers): Promise<boolean> {
     try {
       const imageSrc = this.currenPage.src
       const isImageInStorage = this.imgStorage.has(imageSrc)
-
+      
       if (!isImageInStorage.buffer || props.invalidateCache) {
         if (!this.net.has(imageSrc) || props.invalidateCache){
-          this.net.pushRequest(imageSrc)
+          this.net.pushRequest(imageSrc, {headers})
         }
         const rid = this.net.getRid(imageSrc)!
         
@@ -143,7 +140,7 @@ export class PagesControl {
           this.readCheckList[this.pageIndex] = true;
         }
         if(props.enableImgPreloading){
-          this.pagePreFetch(props.maxImagePreloading, props.imgPreloadingStrategy)
+          this.pagePreFetch(props.maxImagePreloading, props.imgPreloadingStrategy, headers)
         }
       }
       return true
