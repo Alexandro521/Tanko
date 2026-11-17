@@ -8,7 +8,7 @@ import axios from "axios"
 import ansi from 'ansi-escapes'
 import pkgInfo from "../package.json" with {type: 'json'}
 import { Notify, NotifyType } from "./functions/notify.ts"
-import chalk from "chalk"
+import chalk, { type ColorName } from "chalk"
 import supportsHyperlinks from "supports-hyperlinks"
 
 export function timeDiff(time: number) {
@@ -349,3 +349,96 @@ export function extractChapterSrcByLang(chapter: Chapter, lang: Translations): C
     return new RegExp(/image\/(png|avif|webp|jpeg)|application\/octet-stream/)
     .test(header)
   }
+type GradientColor = ColorName[]
+type LevelColor = {[key: number]: ColorName }
+type ProgessColor = ColorName | GradientColor | LevelColor
+
+export interface ProgresBarOptions  {
+  length: number,
+  progress: number,
+  progressColor?: ProgessColor,
+  percentColor?: ColorName | 'auto'
+  color?: ColorName,
+  defaultChar?: string
+  progressChar?: string
+  tipChar?: string
+  startChar?: string
+  label?: string,
+  postfix?: string,
+  showProgress?: boolean
+}
+
+export function progressBar(options: ProgresBarOptions) {
+  const baseChar = options.defaultChar || '━'
+  const progressChar = options.progressChar || baseChar 
+  const baseColor = options.color || 'gray'
+  let progressColor: ColorName = 'green'
+  if(options.progressColor){
+    if(typeof options.progressColor === 'object'){
+      if('lenght' in options.progressColor){
+
+      }else {
+        const keys = Object.keys(options.progressColor)
+        let nearestkey: string = keys[0]
+        let min = Infinity
+        keys.forEach( k => {
+          const m = parseInt(k) - options.progress
+          if(m <= 0){
+            nearestkey = k
+            min = parseInt(k)
+          }
+        })
+        //@ts-ignore
+        progressColor = options.progressColor[nearestkey] || 'green'
+      }
+    }else progressColor =  options.progressColor
+  }
+  let percentColor  = baseColor
+  if(options.percentColor){
+    if(options.percentColor === 'auto'){
+      percentColor = progressColor
+    }else {
+      percentColor = options.percentColor
+    }
+  }
+  const progressLength = Math.floor((Math.max(0, options.progress) * options.length) * 0.01)
+  const tipCharLength = options.tipChar ? Math.max(Math.min(options.tipChar.length, progressLength -1), 0) : 0
+  const startCharLenght = options.startChar ? Math.max(Math.min(options.startChar.length, progressLength -1), 0) : 0
+
+  const output = [ 
+    options.label || '',
+    chalk[progressColor](
+      (options.startChar && progressLength > 0 ? options.startChar.slice(0, startCharLenght) : '') +
+      progressChar.repeat(Math.max(0,  progressLength - tipCharLength - startCharLenght )) +
+      (options.tipChar && progressLength > 0 ? options.tipChar.slice(0, tipCharLength - (startCharLenght > 1 ? startCharLenght : 0)) : '')
+    ),
+    chalk[baseColor](baseChar.repeat(options.length - progressLength)),
+    options.postfix || '',
+    options.showProgress ? ' ' + chalk[percentColor](options.progress.toFixed(1) + '%') : ''
+  ]
+  return output.join('')
+}
+/*
+const options:ProgresBarOptions = {
+  progress: 50,
+  length: 50,
+  tipChar: '>',
+  defaultChar: '━',
+  startChar: '$',
+  percentColor: 'auto',
+  progressChar: '━',
+  showProgress: true,
+  progressColor: {
+    0: 'red',
+    25: 'yellow',
+    40: 'yellowBright',
+    60: 'green',
+    75: 'greenBright',
+    85: 'cyan',
+    90: 'cyanBright'
+  }
+}
+for(let i =0; i <= 100; i+= 10){
+  console.log(progressBar({...options, progress: i}))
+}
+*/
