@@ -82,6 +82,6 @@ const drawInterval = setInterval(()=>{
         stdout.write(ansi.eraseLines(lines.length))
     }
     firstRender = false
-    stdout.write(lines.join(ansi.cursorNextLine))
-}, 1000 / 24)
+    stdout.write(lines.join('\n'))
+}, 1000 / 12)
 }
