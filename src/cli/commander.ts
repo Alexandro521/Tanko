@@ -2,9 +2,13 @@ import { Command, Option } from "commander";
 import { mangaServerRegister } from "../servers/port.ts";
 import type { Chapter, MangaInfo } from "../types/types.js";
 import { Downloader } from "../functions/downloader.ts";
+import { dowloadProgress } from "./indicators.ts";
 import { DOWNLOADS_DEFAULT_DIR } from "../const.ts";
 import { sortChapterList, extractChapterSrcByLang,  } from "../utils.ts";
+import fs from 'fs'
 import ora from 'ora'
+import constants from "constants";
+import path from "path";
 
 const LOADER = ora()
 const avaliblesProviders = mangaServerRegister.map(e => e.name ) 
@@ -77,7 +81,7 @@ program.command('chapter')
 .addOption(offsetOption)
 .option('-t,--lang <string>', 'preferred language', 'en')
 .option('-d,--download', 'download the results')
-.addOption(new Option('-f,--format <sring>', 'download format').choices(['pdf', 'cbz', 'zip', 'imgs']).default('pdf'))
+.addOption(new Option('-f,--format <sring>', 'download format').choices(['pdf', 'cbz', 'zip', 'images']).default('pdf'))
 .addOption(new Option('-x,--output <path>', 'save path').default(DOWNLOADS_DEFAULT_DIR))
 .action(async (str, opts)=>{
     const providerProps = mangaServerRegister.find(e=> e.name === opts.provider)!
@@ -91,6 +95,23 @@ program.command('chapter')
     if(!mangaInfo) throw new Error('Invalid manga ID')
     const result = await provider.getChapterList(str)
     const parseArray = parseMangaInfoArray(result, opts) as Chapter[]
+    const outputPath = path.resolve(opts.output)
+    try{
+        if(fs.existsSync(outputPath)){
+            const open = fs.openSync(outputPath, constants.O_RDONLY)
+            const info = fs.fstatSync(open)
+            if(!info.isDirectory()){
+                fs.closeSync(open)
+                console.error(outputPath + ' it is not a directory')
+                process.exit()
+            }
+            fs.closeSync(open)
+            fs.accessSync(outputPath)
+        }
+    }catch(e){
+        console.error('The exit path is not valid. ' + outputPath)
+        process.exit()
+    }
     const translatedChapters = parseArray.map(e=>{
             const ch = extractChapterSrcByLang(e, opts.lang)
             return {
@@ -104,45 +125,22 @@ program.command('chapter')
     })
     if(opts.download){
         const dw = Downloader.getInstance()
-        let pagesCount = 0
-        let pagesLength  = 0
-        let currentChapter = 0
-        process.on('SIGKILL', process.exit)
-        dw.on('download_page', () => {
-            pagesCount++;
-            let info = translatedChapters[currentChapter]
-            LOADER.text = `Downloading ${info.target.title} [${info.target.lang.toUpperCase()}] - ${((pagesCount*100)/pagesLength).toFixed(1)}%`
-        })
-        dw.on('done', () => {
-            LOADER.succeed('Successful download')
-            pagesCount = 0;
-            pagesLength = 0;
-        })
-        dw.on('state', (state) => {
-            if (LOADER.isSpinning)
-                LOADER.text = state + '...'
-        })
-
         for(let i = 0; i < translatedChapters.length; i++){
             try{
-                if(!LOADER.isSpinning) LOADER.start()
                 const chapter = translatedChapters[i]
                 const pages = await provider.getChapterPages(chapter.target.id)
-                pagesLength = pages.length
-                currentChapter = i;
+                dowloadProgress(dw, mangaInfo.title, chapter.target.title, pages.length)
                 await dw.download({
                     serverName: provider.name,
                     chapterTitle: chapter.target.title,
                     format: opts.format,
                     mangaTitle:  mangaInfo.title,
                     pages: pages
-                })
+                }, false, provider.customHeaders, outputPath)
+                await dw.free()
             }catch(e){
-                if(LOADER.isSpinning){
-                    LOADER.fail('Download failed')
-                }
                 if(e instanceof Error){
-                    console.log(e.message)
+                    console.error(e.message)
                 }
             }
         }
