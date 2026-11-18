@@ -54,6 +54,7 @@ const progressBarOptions: ProgresBarOptions = {
             90: 'cyanBright'
         }
 }
+let firstRender = true
 const drawInterval = setInterval(()=>{
     const ntime = Date.now()
     const secondsElapsed = Math.floor((ntime - time)/1000)
@@ -77,7 +78,10 @@ const drawInterval = setInterval(()=>{
         `Fails ${errorCounter} ࢈ ` + 
         `Remaining ${total - doneCounter}`, ''
     ]
-    stdout.write(ansi.eraseLines(lines.length) + ansi.cursorUp(lines.length))
-    stdout.write(lines.join('\n'))
+    if(!firstRender){
+        stdout.write(ansi.eraseLines(lines.length))
+    }
+    firstRender = false
+    stdout.write(lines.join(ansi.cursorNextLine))
 }, 1000 / 24)
 }

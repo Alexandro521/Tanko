@@ -434,7 +434,7 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     const cacheKey = 1445
     while (true) {
       pagesCount = 0
-      process.stdout.write(ansi.clearViewport)
+      //process.stdout.write(ansi.clearViewport)
       const format = await prompts(downloadFormatOptions())
       if (!format?.target) {
         downloaderInstace.free()
@@ -456,7 +456,7 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
           await downloaderInstace.free()
         }
       }
-      stdout.write(ansi.cursorDown(6) + ansi.eraseDown)
+      process.stdout.write(ansi.eraseDown)
       dowloadProgress(downloaderInstace, mangaInfo.title, chapterTranslate.title, pagesUrls.length)
       await downloaderInstace.download(downloadProps, cacheFlag, server.customHeaders, basePath)
       GLOBAL_STORAGE.add(cacheKey, downloadProps, 1)
@@ -465,7 +465,6 @@ export async function downloadSection(mangaInfo: MangaInfo, chapterList: Chapter
     await downloaderInstace.free()
   } catch (e) {
     if (LOADER.isSpinning) LOADER.stop()
-    
     pushError(e)
   }
 }
