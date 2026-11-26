@@ -187,9 +187,9 @@ export async function makeDir(root: string, ...paths: string[]) {
   )
   return absolutePath
 }
-export function debounce(func: Function, delay: number) {
+export function debounce<T>(func: Function, delay: number) {
   let timeoutId: NodeJS.Timeout;
-  return async function (...args: any[]) {
+  return async function (...args: T[]) {
     if (timeoutId)
       clearTimeout(timeoutId);
     timeoutId = setTimeout(() => {
@@ -442,3 +442,11 @@ for(let i =0; i <= 100; i+= 10){
   console.log(progressBar({...options, progress: i}))
 }
 */
+export function ObjectDiff<T extends Object>(a: T, b: T){
+  let diffC = 0
+  type Key = keyof T
+  Object.keys(diffC).forEach(k=>{
+    diffC += a[<Key>k] === b[<Key>k] ? 1 : 0
+  })
+  return diffC
+}
