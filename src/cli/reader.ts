@@ -9,168 +9,227 @@ import { Notify } from "../functions/notify.ts"
 import { MediaListStatus } from "../types/enum.ts"
 import prompts  from "@alex_521/prompts"
 import { Configuration } from "../functions/configuration.ts"
-import { centerX, debounce, virtualWindow, slice} from "../utils.ts"
+import { centerX, debounce, virtualWindow, slice, ObjectDiff} from "../utils.ts"
 import { SignalsCodes } from "../types/enum.ts"
 import { LocalTracker, TimeTracker, type LocalTrackerProps } from "../trackers/local.ts"
 import { ChapterControl, PagesControl, TerminalControl } from "../functions/reader.ts"
-import type { Chapter, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, Translations } from "../types/types.ts"
+import type { Chapter, HistoryObject2, LoadImageProps, MangaInfo, ObjectFit, StructImgPosition, Translations, WSZ } from "../types/types.ts"
 import { addToUserListPrompt, terminalReaderChapterOptions } from "./prompts.ts"
 import supportsTerminalGraphics from "supports-terminal-graphics"
 import { ChapterSelect } from "./components/chapterList.ts"
 import {SqliteDB} from "../database/sqlite/sqlite.ts"
 import EventEmitter from "node:events"
+import { getIi8n } from "../functions/lang.ts"
 
-const LOADER = ora()
-const CONFIGURATION = await Configuration.getInstance()
-const localTracker = LocalTracker.getInstance()
-const DB = await SqliteDB.getInstance()
-let trackerAniList = CONFIGURATION.conf_session.getTracker('anilist')
-let { err_messages, loading_states, reader } = await CONFIGURATION.getLanguageInterface()
-
-CONFIGURATION.on('updatelanguage', (lang) => {
-  err_messages = lang.err_messages
-  loading_states = lang.loading_states
-  reader = lang.reader
-})
-
-CONFIGURATION.on('login', (trackerName) => {
-  trackerAniList = CONFIGURATION.conf_session.getTracker(trackerName)
-})
-type EventMap = {
-  'render': [pageIndex: number, chapterIndex: number]
+interface RenderProps {
+  invalidateCache: boolean, 
+  forceReload: boolean
+  position: StructImgPosition
+  window: {
+    position: {
+      x: number,
+      y: number
+    },
+    size: {
+      x: number,
+      y: number
+    }
+  }
 }
-export async function terminalReader(
+
+interface RenderRequest {
+  pageIndex: number,
+  chapterIndex: number,
+  flags: ControlFlags
+  wsz: WSZ
+}
+
+type ReaderEvent = {
+  'render': [snapshot: RenderRequest]
+  'chapterLoad': []
+  'error': []
+  'exit': []
+  'options': []
+}
+
+interface ReaderProps  {
   context: MangaInfo | HistoryObject2,
   chapters: Chapter[],
   startIndex: number,
   lang: Translations
-){
+}
+interface ControlFlags {
+  DEBUG: boolean
+  ACTION_LOCK: boolean
+  FULLSCREEN: boolean
+  FIT_MODE: ObjectFit
+  IS_FIRST_RUN: boolean
+}
+const LOADER = ora()
+const CONFIGURATION = await Configuration.getInstance()
+const DATABASE = await SqliteDB.getInstance()
+const LOCAL_TRACKER = LocalTracker.getInstance()
+const TIME_TRACKER = TimeTracker.getInstance<{manga_id: string, pages_read: number}>()
+let ANILIST_TRACKER = CONFIGURATION.conf_session.getTracker('anilist')
+let I18N = getIi8n(await CONFIGURATION.getLanguageInterface())
+const EVENT = new EventEmitter<ReaderEvent>()
+
+CONFIGURATION.on('updatelanguage', (lang) => {
+  I18N = getIi8n(lang)
+})
+
+CONFIGURATION.on('login', (trackerName) => {
+  ANILIST_TRACKER = CONFIGURATION.conf_session.getTracker(trackerName)
+})
+
+export async function terminalReader(props: ReaderProps){
   return new Promise<void>(async (resolve) => {
-    const GLOBAL = {
+    const CTL_FLAGS: ControlFlags = {
       ACTION_LOCK: false,
-      EVENT: new EventEmitter<EventMap>()
+      DEBUG: false,
+      FULLSCREEN: false,
+      IS_FIRST_RUN: true,
+      FIT_MODE: CONFIGURATION.settings.reader_imgFit,
     }
-    const TIME_TRACKER = TimeTracker.getInstance<{manga_id: string, pages_read: number}>()
-    let DEBUG_MODE = false
-    let FULLSCREEN_MODE = false
-    let IMGFITMODE:ObjectFit = CONFIGURATION.settings.reader_imgFit 
-    let TOP_PADDING = 3
-    let BOTTOM_PADDING = 1
-    let IS_FIRST_RUN = true
-    let RENDER_WSZ = {
-      colums: stdout.columns,
-      rows: stdout.rows
-    }
-    const CTX_FROM_HISTORY = 'pages_read' in context
-    const mangaInfo =  CTX_FROM_HISTORY ? context.mangainfo : context
-    let ANILIST_ID: number | undefined = mangaInfo.anilistId ? Number(mangaInfo.anilistId) : await trackerAniList.instance.getId(mangaInfo)
-    mangaInfo.anilistId = ANILIST_ID
-    const pagesCtl = new PagesControl();
+
+    const FROM_HISTORY = 'chapter_src' in props.context
+    const MANGA_INFO =  FROM_HISTORY ? (<HistoryObject2> props.context ).mangainfo : <MangaInfo>props.context
+    let ANILIST_ID;
+
+    if(typeof MANGA_INFO.anilistId === 'string' && MANGA_INFO.anilistId.length > 0){
+      ANILIST_ID = parseInt(MANGA_INFO.anilistId) 
+      MANGA_INFO.anilistId = ANILIST_ID
+    } else{
+      ANILIST_ID = await ANILIST_TRACKER.instance.getId(MANGA_INFO)
+      MANGA_INFO.anilistId = ANILIST_ID
+    } 
+
     const mangaProvider = CONFIGURATION.conf_provider.providerInstance
-    const chapterCtl = new ChapterControl(chapters, startIndex, lang, mangaProvider);
+    const pagesController = new PagesControl();
+    const chapterController = new ChapterControl(props.chapters, props.startIndex, props.lang, mangaProvider);
 
     const SIGWINCH_HANDLER = async () => {
-      RENDER_WSZ.colums = stdout.columns
-      RENDER_WSZ.rows = stdout.rows
       if(TerminalControl.isRaw){
-        const $ = supportsTerminalGraphics.stdout
-        if(!$.kitty && !$.iterm2){
-          await render(true, false)
-        }else{
+        const gph = supportsTerminalGraphics.stdout
+        if(gph.kitty || gph.iterm2){
           await render()
+        }else{
+          await render(true, false)
         }
       }
     }
-    GLOBAL.EVENT.on('render', (candidatePageIndex, candidateChapterIndex)=>{
+
+    EVENT.on('render', (snapShot)=>{
       if (LOADER.isSpinning)
           LOADER.stop()
-      const currentChapterIndex = chapterCtl.geChapterIndex()
-      const currentPageIndex = pagesCtl.index
-      if(currentChapterIndex === candidateChapterIndex && currentPageIndex === candidatePageIndex){
-        pagesCtl.renderPage(candidatePageIndex)
-      }else {
-        pagesCtl.renderPage(currentPageIndex)
+      const chapterIndex = chapterController.geChapterIndex()
+      const pageIndex = pagesController.index
+      if(snapShot.chapterIndex === chapterIndex && snapShot.pageIndex === pageIndex){
+        const flagDiff = ObjectDiff(CTL_FLAGS, snapShot.flags)
+        if(flagDiff === 0 && snapShot.wsz.w_rows === stdout.rows && snapShot.wsz.w_colums === stdout.columns){
+          pagesController.renderPage(pageIndex)
+          trackerController()
+        }
       }
-      trackerCtl()
     })
-    const trackerCtl = async () => {
-      if (pagesCtl.readProgress >= 75 && !chapterCtl.hasBeenTracked) {
-        const chapterInfo = chapterCtl.getChapterInfo()
-        const chaptersCount = Math.max(chapters[0].number, chapters[chapters.length -1].number, chapters.length)
+
+    const trackerController = async () => {
+      if (pagesController.readProgress >= 75 && !chapterController.hasBeenTracked) {
+        const ch = props.chapters
+        const chapterInfo = chapterController.getChapterInfo()
+        const chaptersCount = Math.max(ch[0].number, ch[props.chapters.length -1].number, ch.length)
+
         const localTrackerProps: LocalTrackerProps = {
           chapterCount: chaptersCount,
           chapterIndex: chapterInfo.number,
-          mangaId: mangaInfo.src
+          mangaId: MANGA_INFO.src
         }
-        if (!(await localTracker.exists(localTrackerProps))) {
-          await localTracker.regist(localTrackerProps)
-        }
-        const hasBeenRead = await localTracker.markAsRead(localTrackerProps)
 
-        if (trackerAniList.isAuth && !hasBeenRead && typeof ANILIST_ID === 'number') {
-          await trackerAniList.instance.track({
+        if (!(await LOCAL_TRACKER.exists(localTrackerProps))) {
+          await LOCAL_TRACKER.regist(localTrackerProps)
+        }
+        const mark = LOCAL_TRACKER.markAsRead(localTrackerProps)
+        if (ANILIST_TRACKER.isAuth && typeof ANILIST_ID === 'number') {
+          await ANILIST_TRACKER.instance.track({
             mediaId: ANILIST_ID,
             lastRead: chapterInfo.number,
             progress: chapterInfo.number,
             status: MediaListStatus.Current,
           })
-          chapterCtl.hasBeenTracked = true
+          await mark;
+          chapterController.hasBeenTracked = true
         }
       }
     }
 
-    const pageRender = debounce(async (invalidateCache=false, forceReload=false) => {
-      const imgPosition = {
-        y: FULLSCREEN_MODE ? 0 : (stdout.rows - RENDER_WSZ.rows) + (TOP_PADDING), 
-        x: FULLSCREEN_MODE ? 0 : stdout.columns - RENDER_WSZ.colums 
-      }
-      const imageContainer = virtualWindow({
-        cellPxHeigth: TerminalControl.wsz.w_cellPxHeight,
-        cellPxWidth: TerminalControl.wsz.w_cellPxWidth,
-        columns: FULLSCREEN_MODE ? stdout.columns : RENDER_WSZ.colums,
-        rows: FULLSCREEN_MODE ? stdout.rows :  RENDER_WSZ.rows - (TOP_PADDING + BOTTOM_PADDING),
-        position: imgPosition,
-      })
-      const imageLoaderAttr: LoadImageProps = {
-        wsz: imageContainer,
-        invalidateCache,
-        forceReload,
-        forceProtocol: CONFIGURATION.settings.reader_forceImgProtocol,
-        forceAscii: CONFIGURATION.settings.reader_forceAscii,
-        maxImagePreloading: CONFIGURATION.settings.reader_maxImagePreloading,
-        enableImgPreloading: CONFIGURATION.settings.reader_enableImgPreloading,
-        imgPreloadingStrategy: CONFIGURATION.settings.reader_imgPreloadingStrategy,
-        imageFit: IMGFITMODE,
-        maxImgWidth: CONFIGURATION.settings.reader_maxImgWidth,
-        position: {
-          x: 'center',
-          y: 'center',
+    const loadPage = debounce<RenderProps>(
+      async (props: RenderProps ) => {
+        const wsz = virtualWindow({
+          cellPxHeigth: TerminalControl.wsz.w_cellPxHeight,
+          cellPxWidth: TerminalControl.wsz.w_cellPxWidth,
+          columns: props.window.size.x,
+          rows: props.window.size.y,
+          position: props.window.position,
+        })
+
+        const imageLoaderAttr: LoadImageProps = {
+          wsz: wsz,
+          invalidateCache: props.invalidateCache,
+          forceReload: props.forceReload,
+          forceProtocol: CONFIGURATION.settings.reader_forceImgProtocol,
+          forceAscii: CONFIGURATION.settings.reader_forceAscii,
+          maxImagePreloading: CONFIGURATION.settings.reader_maxImagePreloading,
+          enableImgPreloading: CONFIGURATION.settings.reader_enableImgPreloading,
+          imgPreloadingStrategy: CONFIGURATION.settings.reader_imgPreloadingStrategy,
+          maxImgWidth: CONFIGURATION.settings.reader_maxImgWidth,
+          imageFit: CTL_FLAGS.FIT_MODE,
+          position:  props.position
         }
-      }
-      const x = centerX(loading_states.default_loading.length, stdout.columns)
-      const y = (imgPosition.y + (imageContainer.w_rows >> 1))
-      
-      if(LOADER.isSpinning)
-        LOADER.stop()
-      
-      const candidatePage = pagesCtl.index
-      const candidateChapter = chapterCtl.geChapterIndex()
-      LOADER.prefixText = ansi.cursorTo(imgPosition.x + x, y) + LOADER.prefixText
-      if(!DEBUG_MODE)
-        LOADER.start(loading_states.default_loading)
-      pagesCtl.loadPage(imageLoaderAttr, CONFIGURATION.conf_provider.provider.customHeaders ).then(()=>{
-        GLOBAL.EVENT.emit('render', candidatePage, candidateChapter)
-      })
+        if (LOADER.isSpinning)
+          LOADER.stop()
+
+        const spinnerPosition = {
+          y: props.window.position.y + Math.floor(props.window.size.y / 2 ),
+          x: centerX(I18N.i18nLoadings.default_loading.length ,stdout.columns)
+        }
+        LOADER.prefixText = ansi.cursorTo(spinnerPosition.x, spinnerPosition.y)
+        LOADER.start(I18N.i18nLoadings.default_loading)
+        
+        const snapShot: RenderRequest = {
+          pageIndex: pagesController.index,
+          chapterIndex: chapterController.geChapterIndex(),
+          flags: CTL_FLAGS,
+          wsz: {
+            w_colums: stdout.columns, 
+            w_rows: stdout.rows,
+            w_height: 0,
+            w_width: 0,
+            w_cellPxWidth: 0,
+            w_cellPxHeight: 0,
+            w_ratio: 0,
+            w_position_x: 0,
+            w_position_y: 0
+          }
+        }
+        pagesController.loadPage(imageLoaderAttr, CONFIGURATION.conf_provider.provider.customHeaders)
+          .then(() => {
+            EVENT.emit('render', snapShot)
+          })
+          .catch((e) => {
+            if (e instanceof Error) {
+              Notify.pushError(e)
+            }
+          })
     }, 300)
 
-    const debugModeRendeer = async () => {
-      const pages = pagesCtl.getPages()
-      const index = pagesCtl.index
-      const cacheHit= pagesCtl.storageHit(pages[index])
-      const storageSize = pagesCtl.imgStorage.storage.byteLength / 1024 / 1024
-      const storaMaxSize = pagesCtl.imgStorage.storage.constrains.maxByteLength / 1024 / 1024
+    const debugRender = () => {
+      const pages = pagesController.getPages()
+      const index = pagesController.index
+      const cacheHit= pagesController.storageHit(pages[index])
+      const storageSize = pagesController.imgStorage.storage.byteLength / 1024 / 1024
+      const storaMaxSize = pagesController.imgStorage.storage.constrains.maxByteLength / 1024 / 1024
       const wsz = TerminalControl.wsz
-      const forl = chapterCtl.isFirstOrLast()
+      const forl = chapterController.isFirstOrLast()
       const forlStr = (forl < 0)  ? 'last' : (forl > 0) ? 'first' : 'none'
       const {
         rss,
@@ -185,9 +244,9 @@ export async function terminalReader(
         `storage hit:${cacheHit}:${cacheHit ? 'green' : 'red'}`,
         `image storage size:${storageSize.toFixed(1)} MB:blueBright`,
         `image storage max size:${storaMaxSize.toFixed(1)} MB:blueBright`,
-        `image storage length:${pagesCtl.imgStorage.storage.size}:blueBright`,
-        `chapters length:${chapters.length}:blue`,
-        `chapter index:${chapterCtl.geChapterIndex()}:blue`,
+        `image storage length:${pagesController.imgStorage.storage.size}:blueBright`,
+        `chapters length:${props.chapters.length}:blue`,
+        `chapter index:${chapterController.geChapterIndex()}:blue`,
         `image protocol:${CONFIGURATION.settings.reader_forceImgProtocol}:blueBright`,
         `window width:${wsz.w_width}:blueBright`,
         `window height:${wsz.w_height}:blueBright`,
@@ -244,29 +303,29 @@ export async function terminalReader(
         title: 'Memory Usage',
         margin: {top: 0},
       })
-
-      RENDER_WSZ.rows = (stdout.rows - (rows.length + memoryUse.length) -4)
       process.stdout.write(box + '\r')
       process.stdout.write(box2)
+      return rows.length + memoryUse.length + 4
     }
 
     const renderHeader = ()=>{
-      const chapterInfo = chapterCtl.getChapterInfo()
+      const chapterInfo = chapterController.getChapterInfo()
       const chapterTitle =  slice(chapterInfo.title ?? '', stdout.columns)
-      const mangaTitle = slice(mangaInfo.title, stdout.columns)
+      const mangaTitle = slice(MANGA_INFO.title, stdout.columns)
       const stats =slice([
-        `${pagesCtl.index+1}/${pagesCtl.PagesLength}`,
-        `${pagesCtl.readProgress.toFixed(1) }%`,
+        `${pagesController.index+1}/${pagesController.PagesLength}`,
+        `${pagesController.readProgress.toFixed(1)}%`,
         `${ANILIST_ID}`
       ].join(" ⏺ "), stdout.columns)
 
       const centerStats = centerX(stats.length, process.stdout.columns)
-      const titleCenter = centerX(mangaInfo.title.length, process.stdout.columns)
+      const titleCenter = centerX(MANGA_INFO.title.length, process.stdout.columns)
       const chapterTitleCenter = centerX(chapterTitle.length, process.stdout.columns)
 
       process.stdout.write(`${ansi.cursorForward(titleCenter)}${mangaTitle}\n`)
       process.stdout.write(`${ansi.cursorForward(chapterTitleCenter)}${chapterTitle}\n`)
       process.stdout.write(`${ansi.cursorForward(centerStats)}${stats}\n`)
+      return 3
     }
 
     const renderFooter = ()=>{
@@ -283,77 +342,92 @@ export async function terminalReader(
       ['F12', 'Debug on/off'],
       ['Esc/Q', 'Exit'],
     ]
-      let str = ''
-      let strlength = 0
-      let i = 0
-      while(i < SHORTCUTS.length){
-        const tokens = SHORTCUTS[i]
-        const [key, value] = tokens
-        const length = strlength + key.length + value.length + 4 //-> white space
-        if(length < stdout.columns){
-          str += `${chalk.bgWhite(` ${chalk.black(key)} `)} ${value} `
-          strlength = length
+      let output = ''
+      let outputLength = 0
+      const whiteSpaces = 4
+      for (let i = 0; i < SHORTCUTS.length; i++) {
+        const [key, label] = SHORTCUTS[i]
+        const newLength = outputLength + key.length + label.length + whiteSpaces
+        if (newLength <= stdout.columns) {
+          output += `${chalk.bgWhite(` ${chalk.black(key)} `)} ${label} `
+          outputLength = newLength
         }
-        i++
       }
-      const x = centerX(strlength, stdout.columns)
+      const x = centerX(outputLength, stdout.columns)
       process.stdout.write(
         ansi.cursorSavePosition + 
         ansi.cursorTo(x, stdout.rows) +
-        str +
+        output +
         ansi.cursorRestorePosition
       )
+      return 1
     }
 
     const saveInHistory = ()=>{
-      const chapterInfo = chapterCtl.getChapterInfo()
+      const chapterInfo = chapterController.getChapterInfo()
       const historyEntry: HistoryObject2 = {
-        chapter_index: chapterCtl.geChapterIndex(),
+        chapter_index: chapterController.geChapterIndex(),
         chapter_src: chapterInfo.chapterTarget.id,
         lang_iso: chapterInfo.chapterTarget.lang,
-        page_index: pagesCtl.index,
-        pages_read: pagesCtl.readPages,
-        read_progress: pagesCtl.readProgress,
+        page_index: pagesController.index,
+        pages_read: pagesController.readPages,
+        read_progress: pagesController.readProgress,
         sort_order: "desc",
         provider: mangaProvider.name,
         chapter_title: chapterInfo.chapterTarget.title,
-        mangainfo: mangaInfo,
+        mangainfo: MANGA_INFO,
       }
-      DB.insertOnHistory(historyEntry)
+      DATABASE.insertOnHistory(historyEntry)
     }
     
-    const render = async (invalidateCache=false, forceReload=false) => {
+    const render = async (invalidateCache = false, forceReload = false) => {
       if (LOADER.isSpinning)
-          LOADER.stop()
-      if (!process.stdin.isRaw) return;
-      process.stdout.write(ansi.clearScreen)
-      if (!FULLSCREEN_MODE && IMGFITMODE !== 'cover') {
-        renderHeader()
-        if (DEBUG_MODE) debugModeRendeer()
-        renderFooter()
-    }
-      await pageRender(invalidateCache, forceReload)
+        LOADER.stop()
+      if (process.stdin.isRaw) {
+        process.stdout.write(ansi.clearViewport)
+        const margin = {top: 0, bottom: 0}
+        if(CTL_FLAGS.FIT_MODE === 'contain' && !CTL_FLAGS.FULLSCREEN){
+          margin.top += renderHeader()
+          if (CTL_FLAGS.DEBUG) 
+            margin.top+= debugRender() + 1 
+          margin.bottom+= renderFooter()
+        }
+        const renderProps: RenderProps = {
+          forceReload,
+          invalidateCache,
+          position: { x: 'center', y: 'center' },
+          window: {
+            size: {
+              y: stdout.rows - (margin.top + margin.bottom),
+              x: stdout.columns
+            },
+            position: {
+              x: 0,
+              y: margin.top
+            }
+          }
+        }
+        await loadPage(renderProps)
+      }
     }
 
     const chapterLoader = async (action: SignalsCodes | undefined = undefined, force = false) => {
       try {
-        process.stdout.write(ansi.clearTerminal)
-        LOADER.start(loading_states.loading_chapter)
-        let isFirstOrLast = chapterCtl.isFirstOrLast()
+        process.stdout.write(ansi.clearViewport)
+        LOADER.start(I18N.i18nLoadings.loading_chapter)
+        let isFirstOrLast = chapterController.isFirstOrLast()
         switch (action) {
           case SignalsCodes.next_chapter:
             if (isFirstOrLast === 1) {
-              isFirstOrLast = 0;
+              isFirstOrLast = 0
             }
-            pagesCtl.free()
-            await chapterCtl.nextChapter()
+            await chapterController.nextChapter()
             break
           case SignalsCodes.previous_chapter:
             if (isFirstOrLast === -1) {
               isFirstOrLast = 0
             }
-            pagesCtl.free()
-            await chapterCtl.prevChapter()
+            await chapterController.prevChapter()
             break
         }
         if (isFirstOrLast === 0 || force) {
@@ -363,19 +437,20 @@ export async function terminalReader(
            *  so we remove it from the stack and overwrite that value
            *  with the current pages_read before loading a new chapter.
            */
-          if(!IS_FIRST_RUN){
+          if(!CTL_FLAGS.IS_FIRST_RUN){
             const current = TIME_TRACKER.get('manga_reader')
             if(current){
-              current.payload.pages_read = pagesCtl.readPages
+              current.payload.pages_read = pagesController.readPages
               TIME_TRACKER._overrideTop('manga_reader', current)
             }
           }
-          const chapterInfo = chapterCtl.getChapterInfo()
-          const newPages = await chapterCtl.loadChapter()
-          pagesCtl.setPages(newPages ?? [])
-          if(CTX_FROM_HISTORY && IS_FIRST_RUN){
-            pagesCtl.setIndex(context.page_index)
-            pagesCtl.setProgress(context.pages_read)
+          const chapterInfo = chapterController.getChapterInfo()
+          const newPages = await chapterController.loadChapter()
+          pagesController.setPages(newPages ?? [])
+          if(FROM_HISTORY && CTL_FLAGS.IS_FIRST_RUN){
+            const ctx = props.context as HistoryObject2
+            pagesController.setIndex(ctx.page_index)
+            pagesController.setProgress(ctx.pages_read)
           }
           saveInHistory()
           /**
@@ -384,8 +459,8 @@ export async function terminalReader(
            * This creates a dependency on this function, but let's trust it.
            */
           TIME_TRACKER.track('manga_reader', chapterInfo.chapterTarget.id, {
-            manga_id: mangaInfo.src,
-            pages_read: pagesCtl.readPages
+            manga_id: MANGA_INFO.src,
+            pages_read: pagesController.readPages
           })
         }
         if (LOADER.isSpinning)
@@ -421,13 +496,13 @@ export async function terminalReader(
          */
         const current = TIME_TRACKER.get('manga_reader')
         if (current) {
-          current.payload.pages_read = pagesCtl.readPages
+          current.payload.pages_read = pagesController.readPages
           TIME_TRACKER._overrideTop('manga_reader', current)
         }
         const readStack = TIME_TRACKER.stop('manga_reader')
         TIME_TRACKER.drop('manga_reader')
         if(readStack){
-          DB.insertOnSessionTracker(readStack)
+          DATABASE.insertOnSessionTracker(readStack)
         }
         
         process.removeListener('SIGWINCH', SIGWINCH_HANDLER)
@@ -436,21 +511,21 @@ export async function terminalReader(
         if (key.ctrl && keyName === 'c') {
           await CONFIGURATION.conf_browser.close()
           await CONFIGURATION.store()
-          pagesCtl.reset()
+          pagesController.reset()
           stdout.write(
             ansi.clearTerminal +
             ansi.exitAlternativeScreen
           );
           process.exit(0)
         }
-        process.stdout.write(ansi.clearScreen)
-        pagesCtl.reset()
-        pagesCtl.free()
+        process.stdout.write(ansi.clearViewport)
+        pagesController.reset()
+        pagesController.free()
         resolve();
       } 
       else if (keyName === 'left' || keyName === 'right') {
-        if (keyName.startsWith('l')) pagesCtl.backPage()
-        else pagesCtl.nextPage()
+        if (keyName.startsWith('l')) pagesController.backPage()
+        else pagesController.nextPage()
         await render()
         return
       }
@@ -463,7 +538,7 @@ export async function terminalReader(
         return
       }
       else if (keyName === 'f') {
-        FULLSCREEN_MODE = !FULLSCREEN_MODE
+        CTL_FLAGS.FULLSCREEN = !CTL_FLAGS.FULLSCREEN
         const $ = supportsTerminalGraphics.stdout
         if(!$.kitty && !$.iterm2){
           await render(false, true)
@@ -473,16 +548,13 @@ export async function terminalReader(
         return
       }
       else if (keyName === 'f12') {
-        DEBUG_MODE = !DEBUG_MODE
-        if (!DEBUG_MODE) {
-          RENDER_WSZ.rows = stdout.rows
-        }
+        CTL_FLAGS.DEBUG = !CTL_FLAGS.DEBUG
         await render()
         return
       }
       else if (keyName === 'r'){
         if(keyctrl){
-          pagesCtl.reset()
+          pagesController.reset()
           await chapterLoader(undefined, true)
         }else if (keyshift){
           await render(false, true)
@@ -491,7 +563,7 @@ export async function terminalReader(
         }
       }
       else if(keyName === 'm'){
-        IMGFITMODE = IMGFITMODE === 'contain' ? 'cover' : 'contain'
+        CTL_FLAGS.FIT_MODE = CTL_FLAGS.FIT_MODE === 'contain' ? 'cover' : 'contain'
         await render(false, true)
       }
       else if (keyName === 'c') {
@@ -502,7 +574,7 @@ export async function terminalReader(
         while(true){
           optionsPrompt = await prompts(terminalReaderChapterOptions())
           if(optionsPrompt.target === SignalsCodes.list_add){
-            await addToUserListPrompt(mangaInfo)
+            await addToUserListPrompt(MANGA_INFO)
           }else break
         }
         if (!optionsPrompt?.target) {
@@ -515,17 +587,17 @@ export async function terminalReader(
         else if (optionsPrompt.target === SignalsCodes.previous_chapter)
           await chapterLoader(SignalsCodes.previous_chapter)
         else if (optionsPrompt.target === SignalsCodes.download_chapter) {
-          await downloadSection(mangaInfo, chapters, chapterCtl.geChapterIndex(), chapterCtl.getLang(), mangaProvider)
+          await downloadSection(MANGA_INFO, props.chapters, chapterController.geChapterIndex(), chapterController.getLang(), mangaProvider)
           TerminalControl.openRawMode(keyPressHandle)
           await render()
           return
         }
         else if (optionsPrompt.target === SignalsCodes.get_chapters_list) {
           let outputStatus = -1
-          await ChapterSelect(mangaProvider, mangaInfo, chapters, async (e, stop)=>{
+          await ChapterSelect(mangaProvider, MANGA_INFO, props.chapters, async (e, stop)=>{
             const {chapterLanguage, chapterIndex} = e
-            chapterCtl.setChapterLanguage(chapterLanguage)
-            chapterCtl.setChapterIndex(chapterIndex)
+            chapterController.setChapterLanguage(chapterLanguage)
+            chapterController.setChapterIndex(chapterIndex)
             outputStatus = 1
             stop()
           })
@@ -549,6 +621,6 @@ export async function terminalReader(
     process.stdout.write(ansi.cursorHide)
     process.on('SIGWINCH', SIGWINCH_HANDLER)
     await chapterLoader(undefined, true);
-    IS_FIRST_RUN = false
+    CTL_FLAGS.IS_FIRST_RUN = false
   })
 }
