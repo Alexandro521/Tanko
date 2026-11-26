@@ -3,6 +3,7 @@ import {randomInt} from 'node:crypto'
 import { UNITS } from "../types/enum.ts"
 import { CyclicArray, Alarm, type StorageOptions } from "../shared.ts"
 import { Storage } from "../shared.ts"
+import { Notify } from "./notify.ts"
 
 export type middleWare = (arg0: Response, reject: (reason: string) => void ) => void | Promise<void>
 type FetchUrl = string | URL | Request
@@ -152,17 +153,19 @@ export class NetRegister {
     delete(rid: number){
         this.requestMap.delete(rid)
     }
-    free(){
-        for(const rid of this.requestMap.keys()){
+    free() {
+        for (const rid of this.requestMap.keys()) {
             const req = this.requestMap.get(rid)!
-            try{
+            try {
                 req.abortCtl.abort()
-            }catch(e){
-
-            }
-            }
-            this.requestMap.clear()
-            this.urlMap.clear()
+            } catch (e) {
+                if(e instanceof Error){
+                    Notify.pushError(e)
+                }
+             }
+        }
+        this.requestMap.clear()
+        this.urlMap.clear()
     }
     getRid(url: string){
         return this.urlMap.get(url)
@@ -462,19 +465,27 @@ export class Net{
     }
     abort(rid: number, reason?: string) {
         const req = this.register.get(rid)
-        if (req) {
-
-            if (req.status === RequestStatus.pendding) {
-                this.register.setStatus(rid, 'aborted')
-                const index = this.requestQueue.findIndex((e) => e === rid)
-                if (index < 0) {
+        if (!req) return
+        if (req.status === RequestStatus.pendding) {
+            this.register.setStatus(rid, 'aborted')
+            //check whether the request is still in the queue to be sent
+            const index = this.requestQueue.findIndex((e) => e === rid)
+            if (index < 0) {
+                try{
                     req.abortCtl.abort(reason)
-                } else this.requestQueue.popAt(index)
-            } else if (req.status === RequestStatus.waiting) {
-                this.temporal.remove(rid)
-                this.register.delete(rid)
+                }catch(e){
+                    if(e instanceof Error){
+                        e.message
+                    }
+                }
+            } else {
+                this.requestQueue.popAt(index)
             }
+        } else if (req.status === RequestStatus.waiting) {
+            this.temporal.remove(rid)
+            this.register.delete(rid)
         }
+        this.event.emit('abort', rid)
     }
     delete(rid: number){
         const info = this.register.get(rid)
