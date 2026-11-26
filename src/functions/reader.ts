@@ -62,6 +62,7 @@ export class PagesControl {
   }
   pagePreFetch(range = 5, estrategy: ImgPreloadingStrategy, headers: Headers){
     let candidates: ChapterPage[];
+    this.net.stopQueue()
     switch(estrategy){
       case 'around':{
         let start = Math.max(0, this.pageIndex - range)
@@ -91,6 +92,7 @@ export class PagesControl {
     }).forEach(e=>{
       this.net.pushRequest(e.src, {headers: headers})
     })
+    this.net.resumeQueue()
   }
   nextPage() {
     if (this.pageIndex < this.pages.length - 1) {
@@ -105,10 +107,12 @@ export class PagesControl {
     this.currenPage = this.pages[this.pageIndex];
   }
   reset() {
+    this.net.stopQueue()
     this.pageIndex = 0;
     this.currenPage = this.pages[0];
     this.imgStorage.free();
     this.net.free()
+    this.net.resumeQueue()
   }
   storageHit(page: ChapterPage) {
     const has = this.imgStorage.has(page.src)
@@ -146,9 +150,12 @@ export class PagesControl {
       return true
     } catch (e) {
       if (e instanceof Error) {
-        if(e.message !== 'abort'){
+        if(e.name !== 'AbortError'){
           Notify.pushError(e);
           return true
+        }
+        else {
+          Notify.pushError(new Error('Abort Error'))
         }
         return false
       }
