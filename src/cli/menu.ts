@@ -155,12 +155,12 @@ async function sectionChapterList(provider: MangaProvider, mangaInfo: MangaInfo,
   await ChapterSelect(provider, mangaInfo, memoizedChapters, async (e) => {
     const { chapterActions, chapterIndex, chapterLanguage, chaptersList } = e
     if (chapterActions === SignalsCodes.read_chapter) {
-      await terminalReader(
-        mangaInfo,
-        chaptersList,
-        chapterIndex,
-        chapterLanguage,
-      )
+      await terminalReader({
+        context: mangaInfo,
+        chapters: chaptersList,
+        startIndex: chapterIndex,
+        lang: chapterLanguage,
+    })
     } else if (chapterActions === SignalsCodes.download_chapter) {
       await downloadSection(
         mangaInfo,
@@ -268,12 +268,12 @@ async function sectionHistory(provider: MangaProvider) {
       if (!chapterList) continue;
       switch (optionsSelect.target) {
         case SignalsCodes.resume_read: {
-          await terminalReader(
-            historyObject,
-            chapterList,
-            mangaTarget.chapter_index,
-            mangaTarget.lang_iso,
-          );
+          await terminalReader({
+            context: historyObject,
+            chapters: chapterList,
+            startIndex: mangaTarget.chapter_index,
+            lang: mangaTarget.lang_iso,
+         });
           break;
         }
         case SignalsCodes.get_chapters_list:
@@ -327,12 +327,12 @@ async function sectionPopulars(server: MangaProvider) {
         const {chapterActions, chaptersList, chapterLanguage, chapterIndex} = res
         switch(chapterActions){
           case SignalsCodes.read_chapter: {
-              await terminalReader(
-                targetManga,
-                chaptersList,
-                chapterIndex,
-                chapterLanguage,
-              );
+              await terminalReader({
+               context: targetManga,
+               chapters: chaptersList,
+               startIndex: chapterIndex,
+               lang: chapterLanguage,
+              });
               break
           }
           case SignalsCodes.download_chapter: {
@@ -383,11 +383,12 @@ async function sectionLastest(server: MangaProvider) {
           const {chaptersList, chapterIndex, chapterLanguage, chapterActions } = e
           switch(chapterActions){
             case SignalsCodes.read_chapter:
-              await terminalReader(
-                targetManga, 
-                chaptersList, 
-                chapterIndex, 
-                chapterLanguage);
+              await terminalReader({
+                  context: targetManga,
+                  chapters: chaptersList,
+                  lang: chapterLanguage,
+                  startIndex: chapterIndex
+                });
               break
             case SignalsCodes.download_chapter:
               await downloadSection(
@@ -535,7 +536,12 @@ async function displayUserList(list: UserlistsTable) {
               if(!LOADER.isSpinning) LOADER.start(i18nLoadings.loading_chapters)
               const chapters = await provider.getChapterList(historyObject.manga_src)
               if(LOADER.isSpinning) LOADER.stop()
-              await terminalReader(castHistoryObject(historyObject), chapters, historyObject.chapter_index, historyObject.lang_iso)
+              await terminalReader({
+                chapters,
+                context: castHistoryObject(historyObject),
+                lang: historyObject.lang_iso,
+                startIndex: historyObject.chapter_index
+              })
               break
             }catch(e){
               if(LOADER.isSpinning) LOADER.stop()
